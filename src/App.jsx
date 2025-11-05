@@ -12,4 +12,6 @@ function App() {
   )
 }
 
-export default App
+export default function App() {
+  return null; // không render gì ở đây
+}
