@@ -5,16 +5,24 @@ import Logo from "../../components/common/Logo.jsx";
 import AuthTabs from "../../components/auth/AuthTabs.jsx";
 import { useState } from "react";
 import { login } from "../../services/authService.js";
+import { useNavigate, useLocation } from "react-router-dom";
+
 
 export default function Login(){
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState("");
+  const navigate = useNavigate();
+  const location = useLocation();
+
 
   const submit = async (e) => {
     e.preventDefault();
     const res = await login({ email, password }); // stub – trả message
     setMsg(res.message);
+    const target = (res?.user?.role === "admin") ? "/admin/users" : "/dashboard";
+    const back   = location.state?.from;
+    navigate(back || target, { replace: true });
   };
 
   return (
