@@ -1,67 +1,46 @@
-import { logout } from "../../services/authService.js";
-import { useAuth } from "../../store/authStore.js";
-import { useNavigate, Link } from "react-router-dom";
+import React from "react";
+import logo from "@/assets/logo.svg";
+import { Outlet } from "react-router-dom";
 
-export default function Header(){
-  const { user } = useAuth();
-  const nav = useNavigate();
-
+export default function Header() {
   return (
-    <header
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "0 16px",
-        height: 56,
-        borderBottom: "1px solid #202934",
-        background: "#0f1419",
-        color: "#eaf0f6",
-      }}
-    >
-      {/* BRAND (logo + text) */}
-      <Link
-        to="/dashboard"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          textDecoration: "none",
-          color: "#eaf0f6",
-        }}
-      >
-        <img
-          src="public/logo.png"   
-          alt="APSAS"
-          style={{ height: 28, width: "auto", display: "block" }}
-        />
-        <span style={{ fontWeight: 800, fontSize: 20, letterSpacing: ".5px" }}>
-          APSAS
-        </span>
-      </Link>
+    <>
+      <header className="app-header">
+        <div className="container header-grid">
+          {/* Brand */}
+          <div className="brand">
+            <button className="icon-btn" aria-label="Menu">
+              ☰
+            </button>
+            <img src={logo} alt="APSAS" className="logo" />
+            <span className="brand-name">APSAS</span>
+          </div>
 
-      {/* RIGHT */}
-      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-        <span style={{ opacity: 0.8, fontSize: 14 }}>
-          {user?.name} • {user?.role}
-        </span>
-        <button
-          onClick={() => {
-            logout();
-            nav("/auth/login");
-          }}
-          style={{
-            background: "#3b82f6",
-            color: "#fff",
-            border: "none",
-            borderRadius: 8,
-            padding: "8px 10px",
-            cursor: "pointer",
-          }}
-        >
-          Đăng xuất
-        </button>
-      </div>
-    </header>
+          {/* Search */}
+          <label className="search" aria-label="Search">
+            <span className="search-ico">🔍</span>
+            <input placeholder="Search" />
+          </label>
+
+          {/* Actions + User */}
+          <div className="actions">
+            <button className="icon-btn" title="Notifications">
+              🔔
+            </button>
+            <button className="icon-btn" title="Theme">
+              🌙
+            </button>
+            <div className="user">
+              <div className="avatar" />
+              <div className="user-info">
+                <strong>Họ và tên</strong>
+                <small>Sinh viên Công nghệ</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+      <Outlet />
+    </>
   );
 }

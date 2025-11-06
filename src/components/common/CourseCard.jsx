@@ -1,4 +1,4 @@
-import React from 'react'
+import React from "react";
 
 export default function CourseCard({ title, desc, stats, image, badge }) {
   return (
@@ -16,5 +16,5 @@ export default function CourseCard({ title, desc, stats, image, badge }) {
         </div>
       </div>
     </article>
-  )
+  );
 }

@@ -1,8 +1,18 @@
-export default function Footer(){
+import React from "react";
+
+export default function Footer() {
   return (
-    <footer style={{padding:"12px 20px",borderTop:"1px solid #202934",
-                    background:"#0f1419",color:"#9aa5af",textAlign:"center"}}>
-      © {new Date().getFullYear()} APSAS
+    <footer className="app-footer">
+      <div className="container footer-row">
+        <div>Copyright © {new Date().getFullYear()} APSAS</div>
+        <nav>
+          <a href="#">Help Center</a>
+          <a href="#">Jobs</a>
+          <a href="#">Blog</a>
+          <a href="#">Terms</a>
+          <a href="#">Privacy Policy</a>
+        </nav>
+      </div>
     </footer>
   );
 }
