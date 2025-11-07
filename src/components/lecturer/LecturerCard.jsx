@@ -1,28 +1,21 @@
 import React from "react";
-import avatar from "../../assets/logo.png";
+import avatar from "../../assets/logo.png"; // ảnh tạm
 
 export default function LecturerCard() {
   return (
-    <div className="card side">
-      <h3 className="side-title">Giảng viên</h3>
-      <div className="lecturer">
-        <img className="lecturer-avatar" src={avatar} alt="Lecturer" />
-        <div>
-          <div className="lecturer-name">TS. Trần Minh Quân</div>
-          <div className="muted">Giảng viên Khoa CNTT</div>
+    <div className="flex items-center gap-4">
+      <img
+        src={avatar}
+        alt="Lecturer"
+        className="h-12 w-12 rounded-full bg-white/10 object-cover"
+      />
+      <div>
+        <div className="font-semibold text-white">TS. Trần Minh Quân</div>
+        <div className="text-slate-400 text-sm">Giảng viên Khoa CNTT</div>
+        <div className="mt-1 text-sm text-slate-300 flex items-center gap-2">
+          ✉️ <a href="mailto:minhquan@ut.edu.vn">minhquan@ut.edu.vn</a>
         </div>
-      </div>
-      <div className="lecturer-meta">
-        <div className="meta-row">
-          <span className="meta-icon">✉️</span>
-          <a href="mailto:minhquan@ut.edu.vn">minhquan@ut.edu.vn</a>
-        </div>
-        <div className="meta-row">
-          <span className="meta-icon">📗</span>
-          <span>4 khóa học</span>
-          <span className="dot" />
-          <span>8,900 SV</span>
-        </div>
+        <div className="text-sm text-slate-300">4 khóa học • 8,900 SV</div>
       </div>
     </div>
   );

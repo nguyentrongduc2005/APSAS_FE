@@ -5,7 +5,7 @@ import Login       from "../pages/auth/Login.jsx";
 import Register    from "../pages/auth/Register.jsx";
 import VerifyOtp   from "../pages/auth/VerifyOtp.jsx";
 import PublicCourses from "../pages/PublicCourses.jsx";
-
+import CourseDetail from "../pages/CourseDetail.jsx";
 import Navbar from "../components/common/Navbar.jsx";
 import ProtectedLayout from "../components/common/ProtectedLayout.jsx";
 
@@ -21,6 +21,7 @@ export default function AppRoutes() {
       <Route element={<Navbar />}>
         <Route index element={<Landing />} />
         <Route path="courses" element={<PublicCourses />} />
+        <Route path="course/:courseId" element={<CourseDetail />} />
         <Route path="auth/login" element={<Login />} />
         <Route path="auth/register" element={<Register />} />
         <Route path="auth/verify" element={<VerifyOtp />} />

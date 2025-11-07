@@ -99,3 +99,9 @@ export const learn = [
     stats: { learners: 100, progress: '7/18' },
   },
 ]
+const allCourses = [...featured, ...interview, ...learn, continueCourse];
+
+export function getCourseById(id) {
+  if (!id) return null;
+  return allCourses.find((c) => String(c.id) === String(id)) || null;
+}
