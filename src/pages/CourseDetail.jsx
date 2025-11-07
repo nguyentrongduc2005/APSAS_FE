@@ -1,4 +1,4 @@
-  import React from "react";
+import React from "react";
 import { useParams, Link } from "react-router-dom";
 import LecturerCard from "../components/lecturer/LecturerCard";
 import OutcomeCard from "../components/student/OutcomeCard";
@@ -19,7 +19,9 @@ export default function CourseDetail() {
       {/* Breadcrumb pill */}
       <div className="container">
         <div className="cd-breadcrumb">
-          <Link to="/" className="cd-crumb">Explore</Link>
+          <Link to="/" className="cd-crumb">
+            Explore
+          </Link>
           <span className="cd-sep">/</span>
           <span className="cd-crumb">{course.category}</span>
         </div>
@@ -42,28 +44,36 @@ export default function CourseDetail() {
                 <span className="cd-pill-ico">🧾</span>
                 <div>
                   <div className="cd-pill-head">Bài học</div>
-                  <div className="cd-pill-val"><b>45</b> bài học</div>
+                  <div className="cd-pill-val">
+                    <b>45</b> bài học
+                  </div>
                 </div>
               </div>
               <div className="cd-pill">
                 <span className="cd-pill-ico">🧩</span>
                 <div>
                   <div className="cd-pill-head">Bài tập</div>
-                  <div className="cd-pill-val"><b>150</b> bài tập</div>
+                  <div className="cd-pill-val">
+                    <b>150</b> bài tập
+                  </div>
                 </div>
               </div>
               <div className="cd-pill">
                 <span className="cd-pill-ico">📚</span>
                 <div>
                   <div className="cd-pill-head">Modules</div>
-                  <div className="cd-pill-val"><b>7</b> modules</div>
+                  <div className="cd-pill-val">
+                    <b>7</b> modules
+                  </div>
                 </div>
               </div>
               <div className="cd-pill">
                 <span className="cd-pill-ico">👥</span>
                 <div>
                   <div className="cd-pill-head">Thành viên</div>
-                  <div className="cd-pill-val"><b>{course.stats.learners}</b> học viên</div>
+                  <div className="cd-pill-val">
+                    <b>{course.stats.learners}</b> học viên
+                  </div>
                 </div>
               </div>
             </div>

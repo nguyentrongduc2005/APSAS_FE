@@ -1,9 +1,9 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 
-import Landing     from "../pages/landing/Landing.jsx";
-import Login       from "../pages/auth/Login.jsx";
-import Register    from "../pages/auth/Register.jsx";
-import VerifyOtp   from "../pages/auth/VerifyOtp.jsx";
+import Landing from "../pages/landing/Landing.jsx";
+import Login from "../pages/auth/Login.jsx";
+import Register from "../pages/auth/Register.jsx";
+import VerifyOtp from "../pages/auth/VerifyOtp.jsx";
 import PublicCourses from "../pages/PublicCourses.jsx";
 
 import Navbar from "../components/common/Navbar.jsx";
@@ -11,7 +11,7 @@ import ProtectedLayout from "../components/common/ProtectedLayout.jsx";
 
 // (demo) trang private – thay bằng trang thật của bạn
 const Dashboard = () => <div>Dashboard</div>;
-const Profile   = () => <div>Trang cá nhân</div>;
+const Profile = () => <div>Trang cá nhân</div>;
 // const AdminUsers = () => <div>Quản trị người dùng</div>;
 
 export default function AppRoutes() {
@@ -29,7 +29,7 @@ export default function AppRoutes() {
       {/* ===== PRIVATE (dùng ProtectedLayout: layout + guard) ===== */}
       <Route element={<ProtectedLayout />}>
         <Route path="dashboard" element={<Dashboard />} />
-        <Route path="profile"   element={<Profile />} />
+        <Route path="profile" element={<Profile />} />
       </Route>
 
       {/* ===== ADMIN (ví dụ chỉ cho admin) ===== */}
