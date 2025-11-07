@@ -1,5 +1,5 @@
 import React from 'react'
-import CourseCard from '../components/CourseCard'
+import CourseCard from '../components/common/CourseCard'
 import { continueCourse, featured, interview, learn } from '../constants/courses'
 
 function Section({ title, children, action }) {
