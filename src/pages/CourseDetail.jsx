@@ -34,85 +34,87 @@ export default function CourseDetail() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Breadcrumb */}
-      <div
-        className="inline-flex items-center gap-2 rounded-full
+    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 max-w-[1400px]">
+      <div className="space-y-6">
+        {/* Breadcrumb */}
+        <div
+          className="inline-flex items-center gap-2 rounded-full
                       border border-[#202934] bg-[#0f1419] px-5 py-2 text-sm text-slate-200"
-      >
-        <span>Explore</span>
-        <span className="opacity-50">/</span>
-        <span className="text-emerald-400">{course.category}</span>
-      </div>
-
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Column - Course Banner */}
-        <section
-          className="relative overflow-hidden rounded-xl
-                     border border-[#202934] bg-[#0f1419] shadow-lg"
         >
-          <div className="relative h-[500px] md:h-[600px]">
-            <img
-              src={course.image || FALLBACK_BANNER}
-              alt="Banner"
-              className="absolute inset-0 h-full w-full object-cover"
-            />
+          <span>Explore</span>
+          <span className="opacity-50">/</span>
+          <span className="text-emerald-400">{course.category}</span>
+        </div>
 
-            <div className="absolute inset-0 bg-linear-to-b from-black/60 via-transparent to-black/80" />
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Left Column - Course Banner */}
+          <section
+            className="relative overflow-hidden rounded-xl
+                     border border-[#202934] bg-[#0f1419] shadow-lg"
+          >
+            <div className="relative h-[500px] md:h-[600px]">
+              <img
+                src={course.image || FALLBACK_BANNER}
+                alt="Banner"
+                className="absolute inset-0 h-full w-full object-cover"
+              />
 
-            <div className="relative h-full p-6 flex flex-col justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-white leading-tight mb-2">
-                  {course.title}
-                </h1>
-                <p className="text-slate-300 text-sm leading-relaxed">
-                  {course.desc}
-                </p>
-              </div>
+              <div className="absolute inset-0 bg-linear-to-b from-black/60 via-transparent to-black/80" />
 
-              <div className="space-y-2.5">
-                <StatPill ico="🧾" head="Bài học" val="45 bài học" />
-                <StatPill ico="🧩" head="Bài tập" val="150 bài tập" />
-                <StatPill ico="📚" head="Modules" val="7 modules" />
-                <StatPill
-                  ico="👥"
-                  head="Thành viên"
-                  val={`${course.stats?.learners ?? 1500} học viên`}
-                />
+              <div className="relative h-full p-6 flex flex-col justify-between">
+                <div>
+                  <h1 className="text-2xl font-bold text-white leading-tight mb-2">
+                    {course.title}
+                  </h1>
+                  <p className="text-slate-300 text-sm leading-relaxed">
+                    {course.desc}
+                  </p>
+                </div>
+
+                <div className="space-y-2.5">
+                  <StatPill ico="🧾" head="Bài học" val="45 bài học" />
+                  <StatPill ico="🧩" head="Bài tập" val="150 bài tập" />
+                  <StatPill ico="📚" head="Modules" val="7 modules" />
+                  <StatPill
+                    ico="👥"
+                    head="Thành viên"
+                    val={`${course.stats?.learners ?? 1500} học viên`}
+                  />
+                </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        {/* Right Column - Sidebar Cards */}
-        <aside className="flex flex-col gap-6">
-          {/* Lecturer Card */}
-          <div className="rounded-xl border border-[#202934] bg-[#0f1419] p-5">
-            <h3 className="text-white font-bold text-lg mb-4">Giảng viên</h3>
-            <div className="[&_a]:text-emerald-400 [&_a:hover]:underline">
-              <LecturerCard />
+          {/* Right Column - Sidebar Cards */}
+          <aside className="flex flex-col gap-6">
+            {/* Lecturer Card */}
+            <div className="rounded-xl border border-[#202934] bg-[#0f1419] p-5">
+              <h3 className="text-white font-bold text-lg mb-4">Giảng viên</h3>
+              <div className="[&_a]:text-emerald-400 [&_a:hover]:underline">
+                <LecturerCard />
+              </div>
             </div>
-          </div>
 
-          {/* Outcomes Card */}
-          <div className="rounded-xl border border-[#202934] bg-[#0f1419] p-5">
-            <h3 className="text-white font-bold text-lg mb-4">
-              Kết quả học tập
-            </h3>
-            <OutcomeCard />
-          </div>
-        </aside>
-      </div>
+            {/* Outcomes Card */}
+            <div className="rounded-xl border border-[#202934] bg-[#0f1419] p-5">
+              <h3 className="text-white font-bold text-lg mb-4">
+                Kết quả học tập
+              </h3>
+              <OutcomeCard />
+            </div>
+          </aside>
+        </div>
 
-      {/* Register Button - Full Width Below */}
-      <button
-        className="w-full px-8 py-4 bg-blue-600 hover:bg-blue-700 
+        {/* Register Button - Full Width Below */}
+        <button
+          className="w-full px-8 py-4 bg-blue-600 hover:bg-blue-700 
                    text-white font-bold rounded-xl transition shadow-lg text-lg"
-        aria-label="Đăng ký khóa học"
-      >
-        Đăng ký khóa học
-      </button>
+          aria-label="Đăng ký khóa học"
+        >
+          Đăng ký khóa học
+        </button>
+      </div>
     </div>
   );
 }

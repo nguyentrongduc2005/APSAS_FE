@@ -40,10 +40,9 @@ export default function MainAppLayout() {
     // === TRƯỜNG HỢP 1: CHƯA ĐĂNG NHẬP ===
     // Chỉ render Navbar công khai + Trang (Outlet) + Footer
     return (
-      <div className="min-h-screen bg-black flex flex-col">
+      <div className="min-h-screen bg-[#0b0f12] flex flex-col">
         <Navbar />
         <main className="flex-1 pt-16">
-          {/* paddingTop để tránh bị Navbar (fixed) che */}
           <Outlet />
         </main>
         <Footer />
