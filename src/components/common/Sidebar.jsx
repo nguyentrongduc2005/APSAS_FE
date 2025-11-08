@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { useAuth } from "../../store/authStore.js";
+import { useAuth } from "../../context/AuthContext.jsx"; // Sửa import từ context thay vì store
 import { NAV_BY_ROLE } from "../../constants/navConfig.js";
 import { useUI } from "../../store/uiStore.js"; // nếu bạn đã có toggle sidebar
 
@@ -17,12 +17,19 @@ const itemBase = {
 export default function Sidebar() {
   const { user } = useAuth();
   const { sidebarOpen } = useUI?.() ?? { sidebarOpen: true }; // fallback nếu chưa có store
+
+  // Debug log để kiểm tra user và role
+  console.log("🔍 Sidebar - User:", user);
+  console.log("🔍 Sidebar - Role:", user?.role);
+
   const items = NAV_BY_ROLE[user?.role] ?? [
     { to: "/dashboard", label: "Dashboard", icon: "🏠" },
     { to: "/courses", label: "Khóa học", icon: "📚" },
     { to: "/assignments", label: "Bài tập", icon: "🧩" },
     { to: "/profile", label: "Trang cá nhân", icon: "👤" },
   ];
+
+  console.log("🔍 Sidebar - Nav items:", items);
 
   return (
     <aside

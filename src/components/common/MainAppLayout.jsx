@@ -40,9 +40,9 @@ export default function MainAppLayout() {
     // === TRƯỜNG HỢP 1: CHƯA ĐĂNG NHẬP ===
     // Chỉ render Navbar công khai + Trang (Outlet) + Footer
     return (
-      <div className="public-wrapper">
+      <div className="min-h-screen bg-black flex flex-col">
         <Navbar />
-        <main style={{ paddingTop: "64px" }}>
+        <main className="flex-1 pt-16">
           {/* paddingTop để tránh bị Navbar (fixed) che */}
           <Outlet />
         </main>
@@ -53,39 +53,34 @@ export default function MainAppLayout() {
 
   // === TRƯỜNG HỢP 2: ĐÃ ĐĂNG NHẬP ===
   // Render layout "Protected" (Header + Sidebar + Trang + Footer)
-  // Đây là layout grid từ file ProtectedLayout cũ của bạn.
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: sidebarOpen ? "240px 1fr" : "0 1fr",
-        minHeight: "100vh",
-        background: "#0b0f12",
-        transition: "grid-template-columns 200ms ease",
-      }}
-    >
-      <div
-        style={{
-          overflow: "hidden",
-          borderRight: sidebarOpen ? "1px solid #202934" : "none",
-        }}
+    <div className="flex min-h-screen bg-[#0b0f12]">
+      {/* Sidebar */}
+      <aside
+        className={`fixed top-0 left-0 h-screen bg-[#0f1419] border-r border-[#202934] transition-transform duration-200 z-30 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+        style={{ width: "240px" }}
       >
-        <div
-          style={{
-            width: 240,
-            transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)",
-            transition: "transform 200ms ease",
-          }}
-        >
-          <Sidebar />
-        </div>
-      </div>
+        <Sidebar />
+      </aside>
 
-      <div style={{ display: "grid", gridTemplateRows: "56px 1fr auto" }}>
+      {/* Main Content */}
+      <div
+        className="flex-1 flex flex-col transition-all duration-200"
+        style={{ marginLeft: sidebarOpen ? "240px" : "0" }}
+      >
+        {/* Header */}
         <Header />
-        <main style={{ padding: 20, color: "#eaf0f6" }}>
-          <Outlet />
+
+        {/* Page Content */}
+        <main className="flex-1 overflow-auto">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 max-w-[1400px]">
+            <Outlet />
+          </div>
         </main>
+
+        {/* Footer */}
         <Footer />
       </div>
     </div>

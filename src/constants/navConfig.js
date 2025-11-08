@@ -1,13 +1,14 @@
 export const NAV_BY_ROLE = {
   student: [
     { to: "/dashboard", label: "Dashboard", icon: "🏠" },
-    { to: "/courses", label: "Khóa học", icon: "📚" },
+    { to: "/student/my-courses", label: "My Courses", icon: "📚" },
+    { to: "/courses", label: "Browse Courses", icon: "�" },
     { to: "/assignments", label: "Bài tập", icon: "🧩" },
     { to: "/profile", label: "Trang cá nhân", icon: "👤" },
   ],
   lecturer: [
     { to: "/dashboard", label: "Dashboard", icon: "🏠" },
-    { to: "/manage/courses", label: "Quản lý khóa học", icon: "🛠️" },
+    { to: "/lecturer/my-courses", label: "My Courses", icon: "�" },
     { to: "/assignments", label: "Bài tập", icon: "🧩" },
     { to: "/profile", label: "Trang cá nhân", icon: "👤" },
   ],

@@ -1,8 +1,24 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 
-export default function CourseCard({ title, desc, stats, image, badge }) {
+export default function CourseCard({ id, title, desc, stats, image, badge }) {
+  const navigate = useNavigate();
+
+  const handleClick = () => {
+    if (id) {
+      navigate(`/course/${id}`);
+    }
+  };
+
   return (
-    <article className="course-card" role="button" tabIndex={0}>
+    <article
+      className="course-card"
+      role="button"
+      tabIndex={0}
+      onClick={handleClick}
+      onKeyDown={(e) => e.key === "Enter" && handleClick()}
+      style={{ cursor: id ? "pointer" : "default" }}
+    >
       <div className="thumb">
         <img src={image} alt={title} />
         {badge && <span className="badge">{badge}</span>}

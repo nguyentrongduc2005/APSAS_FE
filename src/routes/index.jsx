@@ -13,6 +13,9 @@ import VerifyOtp from "../pages/auth/VerifyOtp.jsx";
 import Logout from "../pages/auth/Logout.jsx";
 import PublicCourses from "../pages/PublicCourses.jsx";
 import CourseDetail from "../pages/CourseDetail.jsx";
+import StudentMyCourses from "../pages/student/MyCourses.jsx";
+import LecturerMyCourses from "../pages/lecturer/MyCourses.jsx";
+
 const Dashboard = () => <div>Dashboard</div>;
 const Profile = () => <div>Trang cá nhân</div>;
 const AdminUsers = () => <div>Quản trị người dùng</div>;
@@ -43,6 +46,20 @@ export default function AppRoutes() {
         <Route element={<AuthGuard />}>
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="profile" element={<Profile />} />
+        </Route>
+
+        {/* === Các trang Student (Chỉ student) === */}
+        <Route element={<AuthGuard allow={["student"]} />}>
+          <Route path="student/my-courses" element={<StudentMyCourses />} />
+        </Route>
+
+        {/* === Các trang Lecturer (Chỉ lecturer/giảng viên) === */}
+        <Route element={<AuthGuard allow={["lecturer"]} />}>
+          <Route path="lecturer/my-courses" element={<LecturerMyCourses />} />
+          <Route
+            path="lecturer/courses/create"
+            element={<div>Create Course Page</div>}
+          />
         </Route>
 
         {/* === Các trang Admin (Bọc trong "Gác cổng" + role) === */}
