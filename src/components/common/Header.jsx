@@ -1,18 +1,19 @@
-
 import React from "react";
-import { Outlet } from "react-router-dom";
+import { Link } from "react-router-dom";
 import logo from "@/assets/logo.svg";
 import { useUI } from "../../store/uiStore.js";
+import { useAuth } from "../../context/AuthContext.jsx";
 
 export default function Header() {
   const { toggleSidebar, sidebarOpen } = useUI();
+  const { user } = useAuth();
 
   return (
     <header className="app-header">
       <div className="container header-grid">
         {/* Brand */}
         <div className="brand">
-           <button
+          <button
             type="button"
             onClick={toggleSidebar}
             aria-label="Menu"
@@ -23,17 +24,29 @@ export default function Header() {
             "
           >
             <svg
-              viewBox="0 0 24 24" width="20" height="20"
+              viewBox="0 0 24 24"
+              width="20"
+              height="20"
               className="block"
               aria-hidden="true"
             >
-              <path d="M3 6h18M3 12h18M3 18h18"
-                    stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              <path
+                d="M3 6h18M3 12h18M3 18h18"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
             </svg>
           </button>
 
-          <img src={logo} alt="APSAS" className="h-7 w-auto block align-middle" />
-          <span className="font-extrabold text-xl tracking-wide leading-none">APSAS</span>
+          <img
+            src={logo}
+            alt="APSAS"
+            className="h-7 w-auto block align-middle"
+          />
+          <span className="font-extrabold text-xl tracking-wide leading-none">
+            APSAS
+          </span>
         </div>
 
         {/* Search */}
@@ -44,8 +57,12 @@ export default function Header() {
 
         {/* Actions + User */}
         <div className="actions">
-          <button className="icon-btn" title="Notifications">🔔</button>
-          <button className="icon-btn" title="Theme">🌙</button>
+          <button className="icon-btn" title="Notifications">
+            🔔
+          </button>
+          <button className="icon-btn" title="Theme">
+            🌙
+          </button>
           <div className="user">
             <div className="avatar" />
             <div className="user-info">
