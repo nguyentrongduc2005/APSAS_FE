@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import {
   Home,
   BookOpen,
@@ -9,6 +9,11 @@ import {
   LayoutDashboard,
   Settings,
   LogOut,
+  MessageCircle,
+  Folder,
+  FolderOpen,
+  CheckCircle,
+  Lock,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { NAV_BY_ROLE } from "../../constants/navConfig.js";
@@ -25,6 +30,11 @@ const ICON_MAP = {
   "📊": LayoutDashboard,
   "⚙️": Settings,
   "🚪": LogOut,
+  "💬": MessageCircle,
+  "📁": Folder,
+  "📂": FolderOpen,
+  "✅": CheckCircle,
+  "🔐": Lock,
 };
 
 const itemBase = {
@@ -39,7 +49,8 @@ const itemBase = {
 };
 
 export default function Sidebar() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const { sidebarOpen } = useUI?.() ?? { sidebarOpen: true }; // fallback nếu chưa có store
 
   // Debug log để kiểm tra user và role
@@ -60,6 +71,11 @@ export default function Sidebar() {
     return IconComponent;
   };
 
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
   return (
     <aside
       aria-label="Sidebar"
@@ -68,6 +84,9 @@ export default function Sidebar() {
         background: "#0f1419",
         padding: 12,
         borderRight: "1px solid #202934",
+        display: "flex",
+        flexDirection: "column",
+        height: "100vh",
         // nếu muốn ẩn/hiện theo toggle
         transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)",
         transition: "transform 200ms ease",
@@ -102,6 +121,46 @@ export default function Sidebar() {
             </NavLink>
           );
         })}
+      </div>
+
+      {/* Spacer to push logout button to bottom */}
+      <div style={{ flex: 1 }}></div>
+
+      {/* Logout Button */}
+      <div style={{ paddingTop: 12, borderTop: "1px solid #202934" }}>
+        <button
+          onClick={handleLogout}
+          style={{
+            ...itemBase,
+            width: "100%",
+            background: "transparent",
+            border: "1px solid transparent",
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "#18212b";
+            e.currentTarget.style.borderColor = "#2a3441";
+            e.currentTarget.style.color = "#ef4444";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.borderColor = "transparent";
+            e.currentTarget.style.color = "#c9d2e0";
+          }}
+        >
+          <span
+            style={{
+              width: 20,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <LogOut size={18} />
+          </span>
+          <span>Đăng xuất</span>
+        </button>
       </div>
     </aside>
   );
