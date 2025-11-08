@@ -1,13 +1,26 @@
-import { Link, useLocation } from "react-router-dom";
-export default function AuthTabs(){
-  const loc = useLocation();
-  const active = (p) => loc.pathname === p ? { background:"var(--accent)", borderColor:"var(--accent)", color:"#fff" } : {};
-  const base = { flex:1, textAlign:"center", padding:"8px 10px", borderRadius:999, textDecoration:"none",
-                 color:"var(--text)", border:"1px solid var(--border)", background:"#11161b" };
+import { NavLink } from "react-router-dom";
+
+export default function AuthTabs() {
+  const itemCls = (isActive) =>
+    [
+      "flex-1 h-10 rounded-full text-center leading-10 font-medium transition-all",
+      "focus:outline-none focus-visible:ring-2 focus-visible:ring-white/10",
+      // trạng thái màu:
+      isActive
+        ? "bg-[#141414] text-white"        // ACTIVE: nền đen rất đậm + chữ trắng
+        : "text-[#bfbfbf]"                 // INACTIVE: chữ xám nhạt, nền dùng khung
+    ].join(" ");
+
   return (
-    <div style={{display:"flex", gap:8, marginBottom:12}}>
-      <Link to="/auth/login" style={{...base, ...active("/auth/login")}}>Đăng nhập</Link>
-      <Link to="/auth/register" style={{...base, ...active("/auth/register")}}>Đăng ký</Link>
+    <div className="flex gap-0 mb-3
+                    rounded-full p-1
+                    bg-[#2b2b2b] border border-[#3a3a3a]">
+      <NavLink end to="/auth/login"    className={({isActive}) => itemCls(isActive)}>
+        Đăng nhập
+      </NavLink>
+      <NavLink     to="/auth/register" className={({isActive}) => itemCls(isActive)}>
+        Đăng ký
+      </NavLink>
     </div>
   );
 }
