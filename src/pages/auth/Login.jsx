@@ -29,7 +29,15 @@ export default function Login(){
     <div className="auth-wrap">
       <AuthCard>
         <Logo/>
-        <div className="sub">Nền tảng học lập trình trực tuyến</div>
+        <p
+          className="
+            text-center text-[15px] leading-6
+            text-slate-300/80
+            mt-1 mb-3
+          "
+        >
+          Nền tảng học lập trình trực tuyến
+        </p>
         <AuthTabs/>
         <form onSubmit={submit}>
           <Input label="Email" type="email" placeholder="example@gmail.com"
@@ -37,7 +45,19 @@ export default function Login(){
           <Input label="Mật khẩu" type="password" placeholder="••••••••"
                  value={password} onChange={e=>setPassword(e.target.value)} required/>
           <div className="helper"><a>Quên mật khẩu?</a></div>
-          <Button type="submit">Đăng Nhập</Button>
+          <button
+            type="submit"
+            className="
+              w-full h-11 rounded-lg font-semibold text-white
+              bg-blue-600 shadow
+              transition-all duration-150 ease-out
+              hover:bg-blue-500
+              active:bg-blue-700 active:scale-[0.98] active:shadow-inner
+              focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40
+            "
+          >
+            Đăng Nhập
+          </button>
           <div className="hr"></div>
           <Button type="button" variant="muted">Đăng nhập với Google</Button>
           {msg && <div className="message">{msg}</div>}
