@@ -1,5 +1,6 @@
 import React from "react";
 import { Link, useParams } from "react-router-dom";
+import { BookOpen, FileText, Users, Layers } from "lucide-react";
 import LecturerCard from "../components/lecturer/LecturerCard.jsx";
 import OutcomeCard from "../components/student/OutcomeCard.jsx";
 import { getCourseById } from "../constants/courses";
@@ -7,14 +8,16 @@ import { getCourseById } from "../constants/courses";
 const FALLBACK_BANNER =
   "https://huongnghiep.hocmai.vn/wp-content/uploads/2022/07/nganh-cong-nghe-thong-tin-hoc-truong-nao-1.jpg";
 
-function StatPill({ ico, head, val }) {
+function StatPill({ icon: Icon, head, val }) {
   return (
     <div
       className="flex items-center gap-2 rounded-lg
                  border border-[#202934] bg-[#0f1419] px-3 py-2
                  transition hover:border-emerald-500/50"
     >
-      <div className="text-base">{ico}</div>
+      <div className="text-emerald-400">
+        <Icon size={18} />
+      </div>
       <div className="leading-tight">
         <div className="text-xs text-gray-400">{head}</div>
         <div className="text-sm font-semibold text-white">{val}</div>
@@ -73,11 +76,11 @@ export default function CourseDetail() {
                 </div>
 
                 <div className="space-y-2.5">
-                  <StatPill ico="🧾" head="Bài học" val="45 bài học" />
-                  <StatPill ico="🧩" head="Bài tập" val="150 bài tập" />
-                  <StatPill ico="📚" head="Modules" val="7 modules" />
+                  <StatPill icon={BookOpen} head="Bài học" val="45 bài học" />
+                  <StatPill icon={FileText} head="Bài tập" val="150 bài tập" />
+                  <StatPill icon={Layers} head="Modules" val="7 modules" />
                   <StatPill
-                    ico="👥"
+                    icon={Users}
                     head="Thành viên"
                     val={`${course.stats?.learners ?? 1500} học viên`}
                   />

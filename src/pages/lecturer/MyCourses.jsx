@@ -1,5 +1,6 @@
 import { useAuth } from "../../context/AuthContext";
 import { Link } from "react-router-dom";
+import { BookOpen, Users, Book, BarChart3, FileEdit } from "lucide-react";
 import LecturerCourseCard from "../../components/lecturer/CourseCard";
 
 export default function LecturerMyCourses() {
@@ -83,7 +84,7 @@ export default function LecturerMyCourses() {
               </p>
             </div>
             <div className="w-12 h-12 bg-blue-500/10 rounded-lg flex items-center justify-center">
-              <span className="text-2xl">📚</span>
+              <BookOpen size={24} className="text-blue-400" />
             </div>
           </div>
         </div>
@@ -97,7 +98,7 @@ export default function LecturerMyCourses() {
               </p>
             </div>
             <div className="w-12 h-12 bg-emerald-500/10 rounded-lg flex items-center justify-center">
-              <span className="text-2xl">👥</span>
+              <Users size={24} className="text-emerald-400" />
             </div>
           </div>
         </div>
@@ -111,7 +112,7 @@ export default function LecturerMyCourses() {
               </p>
             </div>
             <div className="w-12 h-12 bg-blue-500/10 rounded-lg flex items-center justify-center">
-              <span className="text-2xl">📖</span>
+              <Book size={24} className="text-blue-400" />
             </div>
           </div>
         </div>
@@ -125,7 +126,7 @@ export default function LecturerMyCourses() {
               </p>
             </div>
             <div className="w-12 h-12 bg-yellow-500/10 rounded-lg flex items-center justify-center">
-              <span className="text-2xl">📊</span>
+              <BarChart3 size={24} className="text-yellow-400" />
             </div>
           </div>
         </div>
@@ -144,7 +145,9 @@ export default function LecturerMyCourses() {
       {/* Empty State (nếu không có khóa học) */}
       {myCourses.length === 0 && (
         <div className="text-center py-12 bg-[#0f1419] border border-[#202934] rounded-lg">
-          <div className="text-6xl mb-4">📝</div>
+          <div className="flex justify-center mb-4">
+            <FileEdit size={64} className="text-gray-600" />
+          </div>
           <h3 className="text-xl font-semibold text-white mb-2">
             Chưa có khóa học
           </h3>

@@ -1,5 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { Users, Clock } from "lucide-react";
 
 export default function CourseCard({ id, title, desc, stats, image, badge }) {
   const navigate = useNavigate();
@@ -27,8 +28,12 @@ export default function CourseCard({ id, title, desc, stats, image, badge }) {
         <h3 title={title}>{title}</h3>
         <p title={desc}>{desc}</p>
         <div className="stat">
-          <span>👥 {stats.learners}</span>
-          <span>⏱ {stats.progress}</span>
+          <span className="flex items-center gap-1">
+            <Users size={14} /> {stats.learners}
+          </span>
+          <span className="flex items-center gap-1">
+            <Clock size={14} /> {stats.progress}
+          </span>
         </div>
       </div>
     </article>

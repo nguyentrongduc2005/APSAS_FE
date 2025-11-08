@@ -1,4 +1,5 @@
 import React from "react";
+import { Users, BookOpen, Clock } from "lucide-react";
 
 /**
  * Card hiển thị khóa học cho Student
@@ -46,15 +47,15 @@ export default function StudentCourseCard({ course }) {
         {/* Stats Row */}
         <div className="flex items-center gap-4 text-sm text-slate-400 mb-3">
           <div className="flex items-center gap-1">
-            <span>👥</span>
+            <Users size={14} />
             <span>{studentCount}</span>
           </div>
           <div className="flex items-center gap-1">
-            <span>📚</span>
+            <BookOpen size={14} />
             <span>{lessonCount}</span>
           </div>
           <div className="flex items-center gap-1">
-            <span>⏱️</span>
+            <Clock size={14} />
             <span>{duration}h</span>
           </div>
         </div>

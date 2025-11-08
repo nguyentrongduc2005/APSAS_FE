@@ -15,9 +15,9 @@ import PublicCourses from "../pages/PublicCourses.jsx";
 import CourseDetail from "../pages/CourseDetail.jsx";
 import StudentMyCourses from "../pages/student/MyCourses.jsx";
 import LecturerMyCourses from "../pages/lecturer/MyCourses.jsx";
+import Profile from "../pages/Profile.jsx";
 
 const Dashboard = () => <div>Dashboard</div>;
-const Profile = () => <div>Trang cá nhân</div>;
 const AdminUsers = () => <div>Quản trị người dùng</div>;
 
 export default function AppRoutes() {

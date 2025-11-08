@@ -1,4 +1,5 @@
 import { Link, Navigate } from "react-router-dom";
+import { Users, BookOpen } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 
 function NeonBlob({ className }) {
@@ -201,10 +202,10 @@ export default function LandingPage() {
                     </h3>
                     <div className="flex items-center gap-4 text-sm text-neutral-400">
                       <span className="flex items-center gap-1">
-                        <span>👥</span> {course.students}
+                        <Users size={14} /> {course.students}
                       </span>
                       <span className="flex items-center gap-1">
-                        <span>�</span> {course.lessons}
+                        <BookOpen size={14} /> {course.lessons}
                       </span>
                     </div>
                     <div className="mt-4 pt-4 border-t border-white/10 flex items-center justify-between">
