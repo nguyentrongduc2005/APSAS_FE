@@ -1,5 +1,5 @@
 // src/components/common/MainAppLayout.jsx
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 
 // Các component UI
@@ -12,6 +12,9 @@ import Navbar from "./Navbar";
 export default function MainAppLayout() {
   const { isAuthenticated, isLoading, user, token } = useAuth();
   const { sidebarOpen } = useUI();
+  const location = useLocation();
+  const isWideLayout = location.pathname.startsWith("/lecturer/assignments");
+  const contentWidthClass = isWideLayout ? "max-w-[1800px]" : "max-w-[1400px]";
 
   // Debug log để kiểm tra
   console.log("MainAppLayout - Debug:", {
@@ -74,7 +77,9 @@ export default function MainAppLayout() {
 
         {/* Page Content */}
         <main className="flex-1 overflow-auto">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 max-w-[1400px]">
+          <div
+            className={`container mx-auto px-4 sm:px-6 lg:px-10 py-6 ${contentWidthClass}`}
+          >
             <Outlet />
           </div>
         </main>

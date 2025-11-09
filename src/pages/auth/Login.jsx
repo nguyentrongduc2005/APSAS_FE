@@ -25,6 +25,21 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext"; // 1. Import hook
 
+const TEST_ACCOUNTS = [
+  {
+    label: "Student",
+    email: "student01@apsas.dev",
+    password: "123456",
+    note: "Xem giao diện học viên",
+  },
+  {
+    label: "Giảng viên",
+    email: "gv.tranminh@apsas.dev",
+    password: "123456",
+    note: "Kiểm thử màn hình giáo viên",
+  },
+];
+
 export default function Login() {
   const navigate = useNavigate();
   const { loginWithService, loginMock } = useAuth(); // 2. Lấy hàm từ Context
@@ -110,6 +125,31 @@ export default function Login() {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
+          <div className="flex flex-col gap-2 text-sm text-gray-400 mb-2">
+            <p>Chọn nhanh tài khoản demo:</p>
+            <div className="flex flex-wrap gap-2">
+              {TEST_ACCOUNTS.map((account) => (
+                <button
+                  key={account.label}
+                  type="button"
+                  onClick={() => {
+                    setEmail(account.email);
+                    setPassword(account.password);
+                    setMsg(`Đã điền tài khoản ${account.label}`);
+                  }}
+                  className="px-3 py-1.5 rounded-full border border-white/10 text-xs text-white hover:border-emerald-500 transition"
+                >
+                  {account.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-gray-500">
+              Email chứa &ldquo;gv&rdquo; sẽ tự nhận role giảng viên (ví dụ
+              {` ${TEST_ACCOUNTS[1].email}`}). Các tài khoản demo dùng chung mật khẩu
+              123456.
+            </p>
+          </div>
+
           <div className="helper">
             <a>Quên mật khẩu?</a>
           </div>
