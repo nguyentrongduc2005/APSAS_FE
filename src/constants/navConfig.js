@@ -1,8 +1,8 @@
 export const NAV_BY_ROLE = {
   student: [
-    { to: "/course", label: "Khám phá", icon: "🏠" },
+    { to: "/courses", label: "Khám phá", icon: "🏠" },
     { to: "/student/my-courses", label: "Khóa học của tôi", icon: "📚" },
-    { to: "/progress", label: "Tiến độ", icon: "🧩" },
+    { to: "/student/progress", label: "Tiến độ", icon: "🧩" },
     { to: "/profile", label: "Trang cá nhân", icon: "👤" },
     { to: "/support", label: "Hỗ trợ", icon: "💬" },
   ],
