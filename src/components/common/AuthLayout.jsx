@@ -6,11 +6,12 @@ export default function AuthLayout() {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
-    return <div>Đang tải...</div>;
+    // muốn thêm cái loading thì thêm vào đây 
+    // return <div>Đang tải...</div>;
   }
 
   // Nếu đã đăng nhập, không cho vào trang Login/Register nữa
-  if (!isAuthenticated) {
+  if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
   }
 

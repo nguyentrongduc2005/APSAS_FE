@@ -60,11 +60,11 @@ export default function Sidebar() {
   const items = NAV_BY_ROLE[user?.role] ?? [
     { to: "/dashboard", label: "Dashboard", icon: "🏠" },
     { to: "/courses", label: "Khóa học", icon: "📚" },
-    { to: "/assignments", label: "Bài tập", icon: "🧩" },
+    { to: "/assignments", label: "Bài tập"},
     { to: "/profile", label: "Trang cá nhân", icon: "👤" },
   ];
 
-  console.log("🔍 Sidebar - Nav items:", items);
+
 
   const getIconComponent = (iconEmoji) => {
     const IconComponent = ICON_MAP[iconEmoji] || Home;
@@ -73,7 +73,7 @@ export default function Sidebar() {
 
   const handleLogout = () => {
     logout();
-    navigate("/login");
+    navigate("/");
   };
 
   return (

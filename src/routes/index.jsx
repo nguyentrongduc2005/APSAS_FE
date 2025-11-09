@@ -18,6 +18,8 @@ import StudentProgress from "../pages/student/Progress.jsx";
 import LecturerMyCourses from "../pages/lecturer/MyCourses.jsx";
 import LecturerAssignments from "../pages/lecturer/Assignments.jsx";
 import LecturerAssignmentDetail from "../pages/lecturer/AssignmentDetail.jsx";
+import CourseAssignments from "../pages/lecturer/CourseAssignments.jsx";
+import CourseOverview from "../pages/lecturer/CourseOverview.jsx";
 import Profile from "../pages/Profile.jsx";
 
 
@@ -69,6 +71,14 @@ export default function AppRoutes() {
           <Route
             path="lecturer/assignments/:assignmentId"
             element={<LecturerAssignmentDetail />}
+          />
+          <Route
+            path="lecturer/courses/:courseId"
+            element={<CourseOverview />}
+          />
+          <Route
+            path="lecturer/courses/:courseId/assignments"
+            element={<CourseAssignments />}
           />
           <Route
             path="lecturer/courses/create"

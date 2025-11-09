@@ -16,7 +16,6 @@ export const NAV_BY_ROLE = {
   lecturer: [
     { to: "/course", label: "Khám phá", icon: "🏠" },
     { to: "/lecturer/my-courses", label: "Khóa học của tôi", icon: "📚" },
-    { to: "/lecturer/assignments", label: "Bài tập", icon: "🧩" },
     { to: "/resources", label: "Tài nguyên", icon: "📁" },
     { to: "/profile", label: "Trang cá nhân", icon: "👤" },
     { to: "/support", label: "Hỗ trợ", icon: "💬" },
