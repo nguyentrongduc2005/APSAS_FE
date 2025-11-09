@@ -16,31 +16,52 @@ export default function VerifyOtp(){
   };
 
   return (
-    <div className="auth-wrap">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <AuthCard>
-        <Logo/>
-        <div className="sub">Nhập mã xác minh</div>
-        <form onSubmit={submit}>
-          <OTPInput length={6} onChange={setCode}/>
-          <input type="hidden" value={code}/>
-          <button
-            type="submit"
-            className="
-              w-full h-11 rounded-lg font-semibold text-white
-              bg-blue-600 shadow
-              transition-all duration-150 ease-out
-              hover:bg-blue-500
-              active:bg-blue-700 active:scale-[0.98] active:shadow-inner
-              focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40
-            "
-          >
-            Tiếp tục
-          </button>
-          <div className="footer">
-            <a>Gửi lại mã</a> • <a>Đổi email</a>
+        <div className="space-y-6">
+          <div className="text-center">
+            <Logo />
+            <h2 className="text-xl font-semibold mb-2 text-primary">Nhập mã xác minh</h2>
+            <p className="text-sm text-muted-foreground">
+              Chúng tôi đã gửi mã xác minh 6 chữ số đến email của bạn
+            </p>
           </div>
-          {msg && <div className="message">{msg}</div>}
-        </form>
+          
+          <form onSubmit={submit} className="space-y-6  text-primary">
+            <OTPInput length={6} onChange={setCode} />
+            <input type="hidden" value={code} />
+            
+            <Button type="submit">
+              Tiếp tục
+            </Button>
+            
+            <div className="flex items-center justify-center space-x-4 text-sm">
+              <button 
+                type="button"
+                className="text-primary hover:underline"
+              >
+                Gửi lại mã
+              </button>
+              <span className="text-muted-foreground">•</span>
+              <button 
+                type="button"
+                className="text-primary hover:underline"
+              >
+                Đổi email
+              </button>
+            </div>
+            
+            {msg && (
+              <div className={`text-sm text-center p-3 rounded-md ${
+                msg.includes("thất bại") || msg.includes("error")
+                  ? "bg-destructive/10 text-destructive border border-destructive/20" 
+                  : "bg-green-50 text-green-700 border border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
+              }`}>
+                {msg}
+              </div>
+            )}
+          </form>
+        </div>
       </AuthCard>
     </div>
   );

@@ -1,18 +1,16 @@
 // src/components/common/Logo.jsx
-export default function Logo({ color = "#2F5BEA", size = 28 }) {
+export default function Logo({ color = "text-primary", size = "text-3xl" }) {
   return (
     <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: 4,
-        marginBottom: 12,
-      }}
+      className="flex flex-col items-center gap-1 mb-6"
       aria-label="APSAS"
     >
-      <div style={{ fontWeight: 800, fontSize: size, color }}>{`</>`}</div>
-      <div style={{ fontWeight: 800, letterSpacing: 0.5, color }}>APSAS</div>
+      <div className={`font-extrabold ${size} ${color} select-none`}>
+        {`</>`}
+      </div>
+      <div className={`font-extrabold tracking-wider ${color} text-lg select-none`}>
+        APSAS
+      </div>
     </div>
   );
 }

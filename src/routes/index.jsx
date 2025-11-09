@@ -20,6 +20,11 @@ import LecturerAssignments from "../pages/lecturer/Assignments.jsx";
 import LecturerAssignmentDetail from "../pages/lecturer/AssignmentDetail.jsx";
 import Profile from "../pages/Profile.jsx";
 
+
+// error page imp 
+import ErrorPage from "@/pages/error/ErrorPage";
+
+
 const Dashboard = () => <div>Dashboard</div>;
 const AdminUsers = () => <div>Quản trị người dùng</div>;
 
@@ -79,7 +84,8 @@ export default function AppRoutes() {
 
       {/* ===== 3. LỖI (404, 403) ===== */}
       <Route path="/403" element={<div>Không có quyền truy cập</div>} />
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* <Route path="*" element={<div>Page Not Found</div>} /> */}
+      <Route path="*" element={<ErrorPage/>} />
     </Routes>
   );
 }
