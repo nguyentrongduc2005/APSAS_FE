@@ -1,18 +1,80 @@
-import { NavLink } from "react-router-dom";
-import { useAuth } from "../../store/authStore.js";
+import { NavLink, useNavigate } from "react-router-dom";
+import {
+  Home,
+  BookOpen,
+  FileText,
+  User,
+  Users,
+  GraduationCap,
+  LayoutDashboard,
+  Settings,
+  LogOut,
+  MessageCircle,
+  Folder,
+  FolderOpen,
+  CheckCircle,
+  Lock,
+} from "lucide-react";
+import { useAuth } from "../../context/AuthContext.jsx";
 import { NAV_BY_ROLE } from "../../constants/navConfig.js";
-import { useUI } from "../../store/uiStore.js"; // nếu bạn đã có toggle sidebar
+import { useUI } from "../../store/uiStore.js";
 
-const itemBase = {
-  display: "flex", alignItems: "center", gap: 10,
-  padding: "10px 12px", borderRadius: 10,
-  textDecoration: "none", color: "#c9d2e0", fontSize: 14
+// Icon mapping
+const ICON_MAP = {
+  "🏠": Home,
+  "📚": BookOpen,
+  "🧩": FileText,
+  "👤": User,
+  "👥": Users,
+  "🎓": GraduationCap,
+  "📊": LayoutDashboard,
+  "⚙️": Settings,
+  "🚪": LogOut,
+  "💬": MessageCircle,
+  "📁": Folder,
+  "📂": FolderOpen,
+  "✅": CheckCircle,
+  "🔐": Lock,
 };
 
-export default function Sidebar(){
-  const { user } = useAuth();
+const itemBase = {
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  padding: "10px 12px",
+  borderRadius: 10,
+  textDecoration: "none",
+  color: "#c9d2e0",
+  fontSize: 14,
+};
+
+export default function Sidebar() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const { sidebarOpen } = useUI?.() ?? { sidebarOpen: true }; // fallback nếu chưa có store
-  const items = NAV_BY_ROLE[user?.role] ?? [];
+
+  // Debug log để kiểm tra user và role
+  console.log("🔍 Sidebar - User:", user);
+  console.log("🔍 Sidebar - Role:", user?.role);
+
+  const items = NAV_BY_ROLE[user?.role] ?? [
+    { to: "/dashboard", label: "Dashboard", icon: "🏠" },
+    { to: "/courses", label: "Khóa học", icon: "📚" },
+    { to: "/assignments", label: "Bài tập", icon: "🧩" },
+    { to: "/profile", label: "Trang cá nhân", icon: "👤" },
+  ];
+
+  console.log("🔍 Sidebar - Nav items:", items);
+
+  const getIconComponent = (iconEmoji) => {
+    const IconComponent = ICON_MAP[iconEmoji] || Home;
+    return IconComponent;
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
 
   return (
     <aside
@@ -22,28 +84,83 @@ export default function Sidebar(){
         background: "#0f1419",
         padding: 12,
         borderRight: "1px solid #202934",
+        display: "flex",
+        flexDirection: "column",
+        height: "100vh",
         // nếu muốn ẩn/hiện theo toggle
         transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)",
-        transition: "transform 200ms ease"
+        transition: "transform 200ms ease",
       }}
     >
-      <div style={{display:"grid", gap: 8}}>
-        {items.map((it) => (
-          <NavLink
-            key={it.to}
-            to={it.to}
-            style={({ isActive }) => ({
-              ...itemBase,
-              background: isActive ? "#18212b" : "transparent",
-              color: isActive ? "#ffffff" : "#c9d2e0",
-              border: "1px solid",
-              borderColor: isActive ? "#2a3441" : "transparent",
-            })}
+      <div style={{ display: "grid", gap: 8 }}>
+        {items.map((it) => {
+          const IconComponent = getIconComponent(it.icon);
+          return (
+            <NavLink
+              key={it.to}
+              to={it.to}
+              style={({ isActive }) => ({
+                ...itemBase,
+                background: isActive ? "#18212b" : "transparent",
+                color: isActive ? "#ffffff" : "#c9d2e0",
+                border: "1px solid",
+                borderColor: isActive ? "#2a3441" : "transparent",
+              })}
+            >
+              <span
+                style={{
+                  width: 20,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <IconComponent size={18} />
+              </span>
+              <span>{it.label}</span>
+            </NavLink>
+          );
+        })}
+      </div>
+
+      {/* Spacer to push logout button to bottom */}
+      <div style={{ flex: 1 }}></div>
+
+      {/* Logout Button */}
+      <div style={{ paddingTop: 12, borderTop: "1px solid #202934" }}>
+        <button
+          onClick={handleLogout}
+          style={{
+            ...itemBase,
+            width: "100%",
+            background: "transparent",
+            border: "1px solid transparent",
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "#18212b";
+            e.currentTarget.style.borderColor = "#2a3441";
+            e.currentTarget.style.color = "#ef4444";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.borderColor = "transparent";
+            e.currentTarget.style.color = "#c9d2e0";
+          }}
+        >
+          <span
+            style={{
+              width: 20,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
           >
-            <span style={{width:20, textAlign:"center"}}>{it.icon}</span>
-            <span>{it.label}</span>
-          </NavLink>
-        ))}
+            <LogOut size={18} />
+          </span>
+          <span>Đăng xuất</span>
+        </button>
       </div>
     </aside>
   );

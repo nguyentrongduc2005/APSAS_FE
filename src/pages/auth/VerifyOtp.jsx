@@ -23,7 +23,19 @@ export default function VerifyOtp(){
         <form onSubmit={submit}>
           <OTPInput length={6} onChange={setCode}/>
           <input type="hidden" value={code}/>
-          <Button type="submit">Tiếp tục</Button>
+          <button
+            type="submit"
+            className="
+              w-full h-11 rounded-lg font-semibold text-white
+              bg-blue-600 shadow
+              transition-all duration-150 ease-out
+              hover:bg-blue-500
+              active:bg-blue-700 active:scale-[0.98] active:shadow-inner
+              focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40
+            "
+          >
+            Tiếp tục
+          </button>
           <div className="footer">
             <a>Gửi lại mã</a> • <a>Đổi email</a>
           </div>

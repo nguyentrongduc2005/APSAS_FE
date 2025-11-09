@@ -1,67 +1,63 @@
 // src/components/common/ProtectedLayout.jsx
 import { Outlet, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { useAuth } from "../../store/authStore.js";
+import { useAuth } from "../../context/AuthContext"; // 👈 Đổi sang AuthContext
 import { fetchMe } from "../../services/authService.js";
 import Header from "./Header.jsx";
 import Sidebar from "./Sidebar.jsx";
 import Footer from "./Footer.jsx";
 import { useUI } from "../../store/uiStore.js";
 
-
 export default function ProtectedLayout({ allow }) {
   const nav = useNavigate();
-  const { sidebarOpen, closeSidebar } = useUI(); 
+  const { sidebarOpen } = useUI(); // Lấy 'closeSidebar' nếu bạn cần
 
-  // Một số dự án đặt tên load() hoặc loadFromStorage(), clear() hoặc clearAuth().
-  // Lấy cả 2 để tương thích.
-  const {
-    token,
-    user,
-    load,
-    loadFromStorage,
-    clear,
-    clearAuth,
-  } = useAuth();
+  // 1. Lấy state từ AuthContext
+  // isLoading: là trạng thái "đang kiểm tra token trong localStorage"
+  // logout: là hàm để xóa auth state (thay cho clearFn)
+  const { token, logout, isLoading: isContextLoading } = useAuth();
 
-  const loadFn = loadFromStorage || load;
-  const clearFn = clearAuth || clear;
-
+  // 'ready': là trạng thái "đã xác thực token với server"
   const [ready, setReady] = useState(false);
 
-  // 1) Đọc token/user từ localStorage vào store (nếu có hàm)
+  // 2. Xác thực + điều hướng
   useEffect(() => {
-    if (loadFn) loadFn();
-  }, [loadFn]);
+    // Không làm gì cả cho đến khi Context load xong
+    if (isContextLoading) {
+      return;
+    }
 
-  // 2) Xác thực + điều hướng
-  useEffect(() => {
+    // Nếu Context nói KHÔNG có token -> về login
+    if (!token) {
+      nav("/auth/login", { replace: true });
+      return;
+    }
+
+    // Nếu Context CÓ token, ta phải VẪN xác thực nó với server
+    // (để kiểm tra token có bị thu hồi, hết hạn, v.v.)
     (async () => {
-      // Chưa có token -> về login
-      if (!token) {
-        nav("/auth/login", { replace: true });
-        return;
-      }
-
-      // Xác thực token (stub/BE thật)
       const me = await fetchMe();
+
       if (!me) {
-        if (clearFn) clearFn();
+        // Token không hợp lệ trên server -> logout
+        logout(); // 👈 Dùng hàm logout từ context
         nav("/auth/login", { replace: true });
         return;
       }
 
       // Nếu có cấu hình allow theo role -> chặn sai quyền
       if (allow && !allow.includes(me.role)) {
-        nav("/403", { replace: true });
+        nav("/403", { replace: true }); // (Đảm bảo bạn có route /403)
         return;
       }
 
+      // Mọi thứ OK, cho phép render
       setReady(true);
     })();
-  }, [token, allow, nav, clearFn]);
+  }, [isContextLoading, token, allow, nav, logout]); // 👈 Dependencies đã cập nhật
 
-  // 3) Loader tránh màn hình trắng khi đang chờ
+  // 3) Loader
+  // Chờ cả Context load VÀ server xác thực xong
   if (!ready) {
     return (
       <div
@@ -78,7 +74,7 @@ export default function ProtectedLayout({ allow }) {
     );
   }
 
-  // 4) Khung UI chung + trang con
+  // 4) Khung UI chung + trang con (Giữ nguyên)
   return (
     <div
       style={{
@@ -86,22 +82,27 @@ export default function ProtectedLayout({ allow }) {
         gridTemplateColumns: sidebarOpen ? "240px 1fr" : "0 1fr",
         minHeight: "100vh",
         background: "#0b0f12",
-        transition:"grid-template-columns 200ms ease"
+        transition: "grid-template-columns 200ms ease",
       }}
     >
-       <div style={{ overflow:"hidden", borderRight: sidebarOpen ? "1px solid #202934" : "none" }}>
+      <div
+        style={{
+          overflow: "hidden",
+          borderRight: sidebarOpen ? "1px solid #202934" : "none",
+        }}
+      >
         <div
           style={{
-            width:240,
-            transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)", // 👈 trượt
-            transition:"transform 200ms ease"
+            width: 240,
+            transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)",
+            transition: "transform 200ms ease",
           }}
         >
-          <Sidebar/>
+          <Sidebar />
         </div>
       </div>
 
-      <div style={{display:"grid",gridTemplateRows:"56px 1fr auto"}}>
+      <div style={{ display: "grid", gridTemplateRows: "56px 1fr auto" }}>
         <Header />
         <main style={{ padding: 20, color: "#eaf0f6" }}>
           <Outlet />

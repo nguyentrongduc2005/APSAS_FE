@@ -20,7 +20,15 @@ export default function Register(){
     <div className="auth-wrap">
       <AuthCard>
         <Logo/>
-        <div className="sub">Nền tảng học lập trình trực tuyến</div>
+        <p
+          className="
+            text-center text-[15px] leading-6
+            text-slate-300/80
+            mt-1 mb-3
+          "
+        >
+          Nền tảng học lập trình trực tuyến
+        </p>
         <AuthTabs/>
         <form onSubmit={submit}>
           <Input label="Email" type="email" value={form.email}
@@ -29,7 +37,19 @@ export default function Register(){
                  onChange={e=>setForm({...form, password:e.target.value})} required/>
           <Input label="Xác thực mật khẩu" type="password" value={form.confirmPassword}
                  onChange={e=>setForm({...form, confirmPassword:e.target.value})} required/>
-          <Button type="submit">Đăng Ký</Button>
+          <button
+            type="submit"
+            className="
+              w-full h-11 rounded-lg font-semibold text-white
+              bg-blue-600 shadow
+              transition-all duration-150 ease-out
+              hover:bg-blue-500
+              active:bg-blue-700 active:scale-[0.98] active:shadow-inner
+              focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40
+            "
+          >
+            Đăng Ký
+          </button>
           <div className="hr"></div>
           <Button type="button" variant="muted">Đăng ký với Google</Button>
           {msg && <div className="message">{msg}</div>}
