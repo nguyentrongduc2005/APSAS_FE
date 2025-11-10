@@ -45,7 +45,7 @@ export default function StudentAssignmentDetail() {
   const navigate = useNavigate();
   const location = useLocation();
   const { assignmentId } = useParams();
-  const backDestination = location.state?.from ?? "/student/assignments";
+  const backDestination = location.state?.from ?? "/student/my-courses";
 
   const [course, setCourse] = useState(null);
   const [assignmentList, setAssignmentList] = useState([]);

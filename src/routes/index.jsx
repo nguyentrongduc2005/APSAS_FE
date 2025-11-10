@@ -15,6 +15,8 @@ import PublicCourses from "../pages/PublicCourses.jsx";
 import CourseDetail from "../pages/CourseDetail.jsx";
 import StudentMyCourses from "../pages/student/MyCourses.jsx";
 import StudentProgress from "../pages/student/Progress.jsx";
+import StudentCourseDetail from "../pages/student/CourseDetail.jsx";
+import StudentAssignmentDetail from "../pages/student/AssignmentDetail.jsx";
 import LecturerMyCourses from "../pages/lecturer/MyCourses.jsx";
 import LecturerAssignments from "../pages/lecturer/Assignments.jsx";
 import LecturerAssignmentDetail from "../pages/lecturer/AssignmentDetail.jsx";
@@ -62,6 +64,11 @@ export default function AppRoutes() {
         <Route element={<AuthGuard allow={["student"]} />}>
           <Route path="student/my-courses" element={<StudentMyCourses />} />
           <Route path="student/progress" element={<StudentProgress />} />
+          <Route path="student/my-courses/:courseId" element={<StudentCourseDetail />} />
+          <Route
+            path="student/assignments/:assignmentId"
+            element={<StudentAssignmentDetail />}
+          />
         </Route>
 
         {/* === Các trang Lecturer (Chỉ lecturer/giảng viên) === */}

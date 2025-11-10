@@ -13,7 +13,9 @@ export default function MainAppLayout() {
   const { isAuthenticated, isLoading, user, token } = useAuth();
   const { sidebarOpen } = useUI();
   const location = useLocation();
-  const isWideLayout = location.pathname.startsWith("/lecturer/assignments");
+  const isWideLayout = ["/lecturer/assignments", "/student/my-courses"].some((path) =>
+    location.pathname.startsWith(path)
+  );
   const contentWidthClass = isWideLayout ? "max-w-[1800px]" : "max-w-[1400px]";
 
   // Debug log để kiểm tra

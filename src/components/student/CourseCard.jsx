@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { Users, BookOpen, Clock } from "lucide-react";
 
 /**
@@ -20,7 +21,10 @@ export default function StudentCourseCard({ course }) {
   } = course || {};
 
   return (
-    <div className="relative rounded-2xl bg-[#1a2332] border border-[#2a3441] hover:border-emerald-400/40 transition overflow-hidden">
+    <Link
+      to={`/student/my-courses/${id}`}
+      className="block relative rounded-2xl bg-[#1a2332] border border-[#2a3441] hover:border-emerald-400/40 transition overflow-hidden"
+    >
       {/* Thumbnail */}
       <div className="relative aspect-video overflow-hidden">
         <img
@@ -86,6 +90,6 @@ export default function StudentCourseCard({ course }) {
           </div>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
