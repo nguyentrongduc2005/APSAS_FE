@@ -63,7 +63,7 @@ export default function ActivityChart({ data, onDateRangeChange }) {
       </div>
 
       {/* Area Chart with Smooth Curve */}
-      <div className="relative h-64">
+      <div className="relative h-96">
         <svg
           width="100%"
           height="100%"
