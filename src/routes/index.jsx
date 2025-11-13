@@ -29,6 +29,10 @@ import AdminUsers from "../pages/admin/AdminUsers.jsx";
 // error page imp 
 import ErrorPage from "@/pages/error/ErrorPage";
 
+import ProviderResources from "../pages/provider/ProviderResources";
+import TeacherTutorialLibrary from "../pages/lecturer/ResourceLibrary";
+import ResourceModeration from "../pages/admin/ResourceModeration";
+
 
 const Dashboard = () => <div>Dashboard</div>;
 
@@ -91,12 +95,24 @@ export default function AppRoutes() {
             path="lecturer/courses/create"
             element={<div>Create Course Page</div>}
           />
+          <Route
+            path="resources"
+            element={<TeacherTutorialLibrary />}
+          />
+        </Route>
+
+           <Route element={<AuthGuard allow={["provider"]} />}>
+          <Route
+            path="provider/resources"
+            element={<ProviderResources />}
+          />
         </Route>
 
         {/* === Các trang Admin (Bọc trong "Gác cổng" + role) === */}
         <Route element={<AuthGuard allow={["admin"]} />}>
           <Route path="admin/users" element={<AdminUsers />} />
           <Route path="admin/content" element={<ContentApprovals />} />
+           <Route path="admin/resources" element={<ResourceModeration />} />
         </Route>
       </Route>
 
