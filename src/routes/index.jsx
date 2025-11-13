@@ -24,13 +24,13 @@ import CourseAssignments from "../pages/lecturer/CourseAssignments.jsx";
 import CourseOverview from "../pages/lecturer/CourseOverview.jsx";
 import Profile from "../pages/Profile.jsx";
 
-
+import ContentApprovals from "../pages/admin/ContentApprovals.jsx";
+import AdminUsers from "../pages/admin/AdminUsers.jsx";
 // error page imp 
 import ErrorPage from "@/pages/error/ErrorPage";
 
 
 const Dashboard = () => <div>Dashboard</div>;
-const AdminUsers = () => <div>Quản trị người dùng</div>;
 
 export default function AppRoutes() {
   return (
@@ -96,6 +96,7 @@ export default function AppRoutes() {
         {/* === Các trang Admin (Bọc trong "Gác cổng" + role) === */}
         <Route element={<AuthGuard allow={["admin"]} />}>
           <Route path="admin/users" element={<AdminUsers />} />
+          <Route path="admin/content" element={<ContentApprovals />} />
         </Route>
       </Route>
 
