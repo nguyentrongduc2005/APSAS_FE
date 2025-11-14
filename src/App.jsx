@@ -1,6 +1,5 @@
-import React from "react";
-import AppRoutes from "./routes";
+import AdminAccessPage from "./pages/admin/AdminAccessPage";
 
 export default function App() {
-  return <AppRoutes />;
+  return <AdminAccessPage />;
 }

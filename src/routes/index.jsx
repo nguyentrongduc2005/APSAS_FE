@@ -1,67 +1,129 @@
-import React, { lazy, Suspense } from "react";
-import { Routes, Route, Navigate, Outlet } from "react-router-dom";
-import Header from "../components/common/Header";
-import Footer from "../components/common/Footer";
-import ProtectedLayout from "../components/common/ProtectedLayout";
+import { Routes, Route, Navigate } from "react-router-dom";
 
-// Lazy pages
-const Landing       = lazy(() => import("../pages/landing/Landing"));
-const PublicCourses = lazy(() => import("../pages/PublicCourses"));
-const Login         = lazy(() => import("../pages/auth/Login"));
-const Register      = lazy(() => import("../pages/auth/Register"));
-const VerifyOtp     = lazy(() => import("../pages/auth/VerifyOtp"));
+// Layouts & Guards
+import AuthGuard from "../components/common/AuthGuard";
+import MainAppLayout from "../components/common/MainAppLayout";
+import AuthLayout from "../components/common/AuthLayout";
 
-/** Layout dùng chung cho mọi trang (Header + Footer chỉ render 1 lần) */
-const RootLayout = () => (
-  <div className="flex min-h-screen flex-col bg-black text-white">
-    <Header />
-    {/* chừa khoảng cho header/footer (có thể đổi sang pt-16/pb-12 nếu bạn không dùng CSS vars) */}
-    <main className="flex-1 pt-[var(--hdr)] pb-[var(--ftr)]">
-      <Outlet />
-    </main>
-    <Footer />
-  </div>
-);
+// Pages
+import Landing from "../pages/landing/Landing.jsx";
+import Login from "../pages/auth/Login.jsx";
+import Register from "../pages/auth/Register.jsx";
+import VerifyOtp from "../pages/auth/VerifyOtp.jsx";
+import Logout from "../pages/auth/Logout.jsx";
+import PublicCourses from "../pages/PublicCourses.jsx";
+import CourseDetail from "../pages/CourseDetail.jsx";
+import StudentMyCourses from "../pages/student/MyCourses.jsx";
+import StudentProgress from "../pages/student/Progress.jsx";
+import StudentCourseDetail from "../pages/student/CourseDetail.jsx";
+import StudentAssignmentDetail from "../pages/student/AssignmentDetail.jsx";
+import LecturerMyCourses from "../pages/lecturer/MyCourses.jsx";
+import LecturerAssignments from "../pages/lecturer/Assignments.jsx";
+import LecturerAssignmentDetail from "../pages/lecturer/AssignmentDetail.jsx";
+import CourseAssignments from "../pages/lecturer/CourseAssignments.jsx";
+import CourseOverview from "../pages/lecturer/CourseOverview.jsx";
+import Profile from "../pages/Profile.jsx";
 
-// 404
-function NotFound() {
-  return (
-    <div className="min-h-[60vh] grid place-items-center text-white/80">
-      <div className="text-center">
-        <h1 className="text-3xl font-semibold">404 — Page Not Found</h1>
-        <p className="mt-2 opacity-70">The page you are looking for doesn’t exist.</p>
-      </div>
-    </div>
-  );
-}
+import ContentApprovals from "../pages/admin/ContentApprovals.jsx";
+import AdminUsers from "../pages/admin/AdminUsers.jsx";
+// error page imp 
+import ErrorPage from "@/pages/error/ErrorPage";
+
+import ProviderResources from "../pages/provider/ProviderResources";
+import TeacherTutorialLibrary from "../pages/lecturer/ResourceLibrary";
+import ResourceModeration from "../pages/admin/ResourceModeration";
+import AdminAccessPage from "../pages/admin/AdminAccessPage.jsx";
+
+
+
+const Dashboard = () => <div>Dashboard</div>;
 
 export default function AppRoutes() {
   return (
-    <Suspense fallback={<div className="p-6 text-white/80">Loading…</div>}>
-      <Routes>
-        {/* MỌI ROUTE ở trong đây đều dùng chung Header + Footer của RootLayout */}
-        <Route element={<RootLayout />}>
-          {/* Public */}
-          <Route index element={<Landing />} />
-          <Route path="courses" element={<PublicCourses />} />
+    <Routes>
+      {/* ===== 1. AUTH (Login, Register...) ===== */}
+      {/* Dùng layout riêng không có nav/footer */}
+      <Route element={<AuthLayout />}>
+        <Route path="auth/login" element={<Login />} />
+        <Route path="auth/register" element={<Register />} />
+        <Route path="auth/verify" element={<VerifyOtp />} />
+      </Route>
 
-          {/* Auth + alias */}
-          <Route path="auth/login" element={<Login />} />
-          <Route path="auth/register" element={<Register />} />
-          <Route path="auth/verify" element={<VerifyOtp />} />
-          <Route path="signin" element={<Navigate to="/auth/login" replace />} />
-          <Route path="register" element={<Navigate to="/auth/register" replace />} />
+      {/* ===== LOGOUT (Không dùng layout) ===== */}
+      <Route path="logout" element={<Logout />} />
 
-          {/* Private (bọc thêm ProtectedLayout bên trong RootLayout để vẫn dùng chung Header/Footer) */}
-          <Route element={<ProtectedLayout />}>
-            <Route path="dashboard" element={<div className="p-6">Dashboard</div>} />
-            <Route path="profile"   element={<div className="p-6">Trang cá nhân</div>} />
-          </Route>
+      {/* ===== 2. APP CHÍNH (Cả Public và Private) ===== */}
+      {/* Tất cả dùng chung MainAppLayout */}
+      <Route element={<MainAppLayout />}>
+        {/* === Các trang Public (Ai cũng xem được) === */}
+        <Route index element={<Landing />} />
+        <Route path="courses" element={<PublicCourses />} />
+        <Route path="course/:courseId" element={<CourseDetail />} />
+
+        {/* === Các trang Private (Bọc trong "Gác cổng") === */}
+        <Route element={<AuthGuard />}>
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="profile" element={<Profile />} />
         </Route>
 
-        {/* 404 */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </Suspense>
+        {/* === Các trang Student (Chỉ student) === */}
+        <Route element={<AuthGuard allow={["student"]} />}>
+          <Route path="student/my-courses" element={<StudentMyCourses />} />
+          <Route path="student/progress" element={<StudentProgress />} />
+          <Route path="student/my-courses/:courseId" element={<StudentCourseDetail />} />
+          <Route
+            path="student/assignments/:assignmentId"
+            element={<StudentAssignmentDetail />}
+          />
+        </Route>
+
+        {/* === Các trang Lecturer (Chỉ lecturer/giảng viên) === */}
+        <Route element={<AuthGuard allow={["lecturer"]} />}>
+          <Route path="lecturer/my-courses" element={<LecturerMyCourses />} />
+          <Route path="lecturer/assignments" element={<LecturerAssignments />} />
+          <Route
+            path="lecturer/assignments/:assignmentId"
+            element={<LecturerAssignmentDetail />}
+          />
+          <Route
+            path="lecturer/courses/:courseId"
+            element={<CourseOverview />}
+          />
+          <Route
+            path="lecturer/courses/:courseId/assignments"
+            element={<CourseAssignments />}
+          />
+          <Route
+            path="lecturer/courses/create"
+            element={<div>Create Course Page</div>}
+          />
+          <Route
+            path="resources"
+            element={<TeacherTutorialLibrary />}
+          />
+        </Route>
+
+           <Route element={<AuthGuard allow={["provider"]} />}>
+          <Route
+            path="provider/resources"
+            element={<ProviderResources />}
+          />
+        </Route>
+
+        {/* === Các trang Admin (Bọc trong "Gác cổng" + role) === */}
+        <Route element={<AuthGuard allow={["admin"]} />}>
+          <Route path="admin/users" element={<AdminUsers />} />
+          <Route path="admin/content" element={<ContentApprovals />} />
+           <Route path="admin/resources" element={<ResourceModeration />} />
+
+           <Route path="admin/access" element={<AdminAccessPage />} />
+        </Route>
+      </Route>
+
+      {/* ===== 3. LỖI (404, 403) ===== */}
+      <Route path="/403" element={<div>Không có quyền truy cập</div>} />
+      {/* <Route path="*" element={<div>Page Not Found</div>} /> */}
+      <Route path="*" element={<ErrorPage/>} />
+    </Routes>
   );
 }
