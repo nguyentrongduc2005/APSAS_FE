@@ -7,7 +7,9 @@ export default function Navbar() {
         <Link to="/" className="flex items-center gap-2">
           {/* Khuyên dùng file logo trong /public: /logo-apsas.svg hoặc /logo.png */}
           <img src="src/assets/logo.png" alt="APSAS" className="h-7 w-auto" />
-          <span className="font-extrabold text-xl tracking-wide">APSAS</span>
+          <span className="font-extrabold text-xl tracking-wide">
+            CodeVerse
+          </span>
         </Link>
 
         <nav className="flex items-center gap-8 text-sm">

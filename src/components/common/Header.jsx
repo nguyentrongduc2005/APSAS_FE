@@ -1,7 +1,7 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Menu, Search, Bell, Moon } from "lucide-react";
-import logo from "@/assets/logo.svg";
+import logo from "@/assets/logo.png";
 import { useUI } from "../../store/uiStore.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 
@@ -27,7 +27,7 @@ export default function Header() {
           <Link to="/" className="flex items-center gap-2">
             <img src={logo} alt="APSAS" className="h-7 w-auto" />
             <span className="font-extrabold text-xl text-white hidden sm:block">
-              APSAS
+              CodeVerse
             </span>
           </Link>
         </div>

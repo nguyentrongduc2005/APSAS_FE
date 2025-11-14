@@ -15,11 +15,26 @@ import PublicCourses from "../pages/PublicCourses.jsx";
 import CourseDetail from "../pages/CourseDetail.jsx";
 import StudentMyCourses from "../pages/student/MyCourses.jsx";
 import StudentProgress from "../pages/student/Progress.jsx";
+import StudentCourseDetail from "../pages/student/CourseDetail.jsx";
+import StudentAssignmentDetail from "../pages/student/AssignmentDetail.jsx";
 import LecturerMyCourses from "../pages/lecturer/MyCourses.jsx";
+import LecturerAssignments from "../pages/lecturer/Assignments.jsx";
+import LecturerAssignmentDetail from "../pages/lecturer/AssignmentDetail.jsx";
+import CourseAssignments from "../pages/lecturer/CourseAssignments.jsx";
+import CourseOverview from "../pages/lecturer/CourseOverview.jsx";
 import Profile from "../pages/Profile.jsx";
 
+import ContentApprovals from "../pages/admin/ContentApprovals.jsx";
+import AdminUsers from "../pages/admin/AdminUsers.jsx";
+// error page imp 
+import ErrorPage from "@/pages/error/ErrorPage";
+
+import ProviderResources from "../pages/provider/ProviderResources";
+import TeacherTutorialLibrary from "../pages/lecturer/ResourceLibrary";
+import ResourceModeration from "../pages/admin/ResourceModeration";
+
+
 const Dashboard = () => <div>Dashboard</div>;
-const AdminUsers = () => <div>Quản trị người dùng</div>;
 
 export default function AppRoutes() {
   return (
@@ -53,26 +68,58 @@ export default function AppRoutes() {
         <Route element={<AuthGuard allow={["student"]} />}>
           <Route path="student/my-courses" element={<StudentMyCourses />} />
           <Route path="student/progress" element={<StudentProgress />} />
+          <Route path="student/my-courses/:courseId" element={<StudentCourseDetail />} />
+          <Route
+            path="student/assignments/:assignmentId"
+            element={<StudentAssignmentDetail />}
+          />
         </Route>
 
         {/* === Các trang Lecturer (Chỉ lecturer/giảng viên) === */}
         <Route element={<AuthGuard allow={["lecturer"]} />}>
           <Route path="lecturer/my-courses" element={<LecturerMyCourses />} />
+          <Route path="lecturer/assignments" element={<LecturerAssignments />} />
+          <Route
+            path="lecturer/assignments/:assignmentId"
+            element={<LecturerAssignmentDetail />}
+          />
+          <Route
+            path="lecturer/courses/:courseId"
+            element={<CourseOverview />}
+          />
+          <Route
+            path="lecturer/courses/:courseId/assignments"
+            element={<CourseAssignments />}
+          />
           <Route
             path="lecturer/courses/create"
             element={<div>Create Course Page</div>}
+          />
+          <Route
+            path="resources"
+            element={<TeacherTutorialLibrary />}
+          />
+        </Route>
+
+           <Route element={<AuthGuard allow={["provider"]} />}>
+          <Route
+            path="provider/resources"
+            element={<ProviderResources />}
           />
         </Route>
 
         {/* === Các trang Admin (Bọc trong "Gác cổng" + role) === */}
         <Route element={<AuthGuard allow={["admin"]} />}>
           <Route path="admin/users" element={<AdminUsers />} />
+          <Route path="admin/content" element={<ContentApprovals />} />
+           <Route path="admin/resources" element={<ResourceModeration />} />
         </Route>
       </Route>
 
       {/* ===== 3. LỖI (404, 403) ===== */}
       <Route path="/403" element={<div>Không có quyền truy cập</div>} />
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* <Route path="*" element={<div>Page Not Found</div>} /> */}
+      <Route path="*" element={<ErrorPage/>} />
     </Routes>
   );
 }

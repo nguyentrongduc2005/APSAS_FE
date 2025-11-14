@@ -3,6 +3,10 @@ import AppRoutes from "./routes";
 
 export default function App() {
   console.log("📱 App component RENDER");
-
-  return <AppRoutes />;
+  
+  return (
+    <div className="dark">
+      <AppRoutes />
+    </div>
+  );
 }
