@@ -128,6 +128,8 @@ export default function AuthProvider({ children }) {
       ? "admin"
       : email.includes("gv")
       ? "lecturer"
+      : email.includes("provider")
+      ? "provider"
       : "student";
 
     const mockToken = "mock-token-" + Date.now();

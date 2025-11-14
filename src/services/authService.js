@@ -17,6 +17,8 @@ export async function login({ email, password }) {
       ? "admin"
       : email.includes("gv")
       ? "lecturer"
+      : email.includes("provider")
+      ? "provider"
       : "student";
 
     // Giả lập delay API call

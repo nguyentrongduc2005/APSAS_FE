@@ -77,6 +77,7 @@ export default function Header() {
                 {user?.role === "admin" && "Quản trị viên"}
                 {user?.role === "lecturer" && "Giảng viên"}
                 {user?.role === "student" && "Sinh viên"}
+                {user?.role === "provider" && "Nhà cung cấp"}
               </div>
             </div>
           </button>

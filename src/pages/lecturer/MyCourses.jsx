@@ -1,10 +1,11 @@
 import { useAuth } from "../../context/AuthContext";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { BookOpen, Users, Book, BarChart3, FileEdit } from "lucide-react";
 import LecturerCourseCard from "../../components/lecturer/CourseCard";
 
 export default function LecturerMyCourses() {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   // Mock data - thay bằng API call
   const myCourses = [
@@ -65,12 +66,12 @@ export default function LecturerMyCourses() {
           </p>
         </div>
 
-        <Link
-          to="/lecturer/courses/create"
+        <button
+          onClick={() => navigate("/resources")}
           className="inline-flex items-center justify-center px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-black font-medium rounded-lg transition whitespace-nowrap"
         >
           + Tạo khóa học mới
-        </Link>
+        </button>
       </div>
 
       {/* Stats Cards */}

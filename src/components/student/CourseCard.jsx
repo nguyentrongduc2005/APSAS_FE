@@ -72,7 +72,7 @@ export default function StudentCourseCard({ course }) {
           </div>
           <div className="h-2 bg-[#0f1621] rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-300"
+              className="h-full bg-linear-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-300"
               style={{ width: `${progress}%` }}
             />
           </div>
