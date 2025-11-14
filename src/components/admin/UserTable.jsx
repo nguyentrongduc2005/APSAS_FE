@@ -15,7 +15,9 @@ function Badge({ children, tone = "blue", className = "" }) {
   };
 
   return (
-    <span className={`px-2 py-0.5 rounded-md text-xs ${map[tone]} ${className}`}>
+    <span
+      className={`px-2 py-0.5 rounded-md text-xs ${map[tone]} ${className}`}
+    >
       {children}
     </span>
   );
@@ -39,7 +41,10 @@ export default function UserTable({ users, onEdit, onToggleLock, onDelete }) {
 
         <tbody>
           {users.map((u) => (
-            <tr key={u.id} className="border-t border-[#1f2937] hover:bg-white/5">
+            <tr
+              key={u.id}
+              className="border-t border-[#1f2937] hover:bg-white/5"
+            >
               <td className="px-3 py-3">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-slate-700/60 flex items-center justify-center text-xs">
@@ -55,7 +60,11 @@ export default function UserTable({ users, onEdit, onToggleLock, onDelete }) {
               <td className="px-3 py-3">{u.email}</td>
 
               <td className="px-3 py-3">
-                <span className={`px-2 py-0.5 rounded-md text-xs ${roleColor[u.role]}`}>
+                <span
+                  className={`px-2 py-0.5 rounded-md text-xs ${
+                    roleColor[u.role]
+                  }`}
+                >
                   {u.role}
                 </span>
               </td>

@@ -10,7 +10,13 @@ const adminUserService = {
       // return response.data;
 
       // Mock data tạm thời
-      const { page = 1, limit = 10, role = "", status = "", keyword = "" } = params;
+      const {
+        page = 1,
+        limit = 10,
+        role = "",
+        status = "",
+        keyword = "",
+      } = params;
 
       const allUsers = [
         {
@@ -172,7 +178,9 @@ const adminUserService = {
 
       return {
         success: true,
-        message: `Người dùng đã được ${newStatus === "active" ? "mở khóa" : "khóa"}`,
+        message: `Người dùng đã được ${
+          newStatus === "active" ? "mở khóa" : "khóa"
+        }`,
         data: {
           userId,
           status: newStatus,

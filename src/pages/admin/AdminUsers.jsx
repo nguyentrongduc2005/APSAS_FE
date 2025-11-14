@@ -64,9 +64,9 @@ export default function AdminUsers() {
     try {
       const user = users.find((u) => u.id === id);
       const newStatus = user.status === "active" ? "blocked" : "active";
-      
+
       await adminUserService.toggleUserStatus(id, newStatus);
-      
+
       setUsers((prev) =>
         prev.map((it) => (it.id === id ? { ...it, status: newStatus } : it))
       );
@@ -78,7 +78,7 @@ export default function AdminUsers() {
 
   const removeUser = async (id) => {
     if (!window.confirm("Xóa người dùng này?")) return;
-    
+
     try {
       await adminUserService.deleteUser(id);
       setUsers((prev) => prev.filter((u) => u.id !== id));

@@ -52,7 +52,7 @@ export default function ContentApprovals() {
           it.id === modal.data.id ? { ...it, status: decision, note } : it
         )
       );
-      
+
       closeView();
     } catch (error) {
       console.error("Error deciding content:", error);

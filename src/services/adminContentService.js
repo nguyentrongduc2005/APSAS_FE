@@ -10,7 +10,13 @@ const adminContentService = {
       // return response.data;
 
       // Mock data tạm thời
-      const { page = 1, limit = 10, type = "", status = "pending", keyword = "" } = params;
+      const {
+        page = 1,
+        limit = 10,
+        type = "",
+        status = "pending",
+        keyword = "",
+      } = params;
 
       const allContents = [
         {
@@ -147,7 +153,8 @@ const adminContentService = {
         submittedAt: "2024-11-10",
         status: "pending",
         note: "",
-        description: "Comprehensive guide to React Hooks including useState, useEffect, and custom hooks",
+        description:
+          "Comprehensive guide to React Hooks including useState, useEffect, and custom hooks",
         duration: "5 hours 30 minutes",
         contentCount: 15,
         exerciseCount: 8,

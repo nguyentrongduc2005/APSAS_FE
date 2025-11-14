@@ -1,4 +1,11 @@
-export default function ContentToolbar({ q, setQ, type, setType, status, setStatus }) {
+export default function ContentToolbar({
+  q,
+  setQ,
+  type,
+  setType,
+  status,
+  setStatus,
+}) {
   return (
     <div className="flex items-center gap-2 flex-wrap">
       <input

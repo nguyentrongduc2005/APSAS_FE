@@ -1,4 +1,12 @@
-export default function UserToolbar({ q, setQ, role, setRole, status, setStatus, onCreate }) {
+export default function UserToolbar({
+  q,
+  setQ,
+  role,
+  setRole,
+  status,
+  setStatus,
+  onCreate,
+}) {
   return (
     <div className="flex items-center gap-2 flex-wrap">
       <input

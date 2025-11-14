@@ -5,7 +5,9 @@ function StatusPill({ s }) {
     rejected: "bg-rose-500/15 text-rose-300 border border-rose-500/30",
   };
 
-  return <span className={`px-2 py-0.5 rounded-md text-xs ${map[s]}`}>{s}</span>;
+  return (
+    <span className={`px-2 py-0.5 rounded-md text-xs ${map[s]}`}>{s}</span>
+  );
 }
 
 export default function ContentTable({ contents, onView }) {
@@ -26,7 +28,10 @@ export default function ContentTable({ contents, onView }) {
 
         <tbody>
           {contents.map((c) => (
-            <tr key={c.id} className="border-t border-[#1f2937] hover:bg-white/5">
+            <tr
+              key={c.id}
+              className="border-t border-[#1f2937] hover:bg-white/5"
+            >
               <td className="px-3 py-3">
                 <span className="text-xs text-slate-500">{c.id}</span>
               </td>
