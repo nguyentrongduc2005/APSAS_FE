@@ -13,13 +13,16 @@ import VerifyOtp from "../pages/auth/VerifyOtp.jsx";
 import Logout from "../pages/auth/Logout.jsx";
 import PublicCourses from "../pages/PublicCourses.jsx";
 import CourseDetail from "../pages/CourseDetail.jsx";
+import ContentDetail from "../pages/ContentDetail.jsx";
 import StudentMyCourses from "../pages/student/MyCourses.jsx";
 import StudentProgress from "../pages/student/Progress.jsx";
 import StudentCourseDetail from "../pages/student/CourseDetail.jsx";
 import StudentAssignmentDetail from "../pages/student/AssignmentDetail.jsx";
+import SubmissionDetail from "../pages/student/SubmissionDetail.jsx";
 import LecturerMyCourses from "../pages/lecturer/MyCourses.jsx";
 import LecturerAssignments from "../pages/lecturer/Assignments.jsx";
 import LecturerAssignmentDetail from "../pages/lecturer/AssignmentDetail.jsx";
+import LecturerSubmissionDetail from "../pages/lecturer/SubmissionDetail.jsx";
 import CourseAssignments from "../pages/lecturer/CourseAssignments.jsx";
 import CourseOverview from "../pages/lecturer/CourseOverview.jsx";
 import Profile from "../pages/Profile.jsx";
@@ -65,6 +68,7 @@ export default function AppRoutes() {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="profile" element={<Profile />} />
           <Route path="support" element={<Support />} />
+          <Route path="contents/:contentId" element={<ContentDetail />} />
         </Route>
 
         {/* === Các trang Student (Chỉ student) === */}
@@ -79,6 +83,10 @@ export default function AppRoutes() {
             path="student/assignments/:assignmentId"
             element={<StudentAssignmentDetail />}
           />
+          <Route
+            path="student/submissions/:submissionId"
+            element={<SubmissionDetail />}
+          />
         </Route>
 
         {/* === Các trang Lecturer (Chỉ lecturer/giảng viên) === */}
@@ -91,6 +99,10 @@ export default function AppRoutes() {
           <Route
             path="lecturer/assignments/:assignmentId"
             element={<LecturerAssignmentDetail />}
+          />
+          <Route
+            path="lecturer/submissions/:submissionId"
+            element={<LecturerSubmissionDetail />}
           />
           <Route
             path="lecturer/courses/:courseId"

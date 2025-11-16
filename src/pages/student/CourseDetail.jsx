@@ -250,11 +250,11 @@ export default function StudentCourseDetail() {
                 onClick={() => {
                   if (item.type === "assignment") {
                     navigate(`/student/assignments/${item.id}`);
+                  } else if (item.type === "content") {
+                    navigate(`/contents/${item.id}`);
                   }
                 }}
-                className={`rounded-xl border border-[#202934] bg-[#0b0f12] p-4 hover:border-emerald-500/40 transition ${
-                  item.type === "assignment" ? "cursor-pointer" : ""
-                }`}
+                className={`rounded-xl border border-[#202934] bg-[#0b0f12] p-4 hover:border-emerald-500/40 transition cursor-pointer`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3 flex-1">

@@ -326,7 +326,14 @@ export default function LecturerAssignmentDetail() {
                           (entry, idx) => (
                             <div
                               key={idx}
-                              className="flex items-start gap-4 p-4 bg-[#0b0f12] border border-[#202934] rounded-xl hover:border-emerald-500/50 transition"
+                              onClick={() =>
+                                navigate(
+                                  `/lecturer/submissions/${
+                                    entry.submissionId || `sub-${idx}`
+                                  }`
+                                )
+                              }
+                              className="flex items-start gap-4 p-4 bg-[#0b0f12] border border-[#202934] rounded-xl hover:border-emerald-500/50 transition cursor-pointer"
                             >
                               <div className="flex-shrink-0 w-2 h-2 rounded-full bg-emerald-400 mt-2"></div>
                               <div className="flex-1">
@@ -351,7 +358,17 @@ export default function LecturerAssignmentDetail() {
                                   <span>Ngôn ngữ: {entry.language}</span>
                                 </div>
                               </div>
-                              <button className="px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-medium transition">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(
+                                    `/lecturer/submissions/${
+                                      entry.submissionId || `sub-${idx}`
+                                    }`
+                                  );
+                                }}
+                                className="px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-medium transition"
+                              >
                                 Xem code
                               </button>
                             </div>

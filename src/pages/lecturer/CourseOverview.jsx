@@ -262,59 +262,61 @@ export default function CourseOverview() {
             <h2 className="text-xl font-semibold text-white mb-4">
               Nội dung khóa học
             </h2>
-          <div className="space-y-2">
-            {modules.map((item, index) => (
-              <div
-                key={item.id}
-                onClick={() => {
-                  if (item.type === "assignment") {
-                    navigate(`/lecturer/assignments/${item.id}`);
-                  }
-                }}
-                className={`flex items-center gap-4 p-4 bg-[#0b0f12] border border-[#202934] rounded-xl hover:border-emerald-500/50 transition ${
-                  item.type === "assignment" ? "cursor-pointer" : ""
-                }`}
-              >
-                {/* Icon */}
-                <div className="flex-shrink-0">
-                  {item.type === "content" ? (
-                    <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                      <Play size={18} className="text-emerald-400" />
-                    </div>
-                  ) : (
-                    <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                      <ListChecks size={18} className="text-blue-400" />
-                    </div>
-                  )}
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-white font-medium mb-1">{item.title}</h3>
-                  <div className="flex items-center gap-3 text-sm text-gray-400">
+            <div className="space-y-2">
+              {modules.map((item, index) => (
+                <div
+                  key={item.id}
+                  onClick={() => {
+                    if (item.type === "assignment") {
+                      navigate(`/lecturer/assignments/${item.id}`);
+                    } else if (item.type === "content") {
+                      navigate(`/contents/${item.id}`);
+                    }
+                  }}
+                  className={`flex items-center gap-4 p-4 bg-[#0b0f12] border border-[#202934] rounded-xl hover:border-emerald-500/50 transition cursor-pointer`}
+                >
+                  {/* Icon */}
+                  <div className="flex-shrink-0">
                     {item.type === "content" ? (
-                      <>
-                        <span className="flex items-center gap-1">
-                          <Clock size={14} />
-                          {item.duration}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Image size={14} />
-                          {item.imageCount} ảnh
-                        </span>
-                      </>
+                      <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                        <Play size={18} className="text-emerald-400" />
+                      </div>
                     ) : (
-                      <span className="flex items-center gap-1">
-                        <Calendar size={14} />
-                        Hạn: {item.deadline}
-                      </span>
+                      <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                        <ListChecks size={18} className="text-blue-400" />
+                      </div>
                     )}
                   </div>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-white font-medium mb-1">
+                      {item.title}
+                    </h3>
+                    <div className="flex items-center gap-3 text-sm text-gray-400">
+                      {item.type === "content" ? (
+                        <>
+                          <span className="flex items-center gap-1">
+                            <Clock size={14} />
+                            {item.duration}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Image size={14} />
+                            {item.imageCount} ảnh
+                          </span>
+                        </>
+                      ) : (
+                        <span className="flex items-center gap-1">
+                          <Calendar size={14} />
+                          Hạn: {item.deadline}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </section>
+              ))}
+            </div>
+          </section>
         )}
 
         {/* Assignments Tab */}
@@ -361,10 +363,12 @@ export default function CourseOverview() {
               </h2>
               <div className="flex gap-2">
                 <button className="px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-400 text-xs font-medium border border-amber-500/20">
-                  Chờ xử lý ({helpRequests.filter((r) => r.status === "pending").length})
+                  Chờ xử lý (
+                  {helpRequests.filter((r) => r.status === "pending").length})
                 </button>
                 <button className="px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs font-medium border border-emerald-500/20">
-                  Đã giải quyết ({helpRequests.filter((r) => r.status === "resolved").length})
+                  Đã giải quyết (
+                  {helpRequests.filter((r) => r.status === "resolved").length})
                 </button>
               </div>
             </div>

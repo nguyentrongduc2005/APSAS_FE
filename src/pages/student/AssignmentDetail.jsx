@@ -308,6 +308,9 @@ export default function StudentAssignmentDetail() {
             {submissions.map((submission) => (
               <div
                 key={submission.id}
+                onClick={() =>
+                  navigate(`/student/submissions/${submission.id}`)
+                }
                 className="bg-[#0b0f12] border border-[#202934] rounded-lg p-4 hover:border-emerald-500/50 transition cursor-pointer"
               >
                 <div className="flex items-start justify-between">
