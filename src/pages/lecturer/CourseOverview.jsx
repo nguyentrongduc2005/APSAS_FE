@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import {
   ArrowLeft,
@@ -10,19 +10,27 @@ import {
   TrendingUp,
   Clock,
   Star,
+  Play,
+  ListChecks,
+  Image,
+  HelpCircle,
+  MessageSquare,
 } from "lucide-react";
 
 export default function CourseOverview() {
   const { courseId } = useParams();
   const navigate = useNavigate();
-  
+  const [activeTab, setActiveTab] = useState("overview");
+
   // Mock data - trong thực tế sẽ fetch từ API dựa trên courseId
   const course = {
     id: courseId,
     title: "Java Programming Fundamentals",
-    description: "Khóa học lập trình Java từ cơ bản đến nâng cao, bao gồm OOP, Collections, Exception Handling và nhiều chủ đề khác.",
+    description:
+      "Khóa học lập trình Java từ cơ bản đến nâng cao, bao gồm OOP, Collections, Exception Handling và nhiều chủ đề khác.",
     instructor: "Trần Minh Khôi",
-    thumbnail: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800&h=450&fit=crop",
+    thumbnail:
+      "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800&h=450&fit=crop",
     totalStudents: 45,
     totalLessons: 13,
     totalAssignments: 8,
@@ -34,27 +42,87 @@ export default function CourseOverview() {
     lastUpdated: "2024-11-01",
   };
 
-  const recentActivities = [
+  // Mock course content modules
+  const modules = [
     {
       id: 1,
-      type: "submission",
-      message: "Nguyễn Văn A đã nộp bài tập 'Java Collections'",
-      time: "2 giờ trước",
-      avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face",
+      type: "content",
+      title: "Introduction to Java",
+      duration: "45 phút",
+      imageCount: 5,
     },
     {
       id: 2,
-      type: "completion",
-      message: "Trần Thị B đã hoàn thành bài học 'Object-Oriented Programming'",
-      time: "4 giờ trước",
-      avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=32&h=32&fit=crop&crop=face",
+      type: "content",
+      title: "Variables and Data Types",
+      duration: "60 phút",
+      imageCount: 8,
     },
     {
       id: 3,
-      type: "question",
-      message: "Lê Văn C đã đặt câu hỏi về 'Exception Handling'",
-      time: "6 giờ trước",
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=32&h=32&fit=crop&crop=face",
+      type: "assignment",
+      title: "Lab 1: Basic Java Programming",
+      deadline: "2024-03-20",
+    },
+    {
+      id: 4,
+      type: "content",
+      title: "Control Flow Statements",
+      duration: "50 phút",
+      imageCount: 6,
+    },
+    {
+      id: 5,
+      type: "assignment",
+      title: "Lab 2: Control Structures",
+      deadline: "2024-03-25",
+    },
+    {
+      id: 6,
+      type: "content",
+      title: "Object-Oriented Programming",
+      duration: "90 phút",
+      imageCount: 12,
+    },
+  ];
+
+  // Mock help requests from students
+  const helpRequests = [
+    {
+      id: 1,
+      studentName: "Nguyễn Văn A",
+      studentAvatar: "https://i.pravatar.cc/150?img=1",
+      content:
+        "Em không hiểu rõ về cách sử dụng Collections trong Java. Thầy có thể giải thích thêm không ạ?",
+      createdAt: "2024-11-15 14:30",
+      status: "pending",
+    },
+    {
+      id: 2,
+      studentName: "Trần Thị B",
+      studentAvatar: "https://i.pravatar.cc/150?img=5",
+      content:
+        "Bài tập số 3 em chạy bị lỗi NullPointerException nhưng không biết sửa thế nào. Có thể hướng dẫn em không ạ?",
+      createdAt: "2024-11-15 10:15",
+      status: "resolved",
+    },
+    {
+      id: 3,
+      studentName: "Lê Văn C",
+      studentAvatar: "https://i.pravatar.cc/150?img=3",
+      content:
+        "Thầy ơi, em muốn hỏi về sự khác biệt giữa ArrayList và LinkedList. Khi nào thì nên dùng cái nào ạ?",
+      createdAt: "2024-11-14 16:45",
+      status: "pending",
+    },
+    {
+      id: 4,
+      studentName: "Phạm Thị D",
+      studentAvatar: "https://i.pravatar.cc/150?img=9",
+      content:
+        "Em không hiểu phần Exception Handling, đặc biệt là try-catch-finally. Thầy có thể cho ví dụ thực tế không ạ?",
+      createdAt: "2024-11-14 09:20",
+      status: "resolved",
     },
   ];
 
@@ -73,7 +141,9 @@ export default function CourseOverview() {
               Khóa học của tôi
             </button>
             <span className="text-gray-700">/</span>
-            <span className="text-sm text-emerald-400 font-medium">Tổng quan</span>
+            <span className="text-sm text-emerald-400 font-medium">
+              Tổng quan
+            </span>
           </div>
           <div className="text-sm text-blue-400 font-semibold">
             Tiến độ khóa học: {course.progress}%
@@ -84,7 +154,9 @@ export default function CourseOverview() {
           <div className="space-y-4">
             <p className="text-sm text-emerald-400 font-medium">Khóa học</p>
             <h1 className="text-3xl font-bold text-white">{course.title}</h1>
-            <p className="text-gray-400 leading-relaxed">{course.description}</p>
+            <p className="text-gray-400 leading-relaxed">
+              {course.description}
+            </p>
             <p className="text-gray-400">Giảng viên: {course.instructor}</p>
           </div>
           <div className="relative aspect-video lg:aspect-square rounded-xl overflow-hidden bg-[#0b0f12]">
@@ -103,7 +175,9 @@ export default function CourseOverview() {
             </div>
             <div>
               <p className="text-sm text-gray-400">Sinh viên</p>
-              <p className="text-xl font-semibold text-white">{course.totalStudents}</p>
+              <p className="text-xl font-semibold text-white">
+                {course.totalStudents}
+              </p>
             </div>
           </div>
           <div className="bg-[#0b0f12] border border-[#202934] rounded-xl p-4 flex items-center gap-3">
@@ -112,7 +186,9 @@ export default function CourseOverview() {
             </div>
             <div>
               <p className="text-sm text-gray-400">Bài học</p>
-              <p className="text-xl font-semibold text-white">{course.totalLessons}</p>
+              <p className="text-xl font-semibold text-white">
+                {course.totalLessons}
+              </p>
             </div>
           </div>
           <div className="bg-[#0b0f12] border border-[#202934] rounded-xl p-4 flex items-center gap-3">
@@ -121,7 +197,9 @@ export default function CourseOverview() {
             </div>
             <div>
               <p className="text-sm text-gray-400">Tiến độ TB</p>
-              <p className="text-xl font-semibold text-white">{course.avgProgress}%</p>
+              <p className="text-xl font-semibold text-white">
+                {course.avgProgress}%
+              </p>
             </div>
           </div>
           <div className="bg-[#0b0f12] border border-[#202934] rounded-xl p-4 flex items-center gap-3">
@@ -130,151 +208,237 @@ export default function CourseOverview() {
             </div>
             <div>
               <p className="text-sm text-gray-400">Bài tập</p>
-              <p className="text-xl font-semibold text-white">{course.totalAssignments}</p>
+              <p className="text-xl font-semibold text-white">
+                {course.totalAssignments}
+              </p>
             </div>
           </div>
         </div>
 
         <div className="flex gap-3">
-          <button className="px-4 py-2 rounded-xl text-sm font-semibold bg-white/5 border border-white/10 text-white">
+          <button
+            onClick={() => setActiveTab("overview")}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition ${
+              activeTab === "overview"
+                ? "bg-white/5 border border-white/10 text-white"
+                : "text-gray-400 hover:text-white"
+            }`}
+          >
             Tổng quan
           </button>
-          <Link
-            to={`/lecturer/courses/${courseId}/assignments`}
-            className="px-4 py-2 rounded-xl text-sm font-semibold text-gray-400 hover:text-white transition"
+          <button
+            onClick={() => setActiveTab("assignments")}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition ${
+              activeTab === "assignments"
+                ? "bg-white/5 border border-white/10 text-white"
+                : "text-gray-400 hover:text-white"
+            }`}
           >
             Bài tập
-          </Link>
+          </button>
+          <button
+            onClick={() => setActiveTab("help-requests")}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition flex items-center gap-2 ${
+              activeTab === "help-requests"
+                ? "bg-white/5 border border-white/10 text-white"
+                : "text-gray-400 hover:text-white"
+            }`}
+          >
+            <HelpCircle size={16} />
+            Yêu cầu hỗ trợ
+            {helpRequests.filter((r) => r.status === "pending").length > 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-xs font-semibold">
+                {helpRequests.filter((r) => r.status === "pending").length}
+              </span>
+            )}
+          </button>
         </div>
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-        {/* Main Content */}
-        <div className="space-y-6">
-          {/* Course Stats */}
+      <div className="space-y-6">
+        {/* Course Content List - Overview Tab */}
+        {activeTab === "overview" && (
           <section className="bg-[#0f1419] border border-[#202934] rounded-2xl p-6">
-            <h2 className="text-xl font-semibold text-white mb-4">Thống kê khóa học</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Đánh giá trung bình</span>
-                  <div className="flex items-center gap-2">
-                    <Star size={16} className="text-yellow-400 fill-current" />
-                    <span className="text-white font-semibold">{course.avgRating}</span>
-                    <span className="text-gray-400 text-sm">({course.totalReviews})</span>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Tỷ lệ hoàn thành</span>
-                  <span className="text-emerald-400 font-semibold">{course.avgProgress}%</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Ngày tạo</span>
-                  <span className="text-white">{course.createdAt}</span>
-                </div>
-              </div>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Cập nhật lần cuối</span>
-                  <span className="text-white">{course.lastUpdated}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Tổng bài tập</span>
-                  <span className="text-white">{course.totalAssignments}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Tình trạng</span>
-                  <span className="text-emerald-400 font-semibold">Đang hoạt động</span>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Recent Activities */}
-          <section className="bg-[#0f1419] border border-[#202934] rounded-2xl p-6">
-            <h2 className="text-xl font-semibold text-white mb-4">Hoạt động gần đây</h2>
-            <div className="space-y-4">
-              {recentActivities.map((activity) => (
-                <div key={activity.id} className="flex items-start gap-3 p-4 bg-[#0b0f12] border border-[#202934] rounded-xl">
-                  <img
-                    src={activity.avatar}
-                    alt=""
-                    className="w-8 h-8 rounded-full object-cover"
-                  />
-                  <div className="flex-1">
-                    <p className="text-white text-sm">{activity.message}</p>
-                    <p className="text-gray-400 text-xs mt-1">{activity.time}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        </div>
-
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Quick Actions */}
-          <section className="bg-[#0f1419] border border-[#202934] rounded-2xl p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Hành động nhanh</h3>
-            <div className="space-y-3">
-              <Link
-                to={`/lecturer/courses/${courseId}/assignments`}
-                className="flex items-center gap-3 p-3 bg-[#0b0f12] hover:bg-[#151a24] border border-[#202934] hover:border-emerald-500/40 rounded-xl transition"
+            <h2 className="text-xl font-semibold text-white mb-4">
+              Nội dung khóa học
+            </h2>
+          <div className="space-y-2">
+            {modules.map((item, index) => (
+              <div
+                key={item.id}
+                onClick={() => {
+                  if (item.type === "assignment") {
+                    navigate(`/lecturer/assignments/${item.id}`);
+                  }
+                }}
+                className={`flex items-center gap-4 p-4 bg-[#0b0f12] border border-[#202934] rounded-xl hover:border-emerald-500/50 transition ${
+                  item.type === "assignment" ? "cursor-pointer" : ""
+                }`}
               >
-                <FileText size={18} className="text-emerald-400" />
-                <span className="text-white text-sm font-medium">Quản lý bài tập</span>
-              </Link>
-              <button className="flex items-center gap-3 p-3 bg-[#0b0f12] hover:bg-[#151a24] border border-[#202934] hover:border-blue-500/40 rounded-xl transition w-full text-left">
-                <TrendingUp size={18} className="text-blue-400" />
-                <span className="text-white text-sm font-medium">Xem báo cáo</span>
-              </button>
-              <button className="flex items-center gap-3 p-3 bg-[#0b0f12] hover:bg-[#151a24] border border-[#202934] hover:border-yellow-500/40 rounded-xl transition w-full text-left">
-                <Calendar size={18} className="text-yellow-400" />
-                <span className="text-white text-sm font-medium">Lên lịch học</span>
-              </button>
-            </div>
-          </section>
+                {/* Icon */}
+                <div className="flex-shrink-0">
+                  {item.type === "content" ? (
+                    <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                      <Play size={18} className="text-emerald-400" />
+                    </div>
+                  ) : (
+                    <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                      <ListChecks size={18} className="text-blue-400" />
+                    </div>
+                  )}
+                </div>
 
-          {/* Course Progress */}
-          <section className="bg-[#0f1419] border border-[#202934] rounded-2xl p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Tiến độ khóa học</h3>
-            <div className="space-y-4">
-              <div className="text-center">
-                <div className="text-3xl font-bold text-emerald-400 mb-1">{course.progress}%</div>
-                <div className="text-sm text-gray-400">Hoàn thành</div>
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-white font-medium mb-1">{item.title}</h3>
+                  <div className="flex items-center gap-3 text-sm text-gray-400">
+                    {item.type === "content" ? (
+                      <>
+                        <span className="flex items-center gap-1">
+                          <Clock size={14} />
+                          {item.duration}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Image size={14} />
+                          {item.imageCount} ảnh
+                        </span>
+                      </>
+                    ) : (
+                      <span className="flex items-center gap-1">
+                        <Calendar size={14} />
+                        Hạn: {item.deadline}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
-              <div className="h-2 bg-[#0b0f12] rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-emerald-400 rounded-full transition-all duration-500"
-                  style={{ width: `${course.progress}%` }}
-                />
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-400">Bài học: {Math.floor(course.totalLessons * course.progress / 100)}/{course.totalLessons}</span>
-                <span className="text-gray-400">Còn lại: {course.totalLessons - Math.floor(course.totalLessons * course.progress / 100)}</span>
-              </div>
-            </div>
-          </section>
+            ))}
+          </div>
+        </section>
+        )}
 
-          {/* Course Info */}
+        {/* Assignments Tab */}
+        {activeTab === "assignments" && (
           <section className="bg-[#0f1419] border border-[#202934] rounded-2xl p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Thông tin khóa học</h3>
-            <div className="space-y-3 text-sm">
-              <div className="flex items-center gap-2 text-gray-400">
-                <Clock size={14} />
-                <span>Cập nhật: {course.lastUpdated}</span>
-              </div>
-              <div className="flex items-center gap-2 text-gray-400">
-                <Users size={14} />
-                <span>{course.totalStudents} sinh viên đang học</span>
-              </div>
-              <div className="flex items-center gap-2 text-gray-400">
-                <Star size={14} />
-                <span>{course.avgRating}/5 ({course.totalReviews} đánh giá)</span>
-              </div>
+            <h2 className="text-xl font-semibold text-white mb-4">Bài tập</h2>
+            <div className="space-y-2">
+              {modules
+                .filter((item) => item.type === "assignment")
+                .map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => navigate(`/lecturer/assignments/${item.id}`)}
+                    className="flex items-center gap-4 p-4 bg-[#0b0f12] border border-[#202934] rounded-xl hover:border-emerald-500/50 transition cursor-pointer"
+                  >
+                    <div className="flex-shrink-0">
+                      <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                        <ListChecks size={18} className="text-blue-400" />
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-white font-medium mb-1">
+                        {item.title}
+                      </h3>
+                      <div className="flex items-center gap-3 text-sm text-gray-400">
+                        <span className="flex items-center gap-1">
+                          <Calendar size={14} />
+                          Hạn: {item.deadline}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
             </div>
           </section>
-        </div>
+        )}
+
+        {/* Help Requests Tab */}
+        {activeTab === "help-requests" && (
+          <section className="bg-[#0f1419] border border-[#202934] rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-white">
+                Yêu cầu hỗ trợ từ học sinh
+              </h2>
+              <div className="flex gap-2">
+                <button className="px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-400 text-xs font-medium border border-amber-500/20">
+                  Chờ xử lý ({helpRequests.filter((r) => r.status === "pending").length})
+                </button>
+                <button className="px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs font-medium border border-emerald-500/20">
+                  Đã giải quyết ({helpRequests.filter((r) => r.status === "resolved").length})
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {helpRequests.length > 0 ? (
+                helpRequests.map((request) => (
+                  <div
+                    key={request.id}
+                    className="p-5 bg-[#0b0f12] border border-[#202934] rounded-xl hover:border-emerald-500/50 transition"
+                  >
+                    <div className="flex items-start gap-4">
+                      <img
+                        src={request.studentAvatar}
+                        alt={request.studentName}
+                        className="w-12 h-12 rounded-full object-cover bg-[#0f1419]"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-3">
+                            <h3 className="text-white font-semibold">
+                              {request.studentName}
+                            </h3>
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                request.status === "pending"
+                                  ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                                  : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                              }`}
+                            >
+                              {request.status === "pending"
+                                ? "Chờ xử lý"
+                                : "Đã giải quyết"}
+                            </span>
+                          </div>
+                          <span className="text-xs text-gray-400">
+                            {request.createdAt}
+                          </span>
+                        </div>
+                        <p className="text-gray-300 text-sm mb-3 leading-relaxed">
+                          {request.content}
+                        </p>
+                        <div className="flex gap-2">
+                          {request.status === "pending" && (
+                            <>
+                              <button className="px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-medium transition flex items-center gap-1">
+                                <MessageSquare size={14} />
+                                Trả lời
+                              </button>
+                              <button className="px-3 py-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 text-xs font-medium transition">
+                                Đánh dấu đã giải quyết
+                              </button>
+                            </>
+                          )}
+                          {request.status === "resolved" && (
+                            <button className="px-3 py-1.5 rounded-lg bg-gray-500/10 hover:bg-gray-500/20 text-gray-400 text-xs font-medium transition flex items-center gap-1">
+                              <MessageSquare size={14} />
+                              Xem chi tiết
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-12 text-gray-400">
+                  <HelpCircle size={48} className="mx-auto mb-3 opacity-50" />
+                  <p>Chưa có yêu cầu hỗ trợ nào</p>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
       </div>
     </div>
   );
