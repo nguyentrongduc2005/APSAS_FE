@@ -35,6 +35,12 @@ import RolePermissions from "../pages/admin/RolePermissions.jsx";
 import ErrorPage from "@/pages/error/ErrorPage";
 
 import ProviderResources from "../pages/provider/ProviderResources";
+import ResourceDetail from "../pages/provider/ResourceDetail";
+import ResourceDetailReadOnly from "../pages/provider/ResourceDetailReadOnly";
+import CreateContent from "../pages/provider/CreateContent";
+import CreateAssignment from "../pages/provider/CreateAssignment";
+import ContentDetailView from "../pages/provider/ContentDetailView";
+import AssignmentDetailView from "../pages/provider/AssignmentDetailView";
 import ResourceManagement from "../pages/provider/ResourceManagement";
 import TeacherTutorialLibrary from "../pages/lecturer/ResourceLibrary";
 import ResourceModeration from "../pages/admin/ResourceModeration";
@@ -117,10 +123,67 @@ export default function AppRoutes() {
             element={<div>Create Course Page</div>}
           />
           <Route path="resources" element={<TeacherTutorialLibrary />} />
+          {/* Read-only resource detail for lecturers */}
+          <Route
+            path="resources/:resourceId"
+            element={<ResourceDetailReadOnly />}
+          />
+          <Route
+            path="resources/:resourceId/content/:contentId"
+            element={<ContentDetailView />}
+          />
+          <Route
+            path="resources/:resourceId/assignment/:assignmentId"
+            element={<AssignmentDetailView />}
+          />
         </Route>
 
         <Route element={<AuthGuard allow={["provider"]} />}>
           <Route path="provider/resources" element={<ProviderResources />} />
+
+          {/* Read-only view routes (from Tài nguyên page) */}
+          <Route
+            path="provider/resources/:resourceId/view"
+            element={<ResourceDetailReadOnly />}
+          />
+          <Route
+            path="provider/resources/:resourceId/view/content/:contentId"
+            element={<ContentDetailView />}
+          />
+          <Route
+            path="provider/resources/:resourceId/view/assignment/:assignmentId"
+            element={<AssignmentDetailView />}
+          />
+
+          {/* Management routes (from Quản lý tài nguyên page) */}
+          <Route
+            path="provider/resources/:resourceId"
+            element={<ResourceDetail />}
+          />
+          <Route
+            path="provider/resources/:resourceId/content/:contentId"
+            element={<ContentDetailView />}
+          />
+          <Route
+            path="provider/resources/:resourceId/assignment/:assignmentId"
+            element={<AssignmentDetailView />}
+          />
+          <Route
+            path="provider/resources/:resourceId/create-content"
+            element={<CreateContent />}
+          />
+          <Route
+            path="provider/resources/:resourceId/content/:contentId/edit"
+            element={<CreateContent />}
+          />
+          <Route
+            path="provider/resources/:resourceId/create-assignment"
+            element={<CreateAssignment />}
+          />
+          <Route
+            path="provider/resources/:resourceId/assignment/:assignmentId/edit"
+            element={<CreateAssignment />}
+          />
           <Route
             path="provider/resource-management"
             element={<ResourceManagement />}

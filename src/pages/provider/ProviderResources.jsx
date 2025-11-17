@@ -51,10 +51,10 @@ function ProviderResources() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold text-white">Quản lý tài nguyên</h1>
+      <div>
+        <h1 className="text-2xl font-bold text-white">Tài nguyên</h1>
         <p className="text-sm text-gray-400">
-          Quản lý và theo dõi tất cả tài nguyên học tập của bạn
+          Danh sách tài nguyên học tập dành cho giảng viên
         </p>
       </div>
 

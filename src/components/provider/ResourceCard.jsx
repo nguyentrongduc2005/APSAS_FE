@@ -1,8 +1,28 @@
 import { FileText, Dumbbell, Image, User, Calendar } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
 
 export default function ResourceCard({ resource }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Determine if we're in provider or lecturer context
+  const isProviderContext = location.pathname.startsWith("/provider");
+
+  const handleClick = () => {
+    if (isProviderContext) {
+      // Provider viewing public resources -> read-only view
+      navigate(`/provider/resources/${resource.id}/view`);
+    } else {
+      // Lecturer viewing resources -> read-only view
+      navigate(`/resources/${resource.id}`);
+    }
+  };
+
   return (
-    <div className="bg-[#0f1419] border border-[#202934] rounded-xl p-5 hover:border-emerald-500 transition-all group">
+    <div
+      onClick={handleClick}
+      className="bg-[#0f1419] border border-[#202934] rounded-xl p-5 hover:border-emerald-500 transition-all group cursor-pointer"
+    >
       <div className="space-y-4">
         {/* Header */}
         <div className="flex items-start justify-between gap-3">

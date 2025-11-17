@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
   Home,
   BookOpen,
@@ -51,6 +51,7 @@ const itemBase = {
 export default function Sidebar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { sidebarOpen } = useUI?.() ?? { sidebarOpen: true }; // fallback nếu chưa có store
 
   // Debug log để kiểm tra user và role
@@ -60,11 +61,56 @@ export default function Sidebar() {
   const items = NAV_BY_ROLE[user?.role] ?? [
     { to: "/dashboard", label: "Dashboard", icon: "🏠" },
     { to: "/courses", label: "Khóa học", icon: "📚" },
-    { to: "/assignments", label: "Bài tập"},
+    { to: "/assignments", label: "Bài tập" },
     { to: "/profile", label: "Trang cá nhân", icon: "👤" },
   ];
 
+  // Custom function to check if a nav item should be active
+  const isNavItemActive = (navPath) => {
+    const currentPath = location.pathname;
 
+    // Exact match
+    if (currentPath === navPath) return true;
+
+    // Special case for provider routes
+    if (navPath === "/provider/resource-management") {
+      // Match management routes (NO /view/ in path):
+      // - /provider/resources/:resourceId (exact)
+      // - /provider/resources/:resourceId/create-content
+      // - /provider/resources/:resourceId/content/:contentId (without /view/)
+      // - /provider/resources/:resourceId/content/:contentId/edit
+      // - /provider/resources/:resourceId/assignment/:assignmentId (without /view/)
+      // - /provider/resources/:resourceId/assignment/:assignmentId/edit
+
+      if (currentPath === "/provider/resources") return false; // List page
+      if (currentPath.includes("/view/") || currentPath.includes("/view"))
+        return false; // All view routes
+
+      // Match /provider/resources/:resourceId and all its children (without /view)
+      const hasResourceId = /^\/provider\/resources\/[^/]+/.test(currentPath);
+      return hasResourceId;
+    }
+
+    if (navPath === "/provider/resources") {
+      // Match read-only browsing routes (WITH /view or exact list):
+      // - /provider/resources (exact - list page)
+      // - /provider/resources/:resourceId/view
+      // - /provider/resources/:resourceId/view/content/:contentId
+      // - /provider/resources/:resourceId/view/assignment/:assignmentId
+
+      if (currentPath === "/provider/resources") return true;
+      if (currentPath.includes("/view/") || currentPath.includes("/view"))
+        return true;
+      return false;
+    }
+
+    // For other nav items, use startsWith
+    if (currentPath.startsWith(navPath)) {
+      return true;
+    }
+
+    return false;
+  };
 
   const getIconComponent = (iconEmoji) => {
     const IconComponent = ICON_MAP[iconEmoji] || Home;
@@ -95,17 +141,18 @@ export default function Sidebar() {
       <div style={{ display: "grid", gap: 8 }}>
         {items.map((it) => {
           const IconComponent = getIconComponent(it.icon);
+          const isActive = isNavItemActive(it.to);
           return (
             <NavLink
               key={it.to}
               to={it.to}
-              style={({ isActive }) => ({
+              style={{
                 ...itemBase,
                 background: isActive ? "#18212b" : "transparent",
                 color: isActive ? "#ffffff" : "#c9d2e0",
                 border: "1px solid",
                 borderColor: isActive ? "#2a3441" : "transparent",
-              })}
+              }}
             >
               <span
                 style={{

@@ -1,6 +1,9 @@
 import { FileText, Dumbbell, Image, Calendar } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function ResourceManagementCard({ resource }) {
+  const navigate = useNavigate();
+
   const getStatusBadge = (status) => {
     const statusConfig = {
       pending: {
@@ -35,7 +38,10 @@ export default function ResourceManagementCard({ resource }) {
   };
 
   return (
-    <div className="bg-[#0f1419] border border-[#202934] rounded-xl p-5 hover:border-emerald-500 transition-all group">
+    <div
+      onClick={() => navigate(`/provider/resources/${resource.id}`)}
+      className="bg-[#0f1419] border border-[#202934] rounded-xl p-5 hover:border-emerald-500 transition-all group cursor-pointer"
+    >
       <div className="space-y-4">
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
