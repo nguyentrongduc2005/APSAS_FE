@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, lazy, Suspense } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import Editor from "@monaco-editor/react";
+const Editor = lazy(() => import("@monaco-editor/react"));
 import {
   ArrowLeft,
   Play,
@@ -205,23 +205,29 @@ export default function StudentAssignmentDetail() {
 
             {/* Monaco Code Editor */}
             <div className="border border-[#202934] rounded-lg overflow-hidden">
-              <Editor
-                height="400px"
-                language={language}
-                value={code}
-                onChange={(value) => setCode(value || "")}
-                theme="vs-dark"
-                options={{
-                  minimap: { enabled: false },
-                  fontSize: 14,
-                  lineNumbers: "on",
-                  scrollBeyondLastLine: false,
-                  automaticLayout: true,
-                  tabSize: 2,
-                  wordWrap: "on",
-                  padding: { top: 16, bottom: 16 },
-                }}
-              />
+              <Suspense
+                fallback={
+                  <div className="p-6 text-sm text-gray-400">Loading editor...</div>
+                }
+              >
+                <Editor
+                  height="400px"
+                  language={language}
+                  value={code}
+                  onChange={(value) => setCode(value || "")}
+                  theme="vs-dark"
+                  options={{
+                    minimap: { enabled: false },
+                    fontSize: 14,
+                    lineNumbers: "on",
+                    scrollBeyondLastLine: false,
+                    automaticLayout: true,
+                    tabSize: 2,
+                    wordWrap: "on",
+                    padding: { top: 16, bottom: 16 },
+                  }}
+                />
+              </Suspense>
             </div>
 
             {/* Action Buttons */}
