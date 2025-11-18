@@ -43,6 +43,7 @@ import ContentDetailView from "../pages/provider/ContentDetailView";
 import AssignmentDetailView from "../pages/provider/AssignmentDetailView";
 import ResourceManagement from "../pages/provider/ResourceManagement";
 import TeacherTutorialLibrary from "../pages/lecturer/ResourceLibrary";
+import ApplyResourceToCourse from "../pages/lecturer/ApplyResourceToCourse";
 import ResourceModeration from "../pages/admin/ResourceModeration";
 
 const Dashboard = () => <div>Dashboard</div>;
@@ -127,6 +128,11 @@ export default function AppRoutes() {
           <Route
             path="resources/:resourceId"
             element={<ResourceDetailReadOnly />}
+          />
+          {/* Apply resource to course (with selection and time settings) */}
+          <Route
+            path="resources/:resourceId/apply"
+            element={<ApplyResourceToCourse />}
           />
           <Route
             path="resources/:resourceId/content/:contentId"

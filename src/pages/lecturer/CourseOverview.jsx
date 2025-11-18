@@ -15,12 +15,20 @@ import {
   Image,
   HelpCircle,
   MessageSquare,
+  Upload,
+  X,
 } from "lucide-react";
 
 export default function CourseOverview() {
   const { courseId } = useParams();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [thumbnailPreview, setThumbnailPreview] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [courseThumbnail, setCourseThumbnail] = useState(
+    "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800&h=450&fit=crop"
+  );
 
   // Mock data - trong thực tế sẽ fetch từ API dựa trên courseId
   const course = {
@@ -29,8 +37,7 @@ export default function CourseOverview() {
     description:
       "Khóa học lập trình Java từ cơ bản đến nâng cao, bao gồm OOP, Collections, Exception Handling và nhiều chủ đề khác.",
     instructor: "Trần Minh Khôi",
-    thumbnail:
-      "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800&h=450&fit=crop",
+    thumbnail: courseThumbnail,
     totalStudents: 45,
     totalLessons: 13,
     totalAssignments: 8,
@@ -40,6 +47,55 @@ export default function CourseOverview() {
     totalReviews: 32,
     createdAt: "2024-01-15",
     lastUpdated: "2024-11-01",
+  };
+
+  const handleImageSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert("Kích thước ảnh không được vượt quá 5MB");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setThumbnailPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleUploadThumbnail = async () => {
+    if (!thumbnailPreview) {
+      alert("Vui lòng chọn ảnh");
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+
+      // TODO: Call API to upload image
+      // const formData = new FormData();
+      // formData.append('thumbnail', file);
+      // await api.post(`/courses/${courseId}/thumbnail`, formData);
+
+      // Mock API call
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      setCourseThumbnail(thumbnailPreview);
+      setShowUploadModal(false);
+      setThumbnailPreview(null);
+      alert("Cập nhật ảnh thành công!");
+    } catch (error) {
+      console.error("Error uploading thumbnail:", error);
+      alert("Có lỗi xảy ra khi tải ảnh lên");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleCancelUpload = () => {
+    setShowUploadModal(false);
+    setThumbnailPreview(null);
   };
 
   // Mock course content modules
@@ -159,12 +215,22 @@ export default function CourseOverview() {
             </p>
             <p className="text-gray-400">Giảng viên: {course.instructor}</p>
           </div>
-          <div className="relative aspect-video lg:aspect-square rounded-xl overflow-hidden bg-[#0b0f12]">
+          <div className="relative aspect-video lg:aspect-square rounded-xl overflow-hidden bg-[#0b0f12] group">
             <img
               src={course.thumbnail}
               alt={course.title}
               className="w-full h-full object-cover"
             />
+            {/* Upload Button Overlay */}
+            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <button
+                onClick={() => setShowUploadModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition"
+              >
+                <Upload size={18} />
+                Đổi ảnh
+              </button>
+            </div>
           </div>
         </div>
 
@@ -444,6 +510,82 @@ export default function CourseOverview() {
           </section>
         )}
       </div>
+
+      {/* Upload Thumbnail Modal */}
+      {showUploadModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#0f1419] border border-[#202934] rounded-xl max-w-lg w-full p-6 space-y-4">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-bold text-white">Đổi ảnh khóa học</h3>
+              <button
+                onClick={handleCancelUpload}
+                className="text-gray-400 hover:text-white transition"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Image Preview */}
+            <div className="space-y-3">
+              <div className="aspect-video rounded-lg overflow-hidden bg-[#0b0f12] border border-[#202934]">
+                {thumbnailPreview ? (
+                  <img
+                    src={thumbnailPreview}
+                    alt="Preview"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-500">
+                    <div className="text-center">
+                      <Upload size={48} className="mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">Chọn ảnh để xem trước</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* File Input */}
+              <div>
+                <label className="block">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageSelect}
+                    className="hidden"
+                    id="thumbnail-upload"
+                  />
+                  <div className="flex items-center justify-center gap-2 px-4 py-3 bg-[#0b0f12] border border-[#202934] rounded-lg text-gray-300 hover:border-emerald-500 hover:text-emerald-400 transition cursor-pointer">
+                    <Upload size={18} />
+                    <span className="font-medium">Chọn ảnh từ máy tính</span>
+                  </div>
+                </label>
+                <p className="text-xs text-gray-500 mt-2">
+                  Định dạng: JPG, PNG. Kích thước tối đa: 5MB
+                </p>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={handleCancelUpload}
+                disabled={isUploading}
+                className="flex-1 px-4 py-2.5 bg-[#0b0f12] border border-[#202934] text-gray-300 rounded-lg hover:border-gray-500 hover:text-white transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleUploadThumbnail}
+                disabled={isUploading || !thumbnailPreview}
+                className="flex-1 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isUploading ? "Đang tải..." : "Cập nhật"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

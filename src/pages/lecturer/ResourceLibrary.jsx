@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import lecturerService from "../../services/lecturerService";
 import SearchBar from "../../components/provider/SearchBar";
 import LecturerResourceCard from "../../components/lecturer/LecturerResourceCard";
 import Pagination from "../../components/provider/Pagination";
 
 function TeacherTutorialLibrary() {
+  const navigate = useNavigate();
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(false);
   const [keyword, setKeyword] = useState("");
@@ -48,40 +50,14 @@ function TeacherTutorialLibrary() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleApply = async (resource) => {
-    try {
-      // TODO: Prompt để chọn khóa học hoặc mở modal chọn khóa học
-      const courseId = window.prompt(
-        "Nhập ID khóa học để thêm tài nguyên này:"
-      );
-
-      if (!courseId) return;
-
-      await lecturerService.addResourceToCourse(courseId, resource.id);
-
-      alert(`Đã thêm "${resource.title}" vào khóa học!`);
-    } catch (error) {
-      console.error("Error applying resource:", error);
-      alert("Thêm tài nguyên thất bại. Vui lòng thử lại.");
-    }
+  const handleApply = (resource) => {
+    // Navigate to apply page to select content/assignments and set time
+    navigate(`/resources/${resource.id}/apply`);
   };
 
-  const handleViewDetail = async (resource) => {
-    try {
-      // TODO: Navigate to resource detail page or open modal
-      const detail = await lecturerService.getResourceDetail(resource.id);
-      console.log("Resource detail:", detail);
-      alert(
-        `Xem chi tiết tài nguyên: ${resource.title}\n\nNội dung: ${
-          detail.contents?.length || 0
-        } items`
-      );
-      // Có thể navigate hoặc mở modal ở đây
-      // navigate(`/resources/${resource.id}`);
-    } catch (error) {
-      console.error("Error fetching detail:", error);
-      alert("Không thể tải chi tiết tài nguyên.");
-    }
+  const handleViewDetail = (resource) => {
+    // Navigate to resource detail page (read-only view)
+    navigate(`/resources/${resource.id}`);
   };
 
   return (
