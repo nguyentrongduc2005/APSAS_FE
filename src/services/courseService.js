@@ -4,6 +4,49 @@ import api from "./api";
  * Service for handling course-related operations
  */
 const courseService = {
+/**
+   * --- PUBLIC COURSE APIs ---
+   * 1. Lấy danh sách khóa public
+   * 2. Lấy chi tiết trước khi đăng ký
+   * 3. Đăng ký khóa học public
+   */
+
+  // (1) Lấy danh sách khóa public
+  getPublicCourses: async ({ page = 0, size = 10, search = "" } = {}) => {
+    try {
+      const response = await api.get("/api/courses", {
+        params: { page, size, search },
+      });
+      return response.data;    // { code, message, data }
+    } catch (error) {
+      console.error("Error fetching public courses:", error);
+      throw error;
+    }
+  },
+
+  // (2) Lấy chi tiết khóa học trước khi đăng ký
+  getCourseRegisterDetails: async (courseId) => {
+    try {
+      const response = await api.get(`/api/courses/${courseId}/register-details`);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching course register details:", error);
+      throw error;
+    }
+  },
+
+  // (3) Đăng ký khóa public
+  joinPublicCourse: async ({ courseId, code }) => {
+    try {
+      const payload = { courseId, code };
+      const response = await api.post("/api/courses/join", payload);
+      return response.data;
+    } catch (error) {
+      console.error("Error joining course:", error);
+      throw error;
+    }
+  },
+
   /**
    * Get course detail for student
    * @param {string} courseId - The course ID
