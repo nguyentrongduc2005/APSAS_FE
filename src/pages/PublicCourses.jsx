@@ -10,7 +10,6 @@ import {
 } from "../constants/courses";
 import courseService from "../services/courseService";
 
-
 function Section({ title, children, action }) {
   return (
     <section className="space-y-4">
@@ -33,30 +32,36 @@ export default function PublicCourses() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
 
-  // gọi API mỗi khi đổi trang
+  // state cho ô search
+  const [searchText, setSearchText] = useState("");
+
+  // gọi API mỗi khi đổi trang hoặc đổi search
   useEffect(() => {
     const fetchCourses = async () => {
+      setLoading(true);
       try {
-        setLoading(true);
-
         const res = await courseService.getPublicCourses({
-          page: currentPage - 1, // BE page index từ 0
+          page: currentPage - 1, // FE (1-based) -> BE (0-based)
           size: itemsPerPage,
-          search: "",
+          search: searchText.trim(),
         });
 
-        const data = res?.data;
+        // BE trả về { code, message, data: pageObject }
+        // => res.data chính là pageObject
+        const data = res?.data || res;
+
         setPublicCourses(data?.content || []);
         setTotalPages(data?.totalPages || 1);
       } catch (error) {
         console.error("Failed to load public courses", error);
+        setPublicCourses([]);
       } finally {
         setLoading(false);
       }
     };
 
     fetchCourses();
-  }, [currentPage]);
+  }, [currentPage, searchText]);
 
   const handlePageChange = (page) => {
     if (page < 1 || page > totalPages) return;
@@ -195,40 +200,56 @@ export default function PublicCourses() {
 
         {/* All Courses with Pagination (dữ liệu từ API) */}
         <Section title="Tất cả khóa học">
-          {loading ? (
-            <p className="text-gray-400 text-sm">
-              Đang tải danh sách khóa học...
-            </p>
-          ) : publicCourses.length === 0 ? (
-            <p className="text-gray-400 text-sm">
-              Hiện chưa có khóa học public nào.
-            </p>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {publicCourses.map((course) => (
-                <CourseCard
-                  key={course.id}
-                  id={course.id}
-                  title={course.name}
-                  desc={
-                    course.description ||
-                    "Khóa học lập trình trên nền tảng APSAS."
-                  }
-                  image={
-                    course.avatarUrl ||
-                    "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&h=450&fit=crop"
-                  }
-                  stats={{
-                    learners: course.studentsCount ?? 0,
-                    progress:
-                      course.lessonsCount && course.lessonsCountTotal
-                        ? `${course.lessonsCount}/${course.lessonsCountTotal}`
-                        : "",
-                  }}
-                />
-              ))}
+          <div className="space-y-4">
+            {/* Ô search nhỏ cho phần tất cả khóa học */}
+            <div className="flex justify-between items-center gap-3 flex-wrap">
+              <input
+                type="text"
+                value={searchText}
+                onChange={(e) => {
+                  setCurrentPage(1);
+                  setSearchText(e.target.value);
+                }}
+                placeholder="Tìm kiếm khóa học..."
+                className="w-full sm:w-72 px-3 py-2 rounded-lg bg-[#0b0f12] border border-[#202934] text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-emerald-500"
+              />
             </div>
-          )}
+
+            {loading ? (
+              <p className="text-gray-400 text-sm">
+                Đang tải danh sách khóa học...
+              </p>
+            ) : publicCourses.length === 0 ? (
+              <p className="text-gray-400 text-sm">
+                Hiện chưa có khóa học public nào.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {publicCourses.map((course) => (
+                  <CourseCard
+                    key={course.id}
+                    id={course.id}
+                    title={course.name}
+                    desc={
+                      course.description ||
+                      "Khóa học lập trình trên nền tảng APSAS."
+                    }
+                    image={
+                      course.avatarUrl ||
+                      "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&h=450&fit=crop"
+                    }
+                    stats={{
+                      learners: course.studentsCount ?? 0,
+                      progress:
+                        course.lessonsCount && course.lessonsCountTotal
+                          ? `${course.lessonsCount}/${course.lessonsCountTotal}`
+                          : "",
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         </Section>
 
         {/* Pagination */}
