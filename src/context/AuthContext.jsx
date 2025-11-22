@@ -187,6 +187,18 @@ export default function AuthProvider({ children }) {
     login,
     logout,
     register,
+    // Update user in context and persist to localStorage
+    updateUser: (patch) => {
+      setUser((prev) => {
+        const next = Object.assign({}, prev || {}, patch || {});
+        try {
+          localStorage.setItem(USER_KEY, JSON.stringify(next));
+        } catch (e) {
+          console.error("Không thể lưu user vào localStorage:", e);
+        }
+        return next;
+      });
+    },
   };
 
   return (
