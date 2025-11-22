@@ -12,6 +12,7 @@ export default function Login() {
   const [form, setForm] = useState({
     email: "",
     password: "",
+    role: 1, // 1 - student, 2 - teacher
   });
   const [msg, setMsg] = useState("");
   const [isError, setIsError] = useState(false);
@@ -31,16 +32,18 @@ export default function Login() {
       const user = await login({
         email: form.email.trim(),
         password: form.password,
+        role: form.role, // FE đang giữ, BE có thể không dùng nhưng không sao
       });
 
       setMsg("Đăng nhập thành công!");
 
-      // Điều hướng theo role, hoặc về trang trước đó
+      // Điều hướng theo role BE trả về (ưu tiên backend)
       const from = location.state?.from?.pathname;
       if (from) {
         navigate(from, { replace: true });
       } else {
         const role = user?.role;
+
         if (role === "lecturer" || role === "teacher") {
           navigate("/lecturer/my-courses", { replace: true });
         } else if (role === "provider") {
@@ -58,6 +61,10 @@ export default function Login() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleChangeRole = (roleValue) => {
+    setForm((prev) => ({ ...prev, role: roleValue }));
   };
 
   return (
@@ -98,9 +105,42 @@ export default function Login() {
               required
             />
 
+            {/* Chọn role: 1 - Student, 2 - Teacher */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-foreground">
+                Bạn đăng nhập với vai trò:
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleChangeRole(1)}
+                  className={`px-3 py-2 rounded-md text-sm border transition ${
+                    form.role === 1
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-muted text-muted-foreground hover:bg-muted/70"
+                  }`}
+                >
+                  1 - Student
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleChangeRole(2)}
+                  className={`px-3 py-2 rounded-md text-sm border transition ${
+                    form.role === 2
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-muted text-muted-foreground hover:bg-muted/70"
+                  }`}
+                >
+                  2 - Teacher
+                </button>
+              </div>
+            </div>
+
             <div className="space-y-3">
               <Button type="submit" disabled={isSubmitting} className="w-full">
-                {isSubmitting ? "Đang đăng nhập..." : "Đăng nhập"}
+                {isSubmitting
+                  ? `Đang đăng nhập (${form.role === 1 ? "Student" : "Teacher"})...`
+                  : `Đăng nhập (${form.role === 1 ? "Student" : "Teacher"})`}
               </Button>
 
               {msg && (
