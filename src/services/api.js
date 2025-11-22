@@ -1,5 +1,145 @@
+// src/services/api.js
 import axios from "axios";
-export default axios.create({
-  baseURL: import.meta.env.VITE_API_BASE || "http://localhost:8080",
-  withCredentials: true,
+
+// ==============================
+// BASE CONFIG
+// ==============================
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE || "http://localhost:8080/api",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  withCredentials: false, // không dùng cookie
 });
+
+// ==============================
+// REQUEST INTERCEPTOR
+// ==============================
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    console.log(
+      `%c[API REQUEST] ${config.method.toUpperCase()} → ${config.url}`,
+      "color:#4ade80;",
+      config
+    );
+
+    return config;
+  },
+  (error) => {
+    console.error("🔴 REQUEST ERROR:", error);
+    return Promise.reject(error);
+  }
+);
+
+// ==============================
+// REFRESH TOKEN LOGIC
+// ==============================
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) prom.reject(error);
+    else prom.resolve(token);
+  });
+  failedQueue = [];
+};
+
+/**
+ * CALL REFRESH TOKEN API
+ */
+async function refreshTokenService() {
+  const refreshToken = localStorage.getItem("refreshToken");
+  if (!refreshToken) return null;
+
+  try {
+    const res = await axios.post(
+      `${import.meta.env.VITE_API_BASE}/auth/refresh`,
+      { refreshToken },
+      {
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    return res.data?.data; // { accessToken, refreshToken }
+  } catch (err) {
+    return null;
+  }
+}
+
+// ==============================
+// RESPONSE INTERCEPTOR
+// ==============================
+api.interceptors.response.use(
+  (response) => {
+    console.log(
+      `%c[API RESPONSE] ${response.config.url}`,
+      "color:#60a5fa;",
+      response
+    );
+    return response;
+  },
+
+  async (error) => {
+    const originalRequest = error.config;
+
+    // Nếu lỗi 401 & chưa retry → thử refresh token
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        // Chờ token được refresh xong
+        return new Promise(function (resolve, reject) {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return api(originalRequest);
+          })
+          .catch((err) => Promise.reject(err));
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      const tokenData = await refreshTokenService();
+
+      if (!tokenData) {
+        // Refresh token hết hạn → logout
+        localStorage.removeItem("token");
+        localStorage.removeItem("refreshToken");
+        localStorage.removeItem("user");
+        window.location.href = "/auth/login";
+        return Promise.reject(error);
+      }
+
+      const { accessToken, refreshToken } = tokenData;
+
+      // Lưu token mới
+      localStorage.setItem("token", accessToken);
+      localStorage.setItem("refreshToken", refreshToken);
+
+      api.defaults.headers.Authorization = `Bearer ${accessToken}`;
+      processQueue(null, accessToken);
+
+      isRefreshing = false;
+
+      // Gửi lại request ban đầu
+      originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+      return api(originalRequest);
+    }
+
+    processQueue(error, null);
+    isRefreshing = false;
+
+    console.error("🔴 RESPONSE ERROR:", error);
+
+    return Promise.reject(error);
+  }
+);
+
+export default api;

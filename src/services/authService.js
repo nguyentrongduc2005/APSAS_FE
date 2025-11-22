@@ -1,93 +1,135 @@
+// src/services/authService.js
 import api from "./api.js";
 
 /**
- * Hàm login - GỌI API THẬT (tạm thời dùng mock data)
- * Service này CHỈ xử lý logic nghiệp vụ, KHÔNG gọi context
- * @param {Object} credentials - { email, password }
- * @returns {Promise<{token: string, user: Object}>}
+ * LOGIN
+ * Gọi POST /auth/login
+ * BE trả về: ApiResponse<LoginResponse>
  */
 export async function login({ email, password }) {
   try {
-    // TODO: Thay thế bằng API thật
-    // const response = await api.post("/auth/login", { email, password });
-    // return response.data;
+    const res = await api.post("/auth/login", { email, password });
+    const apiRes = res.data;        // { code, message, data }
+    const data = apiRes.data || {}; // LoginResponse
 
-    // MOCK DATA để test
-    const role = email.includes("admin")
-      ? "admin"
-      : email.includes("gv")
-      ? "lecturer"
-      : email.includes("provider")
-      ? "provider"
-      : "student";
-
-    // Giả lập delay API call
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    const data = {
-      token: "dummy-token-" + Date.now(),
-      user: { id: "u1", name: "Nguyễn Văn A", email, role },
+    return {
+      accessToken: data.accessToken,
+      refreshToken: data.refreshToken,
+      user: data.user,              // AuthUserDto
+      message: apiRes.message,
+      code: apiRes.code,
     };
-
-    return data;
   } catch (error) {
-    throw new Error(error.response?.data?.message || "Đăng nhập thất bại");
+    console.error("🔴 Login error:", error);
+    const message =
+      error.response?.data?.message ||
+      "Đăng nhập thất bại. Vui lòng kiểm tra email/mật khẩu.";
+    throw new Error(message);
   }
 }
+
 /**
- * Hàm register - GỌI API THẬT (tạm thời dùng mock data)
- * @param {Object} data - { name, email, password }
- * @returns {Promise<{token: string, user: Object}>}
+ * REGISTER
+ * Gọi POST /auth/register
+ * RegisterRequest: { email, password, name, role, avatar? }
+ *  - role: 1 = student, 2 = teacher/lecturer
  */
-export async function register({ name, email, password }) {
+export async function register({ name, email, password, role = 1, avatar }) {
   try {
-    // TODO: thay bằng api.post("/auth/register", { name, email, password })
+    const res = await api.post("/auth/register", {
+      name,
+      email,
+      password,
+      role,
+      avatar,
+    });
 
-    // MOCK DATA để test
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    const apiRes = res.data; // ApiResponse<RegisterResponse>
 
-    const data = {
-      token: "dummy-token-" + Date.now(),
-      user: { id: "u2", name: name || "User mới", email, role: "student" },
+    return {
+      data: apiRes.data,
+      message:
+        apiRes.message ||
+        "Đăng ký thành công. Vui lòng kiểm tra email để lấy mã xác thực.",
+      code: apiRes.code,
     };
-
-    return data;
   } catch (error) {
-    throw new Error(error.response?.data?.message || "Đăng ký thất bại");
+    console.error("🔴 Register error:", error);
+    const message =
+      error.response?.data?.message || "Đăng ký thất bại. Vui lòng thử lại.";
+    throw new Error(message);
   }
 }
 
 /**
- * Hàm verify OTP
- * @param {Object} data - { email, code }
- * @returns {Promise<{ok: boolean, message: string}>}
+ * VERIFY OTP
+ * Gọi POST /auth/verify
+ * VerifyRequest: { email, code }
  */
 export async function verifyOtp({ email, code }) {
-  if (!code || String(code).length !== 6) {
-    return { ok: false, message: "Mã OTP không hợp lệ" };
+  try {
+    const res = await api.post("/auth/verify", { email, code });
+    const apiRes = res.data; // ApiResponse<Void>
+    return {
+      success: true,
+      message: apiRes.message || "Xác thực email thành công.",
+    };
+  } catch (error) {
+    console.error("🔴 Verify OTP error:", error);
+    const message =
+      error.response?.data?.message ||
+      "Mã xác thực không hợp lệ hoặc đã hết hạn.";
+    throw new Error(message);
   }
-  // TODO: Gọi API verify OTP thật
-  return { ok: true, message: "Xác minh thành công" };
 }
 
 /**
- * Hàm lấy thông tin user hiện tại từ token
- * @param {string} token
- * @returns {Promise<Object>}
+ * RESEND CODE
+ * Gọi POST /auth/resend-code
+ * ResendCodeRequest: { email }
  */
-export async function fetchMe(token) {
+export async function resendVerificationEmail(email) {
   try {
-    // TODO: Thay bằng API thật
-    // const response = await api.get("/auth/me", {
-    //   headers: { Authorization: `Bearer ${token}` }
-    // });
-    // return response.data;
-
-    if (!token) return null;
-
-    // MOCK: Giải mã từ token (trong thực tế nên gọi API)
-    return null; // Để Context tự giải mã JWT
+    const res = await api.post("/auth/resend-code", { email });
+    const apiRes = res.data; // ApiResponse<Void>
+    return {
+      success: true,
+      message:
+        apiRes.message || "Đã gửi lại mã xác thực tới email của bạn.",
+    };
   } catch (error) {
-    throw new Error("Không thể lấy thông tin người dùng");
+    console.error("🔴 Resend code error:", error);
+    const message =
+      error.response?.data?.message ||
+      "Không thể gửi lại mã xác thực. Vui lòng thử lại.";
+    throw new Error(message);
   }
 }
+
+/**
+ * INTROSPECT TOKEN
+ * Gọi POST /auth/introspect
+ * IntrospectRequest: { token }
+ * Trả về: { valid: boolean }
+ */
+export async function fetchMe(token) {
+  if (!token) return { valid: false };
+
+  try {
+    const res = await api.post("/auth/introspect", { token });
+    const apiRes = res.data; // ApiResponse<IntrospecResponse>
+    return apiRes.data || { valid: false };
+  } catch (error) {
+    console.error("🔴 Introspect error:", error);
+    return { valid: false };
+  }
+}
+
+// (tuỳ chọn) export default object, nếu muốn import kiểu khác
+export default {
+  login,
+  register,
+  verifyOtp,
+  resendVerificationEmail,
+  fetchMe,  
+};
