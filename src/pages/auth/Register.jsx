@@ -14,12 +14,17 @@ export default function Register() {
     email: "",
     password: "",
     confirmPassword: "",
+    role: 1, // 1 - student, 2 - teacher
   });
   const [msg, setMsg] = useState("");
   const [isError, setIsError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const navigate = useNavigate();
+
+  const handleChangeRole = (roleValue) => {
+    setForm((prev) => ({ ...prev, role: roleValue }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -35,12 +40,11 @@ export default function Register() {
     setIsSubmitting(true);
 
     try {
-      // Mặc định đăng ký student => role = 1
       const res = await registerApi({
         name: form.name.trim(),
         email: form.email.trim().toLowerCase(),
         password: form.password,
-        role: 1,
+        role: form.role, // lấy role FE chọn
       });
 
       setMsg(
@@ -122,9 +126,42 @@ export default function Register() {
               required
             />
 
+            {/* Chọn role khi đăng ký */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-foreground">
+                Bạn muốn đăng ký làm:
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleChangeRole(1)}
+                  className={`px-3 py-2 rounded-md text-sm border transition ${
+                    form.role === 1
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-muted text-muted-foreground hover:bg-muted/70"
+                  }`}
+                >
+                  1 - Student
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleChangeRole(2)}
+                  className={`px-3 py-2 rounded-md text-sm border transition ${
+                    form.role === 2
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-muted text-muted-foreground hover:bg-muted/70"
+                  }`}
+                >
+                  2 - Teacher
+                </button>
+              </div>
+            </div>
+
             <div className="space-y-3">
               <Button type="submit" disabled={isSubmitting} className="w-full">
-                {isSubmitting ? "Đang đăng ký..." : "Đăng ký"}
+                {isSubmitting
+                  ? `Đang đăng ký (${form.role === 1 ? "Student" : "Teacher"})...`
+                  : `Đăng ký (${form.role === 1 ? "Student" : "Teacher"})`}
               </Button>
 
               {msg && (
