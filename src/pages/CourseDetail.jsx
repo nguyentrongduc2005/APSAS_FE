@@ -1,9 +1,9 @@
-import React from "react";
-import { Link, useParams } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import { BookOpen, FileText, Users, Layers } from "lucide-react";
 import LecturerCard from "../components/lecturer/LecturerCard.jsx";
 import OutcomeCard from "../components/student/OutcomeCard.jsx";
-import { getCourseById } from "../constants/courses";
+import courseService from "../services/courseService";
 
 const FALLBACK_BANNER =
   "https://huongnghiep.hocmai.vn/wp-content/uploads/2022/07/nganh-cong-nghe-thong-tin-hoc-truong-nao-1.jpg";
@@ -28,13 +28,72 @@ function StatPill({ icon: Icon, head, val }) {
 
 export default function CourseDetail() {
   const { courseId } = useParams();
-  const course = getCourseById?.(courseId) || {
-    title: "Lập trình Java cơ bản",
-    desc: "Khóa học giúp sinh viên nắm vững Java OOP và cấu trúc chương trình cơ bản.",
-    stats: { learners: 1500 },
-    category: "Lập trình cơ bản",
-    image: FALLBACK_BANNER,
+
+  const [course, setCourse] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Gọi API lấy thông tin chi tiết cho trang regis
+  useEffect(() => {
+    const fetchCourse = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const res = await courseService.getCourseRegisterDetails(courseId);
+        // BE trả { code, message, data }
+        setCourse(res?.data || null);
+      } catch (err) {
+        console.error("Error fetching course detail:", err);
+        setError("Không tải được thông tin khóa học.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (courseId) {
+      fetchCourse();
+    }
+  }, [courseId]);
+
+  // Hàm đăng ký khóa học
+  const handleRegister = async () => {
+    if (!courseId) return;
+
+    try {
+      const res = await courseService.joinPublicCourse({
+        courseId: Number(courseId),
+      });
+
+      console.log("Join course response:", res);
+      alert("Đăng ký khóa học thành công!");
+    } catch (err) {
+      console.error("Join course error:", err);
+      alert("Đăng ký khóa học thất bại. Vui lòng thử lại.");
+    }
   };
+
+  // Loading / error states
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 max-w-[1400px]">
+        <p className="text-gray-400">Đang tải thông tin khóa học...</p>
+      </div>
+    );
+  }
+
+  if (error || !course) {
+    return (
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 max-w-[1400px]">
+        <p className="text-red-400">
+          {error || "Không tìm thấy thông tin khóa học."}
+        </p>
+      </div>
+    );
+  }
+
+  const imageSrc = course.avatarUrl || FALLBACK_BANNER;
+  const categoryLabel = course.type || "Khóa học lập trình";
 
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 max-w-[1400px]">
@@ -46,7 +105,7 @@ export default function CourseDetail() {
         >
           <span>Explore</span>
           <span className="opacity-50">/</span>
-          <span className="text-emerald-400">{course.category}</span>
+          <span className="text-emerald-400">{categoryLabel}</span>
         </div>
 
         {/* Main Content Grid */}
@@ -58,8 +117,8 @@ export default function CourseDetail() {
           >
             <div className="relative h-[500px] md:h-[600px]">
               <img
-                src={course.image || FALLBACK_BANNER}
-                alt="Banner"
+                src={imageSrc}
+                alt={course.name}
                 className="absolute inset-0 h-full w-full object-cover"
               />
 
@@ -68,21 +127,34 @@ export default function CourseDetail() {
               <div className="relative h-full p-6 flex flex-col justify-between">
                 <div>
                   <h1 className="text-2xl font-bold text-white leading-tight mb-2">
-                    {course.title}
+                    {course.name}
                   </h1>
                   <p className="text-slate-300 text-sm leading-relaxed">
-                    {course.desc}
+                    {course.description ||
+                      "Khóa học lập trình trên nền tảng APSAS."}
                   </p>
                 </div>
 
                 <div className="space-y-2.5">
-                  <StatPill icon={BookOpen} head="Bài học" val="45 bài học" />
-                  <StatPill icon={FileText} head="Bài tập" val="150 bài tập" />
-                  <StatPill icon={Layers} head="Modules" val="7 modules" />
+                  <StatPill
+                    icon={BookOpen}
+                    head="Bài học"
+                    val={`${course.lessonsCount ?? 0} bài học`}
+                  />
+                  <StatPill
+                    icon={FileText}
+                    head="Bài tập"
+                    val={`${course.totalAssignments ?? 0} bài tập`}
+                  />
+                  <StatPill
+                    icon={Layers}
+                    head="Modules"
+                    val={"Nhiều modules"}
+                  />
                   <StatPill
                     icon={Users}
                     head="Thành viên"
-                    val={`${course.stats?.learners ?? 1500} học viên`}
+                    val={`${course.totalStudents ?? 0} học viên`}
                   />
                 </div>
               </div>
@@ -95,6 +167,8 @@ export default function CourseDetail() {
             <div className="rounded-xl border border-[#202934] bg-[#0f1419] p-5">
               <h3 className="text-white font-bold text-lg mb-4">Giảng viên</h3>
               <div className="[&_a]:text-emerald-400 [&_a:hover]:underline">
+                {/* Tạm thời vẫn dùng card mặc định.
+                    Sau này có thể truyền dữ liệu course.instructor vào đây */}
                 <LecturerCard />
               </div>
             </div>
@@ -111,8 +185,11 @@ export default function CourseDetail() {
 
         {/* Register Button - Full Width Below */}
         <button
+          onClick={handleRegister}
+          disabled={loading}
           className="w-full px-8 py-4 bg-blue-600 hover:bg-blue-700 
-                   text-white font-bold rounded-xl transition shadow-lg text-lg"
+                   text-white font-bold rounded-xl transition shadow-lg text-lg
+                   disabled:opacity-60 disabled:cursor-not-allowed"
           aria-label="Đăng ký khóa học"
         >
           Đăng ký khóa học

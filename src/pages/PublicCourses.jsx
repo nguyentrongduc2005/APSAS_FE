@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Users, Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import CourseCard from "../components/common/CourseCard";
@@ -8,6 +8,7 @@ import {
   interview,
   learn,
 } from "../constants/courses";
+import courseService from "../services/courseService";
 
 function Section({ title, children, action }) {
   return (
@@ -23,17 +24,47 @@ function Section({ title, children, action }) {
 
 export default function PublicCourses() {
   const navigate = useNavigate();
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6; // Số khóa học mỗi trang
 
-  // Tính toán pagination
-  const allCourses = [...featured, ...interview, ...learn];
-  const totalPages = Math.ceil(allCourses.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentCourses = allCourses.slice(startIndex, endIndex);
+  // state cho list khóa public lấy từ API
+  const [publicCourses, setPublicCourses] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6; // số khóa học mỗi trang (trùng với BE)
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(false);
+
+  // state cho ô search
+  const [searchText, setSearchText] = useState("");
+
+  // gọi API mỗi khi đổi trang hoặc đổi search
+  useEffect(() => {
+    const fetchCourses = async () => {
+      setLoading(true);
+      try {
+        const res = await courseService.getPublicCourses({
+          page: currentPage - 1, // FE (1-based) -> BE (0-based)
+          size: itemsPerPage,
+          search: searchText.trim(),
+        });
+
+        // BE trả về { code, message, data: pageObject }
+        // => res.data chính là pageObject
+        const data = res?.data || res;
+
+        setPublicCourses(data?.content || []);
+        setTotalPages(data?.totalPages || 1);
+      } catch (error) {
+        console.error("Failed to load public courses", error);
+        setPublicCourses([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCourses();
+  }, [currentPage, searchText]);
 
   const handlePageChange = (page) => {
+    if (page < 1 || page > totalPages) return;
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -167,12 +198,57 @@ export default function PublicCourses() {
         {/* Divider */}
         <div className="border-t border-[#202934]"></div>
 
-        {/* All Courses with Pagination */}
+        {/* All Courses with Pagination (dữ liệu từ API) */}
         <Section title="Tất cả khóa học">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {currentCourses.map((c, i) => (
-              <CourseCard key={i} {...c} />
-            ))}
+          <div className="space-y-4">
+            {/* Ô search nhỏ cho phần tất cả khóa học */}
+            <div className="flex justify-between items-center gap-3 flex-wrap">
+              <input
+                type="text"
+                value={searchText}
+                onChange={(e) => {
+                  setCurrentPage(1);
+                  setSearchText(e.target.value);
+                }}
+                placeholder="Tìm kiếm khóa học..."
+                className="w-full sm:w-72 px-3 py-2 rounded-lg bg-[#0b0f12] border border-[#202934] text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+
+            {loading ? (
+              <p className="text-gray-400 text-sm">
+                Đang tải danh sách khóa học...
+              </p>
+            ) : publicCourses.length === 0 ? (
+              <p className="text-gray-400 text-sm">
+                Hiện chưa có khóa học public nào.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {publicCourses.map((course) => (
+                  <CourseCard
+                    key={course.id}
+                    id={course.id}
+                    title={course.name}
+                    desc={
+                      course.description ||
+                      "Khóa học lập trình trên nền tảng APSAS."
+                    }
+                    image={
+                      course.avatarUrl ||
+                      "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&h=450&fit=crop"
+                    }
+                    stats={{
+                      learners: course.studentsCount ?? 0,
+                      progress:
+                        course.lessonsCount && course.lessonsCountTotal
+                          ? `${course.lessonsCount}/${course.lessonsCountTotal}`
+                          : "",
+                    }}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </Section>
 
