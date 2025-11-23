@@ -66,9 +66,17 @@ export default function Header() {
             className="flex items-center gap-2 pl-2 sm:pl-3 border-l border-[#202934] hover:bg-[#0b0f12] transition rounded-lg pr-2 cursor-pointer"
             title="Xem hồ sơ"
           >
-            <div className="h-9 w-9 rounded-full bg-linear-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-semibold">
-              {user?.name?.charAt(0).toUpperCase() || "U"}
-            </div>
+            {user?.avatar ? (
+              <img
+                src={user.avatar}
+                alt={user?.name || "Avatar"}
+                className="h-9 w-9 rounded-full object-cover"
+              />
+            ) : (
+              <div className="h-9 w-9 rounded-full bg-linear-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-semibold">
+                {user?.name?.charAt(0).toUpperCase() || "U"}
+              </div>
+            )}
             <div className="hidden lg:block">
               <div className="text-sm font-medium text-white leading-tight">
                 {user?.name || "Người dùng"}

@@ -7,9 +7,69 @@ import {
   uploadAvatar,
 } from "../services/userService";
 
+
+const InfoRow = (props) => {
+  const {
+    isEditing,
+    handleInputChange,
+    label,
+    value,
+    field,
+    type = "text",
+    editable = true,
+    options = [],
+  } = props;
+
+  useEffect(() => {
+    console.log(`InfoRow mounted: ${field}`);
+    return () => console.log(`InfoRow unmounted: ${field}`);
+  }, [field]);
+
+  return (
+    <div className="group">
+      <label className="block text-sm font-medium text-gray-400 mb-2">{label}</label>
+      {isEditing && editable ? (
+        type === "select" ? (
+          <select
+            value={value}
+            onChange={(e) => handleInputChange(field, e.target.value)}
+            className="w-full bg-[#0b0f12] border border-[#202934] rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-emerald-500 transition"
+          >
+            {options.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
+            ))}
+          </select>
+        ) : type === "textarea" ? (
+          <textarea
+            value={value}
+            onChange={(e) => handleInputChange(field, e.target.value)}
+            rows={3}
+            className="w-full bg-[#0b0f12] border border-[#202934] rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-emerald-500 transition resize-none"
+            placeholder={`Nhập ${label.toLowerCase()}...`}
+          />
+        ) : (
+          <input
+            type={type}
+            value={value}
+            onChange={(e) => handleInputChange(field, e.target.value)}
+            className="w-full bg-[#0b0f12] border border-[#202934] rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-emerald-500 transition"
+            placeholder={`Nhập ${label.toLowerCase()}...`}
+          />
+        )
+      ) : (
+        <div className="flex items-center justify-between px-4 py-2.5 bg-[#0b0f12] border border-[#202934] rounded-lg">
+          <span className="text-white">{value || "—"}</span>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function Profile() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, token, updateUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -26,6 +86,7 @@ export default function Profile() {
     email: "",
   });
 
+ 
   // Load user profile khi component mount
   useEffect(() => {
     loadUserProfile();
@@ -36,7 +97,7 @@ export default function Profile() {
       setLoading(true);
       // Thử gọi API, nếu fail thì dùng data từ AuthContext
       try {
-        const profileData = await getUserProfile();
+        const profileData = await getUserProfile(token);
         setFormData({
           avatar: profileData.avatar || "",
           name: profileData.name || "",
@@ -94,6 +155,10 @@ export default function Profile() {
         setLoading(true);
         const result = await uploadAvatar(file);
         setFormData((prev) => ({ ...prev, avatar: result.avatarUrl }));
+        // Update global auth user so header/avatar updates immediately
+        if (typeof updateUser === "function") {
+          updateUser({ avatar: result.avatarUrl });
+        }
         setSuccess(true);
         setTimeout(() => setSuccess(false), 3000);
       } catch (err) {
@@ -128,6 +193,20 @@ export default function Profile() {
       setIsEditing(false);
       setAvatarPreview(null);
 
+      // Update auth context with new profile info if available
+      if (typeof updateUser === "function") {
+        // Prefer updatedData.user or updatedData, else formData
+        const newUserInfo =
+          updatedData?.user ||
+          updatedData ||
+          ({ name: formData.name, email: formData.email, avatar: formData.avatar });
+        updateUser({
+          name: newUserInfo.name,
+          email: newUserInfo.email,
+          avatar: newUserInfo.avatar,
+        });
+      }
+
       // Hiển thị thông báo success
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
@@ -141,55 +220,8 @@ export default function Profile() {
     }
   };
 
-  const InfoRow = ({
-    label,
-    value,
-    field,
-    type = "text",
-    editable = true,
-    options = [],
-  }) => (
-    <div className="group">
-      <label className="block text-sm font-medium text-gray-400 mb-2">
-        {label}
-      </label>
-      {isEditing && editable ? (
-        type === "select" ? (
-          <select
-            value={value}
-            onChange={(e) => handleInputChange(field, e.target.value)}
-            className="w-full bg-[#0b0f12] border border-[#202934] rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-emerald-500 transition"
-          >
-            {options.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
-              </option>
-            ))}
-          </select>
-        ) : type === "textarea" ? (
-          <textarea
-            value={value}
-            onChange={(e) => handleInputChange(field, e.target.value)}
-            rows={3}
-            className="w-full bg-[#0b0f12] border border-[#202934] rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-emerald-500 transition resize-none"
-            placeholder={`Nhập ${label.toLowerCase()}...`}
-          />
-        ) : (
-          <input
-            type={type}
-            value={value}
-            onChange={(e) => handleInputChange(field, e.target.value)}
-            className="w-full bg-[#0b0f12] border border-[#202934] rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-emerald-500 transition"
-            placeholder={`Nhập ${label.toLowerCase()}...`}
-          />
-        )
-      ) : (
-        <div className="flex items-center justify-between px-4 py-2.5 bg-[#0b0f12] border border-[#202934] rounded-lg">
-          <span className="text-white">{value || "—"}</span>
-        </div>
-      )}
-    </div>
-  );
+  // InfoRow moved out of component render to avoid remounting on each render
+
 
   return (
     <div className="min-h-screen bg-[#0b0f12] py-8">
@@ -339,23 +371,31 @@ export default function Profile() {
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <InfoRow
+                    isEditing={isEditing}
+                    handleInputChange={handleInputChange}
                     label="Họ và tên"
                     value={formData.name}
                     field="name"
                   />
                   <InfoRow
+                    isEditing={isEditing}
+                    handleInputChange={handleInputChange}
                     label="Email"
                     value={formData.email}
                     field="email"
                     type="email"
                   />
                   <InfoRow
+                    isEditing={isEditing}
+                    handleInputChange={handleInputChange}
                     label="Số điện thoại"
                     value={formData.phone}
                     field="phone"
                     type="tel"
                   />
                   <InfoRow
+                    isEditing={isEditing}
+                    handleInputChange={handleInputChange}
                     label="Giới tính"
                     value={formData.gender}
                     field="gender"
@@ -363,6 +403,8 @@ export default function Profile() {
                     options={["Nam", "Nữ", "Khác"]}
                   />
                   <InfoRow
+                    isEditing={isEditing}
+                    handleInputChange={handleInputChange}
                     label="Ngày sinh"
                     value={formData.dateOfBirth}
                     field="dateOfBirth"
@@ -371,12 +413,16 @@ export default function Profile() {
                 </div>
 
                 <InfoRow
+                  isEditing={isEditing}
+                  handleInputChange={handleInputChange}
                   label="Địa chỉ"
                   value={formData.address}
                   field="address"
                 />
 
                 <InfoRow
+                  isEditing={isEditing}
+                  handleInputChange={handleInputChange}
                   label="Giới thiệu bản thân"
                   value={formData.bio}
                   field="bio"

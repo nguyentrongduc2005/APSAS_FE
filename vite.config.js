@@ -11,4 +11,15 @@ export default defineConfig({
   "@": path.resolve('.', "./src"),
     },
   },
+   server: {
+    port: 5173,
+    proxy: {
+      "/api": {
+        target: "http://localhost:8080", // BE của bạn
+        changeOrigin: true,
+        // không rewrite vì backend đã có context-path /api
+        // /api/auth/register -> http://localhost:8080/api/auth/register
+      },
+    },
+  },
 })

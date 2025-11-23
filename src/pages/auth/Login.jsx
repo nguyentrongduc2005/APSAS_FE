@@ -1,115 +1,70 @@
+// src/pages/auth/Login.jsx
 import AuthCard from "../../components/common/AuthCard.jsx";
 import Input from "../../components/common/Input.jsx";
 import Button from "../../components/common/Button.jsx";
 import Logo from "../../components/common/Logo.jsx";
 import AuthTabs from "../../components/auth/AuthTabs.jsx";
 import { useState } from "react";
-// import { login } from "../../services/authService.js";
-// import { useNavigate, useLocation } from "react-router-dom";
-
-// export default function Login(){
-//   const [email, setEmail] = useState("");
-//   const [password, setPassword] = useState("");
-//   const [msg, setMsg] = useState("");
-//   const navigate = useNavigate();
-//   const location = useLocation();
-
-//   const submit = async (e) => {
-//     e.preventDefault();
-//     const res = await login({ email, password }); // stub – trả message
-//     setMsg(res.message);
-//     const target = (res?.user?.role === "admin") ? "/admin/users" : "/dashboard";
-//     const back   = location.state?.from;
-//     navigate(back || target, { replace: true });
-//   };
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext"; // 1. Import hook
-
-const TEST_ACCOUNTS = [
-  {
-    label: "Student",
-    email: "student01@apsas.dev",
-    password: "123456",
-    note: "Xem giao diện học viên",
-  },
-  {
-    label: "Giảng viên",
-    email: "gv.tranminh@apsas.dev",
-    password: "123456",
-    note: "Kiểm thử màn hình giáo viên",
-  },
-  {
-    label: "Provider",
-    email: "provider01@apsas.dev",
-    password: "123456",
-    note: "Xem giao diện nhà cung cấp",
-  },
-];
+import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext.jsx";
 
 export default function Login() {
-  const navigate = useNavigate();
-  const { loginWithService, loginMock } = useAuth(); // 2. Lấy hàm từ Context
-
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [form, setForm] = useState({
+    email: "",
+    password: "",
+    role: 1, // 1 - student, 2 - teacher
+  });
   const [msg, setMsg] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isError, setIsError] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 3. Hàm login thật (gọi service)
-  const submit = async (e) => {
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsLoading(true);
     setMsg("");
+    setIsError(false);
+    setIsSubmitting(true);
 
     try {
-      // 4. GỌI HÀM loginWithService
-      // Service sẽ xử lý logic, sau đó context tự động refresh
-      const result = await loginWithService({ email, password });
+      const user = await login({
+        email: form.email.trim(),
+        password: form.password,
+        role: form.role, // FE đang giữ, BE có thể không dùng nhưng không sao
+      });
 
-      // 5. Đăng nhập thành công, chuyển hướng dựa vào role
-      const targetPath =
-        result.user.role === "admin"
-          ? "/admin/users"
-          : result.user.role === "lecturer"
-          ? "/lecturer/dashboard"
-          : result.user.role === "provider"
-          ? "/provider/resources"
-          : "/dashboard";
+      setMsg("Đăng nhập thành công!");
 
-      navigate(targetPath, { replace: true });
+      // Điều hướng theo role BE trả về (ưu tiên backend)
+      const from = location.state?.from?.pathname;
+      if (from) {
+        navigate(from, { replace: true });
+      } else {
+        const role = user?.role;
+
+        if (role === "lecturer" || role === "teacher") {
+          navigate("/lecturer/my-courses", { replace: true });
+        } else if (role === "provider") {
+          navigate("/resources", { replace: true });
+        } else if (role === "admin") {
+          navigate("/admin/users", { replace: true });
+        } else {
+          // mặc định student
+          navigate("/student/my-courses", { replace: true });
+        }
+      }
     } catch (error) {
-      // 6. Xử lý lỗi
-      console.error("Đăng nhập thất bại:", error);
+      setIsError(true);
       setMsg(error.message || "Đăng nhập thất bại");
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
-  // 7. Hàm login mock (không gọi API, để test)
-  const submitMock = (e) => {
-    e.preventDefault();
-    setMsg("");
-
-    try {
-      // Gọi hàm loginMock từ context
-      const result = loginMock(email);
-
-      // Chuyển hướng
-      const targetPath =
-        result.user.role === "admin"
-          ? "/admin/users"
-          : result.user.role === "lecturer"
-          ? "/lecturer/dashboard"
-          : result.user.role === "provider"
-          ? "/provider/resources"
-          : "/dashboard";
-
-      navigate(targetPath, { replace: true });
-    } catch (error) {
-      console.error("Mock login thất bại:", error);
-      setMsg("Mock login thất bại");
-    }
+  const handleChangeRole = (roleValue) => {
+    setForm((prev) => ({ ...prev, role: roleValue }));
   };
 
   return (
@@ -125,122 +80,81 @@ export default function Login() {
 
           <AuthTabs />
 
-          <form onSubmit={submit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <Input
-              className="text-white"
               label="Email"
               type="email"
-              placeholder="example@gmail.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              autoComplete="email"
+              value={form.email}
+              onChange={(e) =>
+                setForm({ ...form, email: e.target.value })
+              }
               required
             />
+
             <Input
-              className="text-white"
               label="Mật khẩu"
               type="password"
               placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              value={form.password}
+              onChange={(e) =>
+                setForm({ ...form, password: e.target.value })
+              }
               required
             />
 
+            {/* Chọn role: 1 - Student, 2 - Teacher */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-foreground">
+                Bạn đăng nhập với vai trò:
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleChangeRole(1)}
+                  className={`px-3 py-2 rounded-md text-sm border transition ${
+                    form.role === 1
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-muted text-muted-foreground hover:bg-muted/70"
+                  }`}
+                >
+                  1 - Student
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleChangeRole(2)}
+                  className={`px-3 py-2 rounded-md text-sm border transition ${
+                    form.role === 2
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-muted text-muted-foreground hover:bg-muted/70"
+                  }`}
+                >
+                  2 - Teacher
+                </button>
+              </div>
+            </div>
+
             <div className="space-y-3">
-              <p className="text-sm text-gray-400">
-                Chọn nhanh tài khoản demo:
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {TEST_ACCOUNTS.map((account) => (
-                  <button
-                    key={account.label}
-                    type="button"
-                    onClick={() => {
-                      setEmail(account.email);
-                      setPassword(account.password);
-                      setMsg(`Đã điền tài khoản ${account.label}`);
-                    }}
-                    className="px-3 py-1.5 rounded-full border border-[#202934] text-xs bg-[#0f1419] text-gray-300 hover:bg-emerald-500 hover:text-white transition-colors"
-                  >
-                    {account.label}
-                  </button>
-                ))}
-              </div>
-              <p className="text-xs text-gray-400">
-                Email chứa &ldquo;gv&rdquo; sẽ tự nhận role giảng viên (ví dụ
-                {` ${TEST_ACCOUNTS[1].email}`}). Các tài khoản demo dùng chung
-                mật khẩu 123456.
-              </p>
-            </div>
-
-            <div className="text-right">
-              <a href="#" className="text-sm text-emerald-400 hover:underline">
-                Quên mật khẩu?
-              </a>
-            </div>
-
-            <div className="space-y-3 ">
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? "Đang đăng nhập..." : "Đăng Nhập"}
+              <Button type="submit" disabled={isSubmitting} className="w-full">
+                {isSubmitting
+                  ? `Đang đăng nhập (${form.role === 1 ? "Student" : "Teacher"})...`
+                  : `Đăng nhập (${form.role === 1 ? "Student" : "Teacher"})`}
               </Button>
 
-              <Button
-                type="button"
-                variant="outline"
-                onClick={submitMock}
-                className="text-white hover:text-emerald-400"
-              >
-                Mock Login (Test)
-              </Button>
-
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-border" />
+              {msg && (
+                <div
+                  className={`text-sm text-center p-3 rounded-md ${
+                    isError
+                      ? "bg-destructive/10 text-destructive border border-destructive/20"
+                      : "bg-green-50 text-green-700 border border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
+                  }`}
+                >
+                  {msg}
                 </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card px-2 text-muted-foreground">
-                    Hoặc
-                  </span>
-                </div>
-              </div>
-
-              <Button
-                type="button"
-                variant="outline"
-                className="text-white hover:text-emerald-400"
-              >
-                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
-                  <path
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    fill="#4285F4"
-                  />
-                  <path
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    fill="#34A853"
-                  />
-                  <path
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                    fill="#FBBC05"
-                  />
-                  <path
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                    fill="#EA4335"
-                  />
-                </svg>
-                Đăng nhập với Google
-              </Button>
+              )}
             </div>
-
-            {msg && (
-              <div
-                className={`text-sm text-center p-3 rounded-md ${
-                  msg.includes("thất bại")
-                    ? "bg-destructive/10 text-destructive border border-destructive/20"
-                    : "bg-green-50 text-green-700 border border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
-                }`}
-              >
-                {msg}
-              </div>
-            )}
           </form>
         </div>
       </AuthCard>
