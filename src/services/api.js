@@ -59,16 +59,39 @@ async function refreshTokenService() {
   if (!refreshToken) return null;
 
   try {
+    // Sử dụng axios trực tiếp để tránh circular dependency với authService
     const res = await axios.post(
-      `${import.meta.env.VITE_API_BASE}/auth/refresh`,
+      `${import.meta.env.VITE_API_BASE}/auth/refresh-token`,
       { refreshToken },
       {
         headers: { "Content-Type": "application/json" },
       }
     );
 
-    return res.data?.data; // { accessToken, refreshToken }
+    // Backend response format: { code: "OK", message: "...", data: { accessToken, refreshToken, user } }
+    const apiRes = res.data;
+    console.log("🔄 RefreshTokenService response:", apiRes);
+
+    if (apiRes.code === "OK") {
+      const { accessToken, refreshToken: newRefreshToken, user } = apiRes.data;
+
+      // Cập nhật localStorage ngay lập tức
+      if (accessToken) {
+        localStorage.setItem("token", accessToken);
+      }
+      if (newRefreshToken) {
+        localStorage.setItem("refreshToken", newRefreshToken);
+      }
+      if (user) {
+        localStorage.setItem("user", JSON.stringify(user));
+      }
+
+      return apiRes.data; // { accessToken, refreshToken, user }
+    }
+
+    return null;
   } catch (err) {
+    console.error("🔴 Refresh token service error:", err);
     return null;
   }
 }
@@ -117,14 +140,18 @@ api.interceptors.response.use(
         return Promise.reject(error);
       }
 
-      const { accessToken, refreshToken } = tokenData;
+      const { accessToken, refreshToken: newRefreshToken, user } = tokenData;
 
-      // Lưu token mới
-      localStorage.setItem("token", accessToken);
-      localStorage.setItem("refreshToken", refreshToken);
-
+      // Tokens đã được lưu trong refreshTokenService, chỉ cần update api headers
       api.defaults.headers.Authorization = `Bearer ${accessToken}`;
       processQueue(null, accessToken);
+
+      // Dispatch custom event để AuthContext có thể update (optional)
+      if (user) {
+        window.dispatchEvent(new CustomEvent('token-refreshed', {
+          detail: { accessToken, refreshToken: newRefreshToken, user }
+        }));
+      }
 
       isRefreshing = false;
 

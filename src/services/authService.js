@@ -20,7 +20,6 @@ export async function login({ email, password }) {
       code: apiRes.code,
     };
   } catch (error) {
-    console.error("🔴 Login error:", error);
     const message =
       error.response?.data?.message ||
       "Đăng nhập thất bại. Vui lòng kiểm tra email/mật khẩu.";
@@ -106,6 +105,60 @@ export async function resendVerificationEmail(email) {
 }
 
 /**
+ * REFRESH TOKEN
+ * Gọi POST /auth/refresh-token
+ * RefreshTokenRequest: { refreshToken }
+ * Response: { code: "OK", message: "...", data: { accessToken, refreshToken, user } }
+ */
+export async function refreshToken(refreshTokenValue) {
+  try {
+    const res = await api.post("/auth/refresh-token", {
+      refreshToken: refreshTokenValue
+    });
+
+    const apiRes = res.data; // ApiResponse<RefreshTokenResponse>
+    console.log("🔄 Refresh token response:", apiRes);
+
+    if (apiRes.code === "OK") {
+      const { accessToken, refreshToken: newRefreshToken, user } = apiRes.data;
+
+      // Lưu vào localStorage
+      if (accessToken) {
+        localStorage.setItem("token", accessToken);
+        console.log("✅ Access token updated in localStorage");
+      }
+      if (newRefreshToken) {
+        localStorage.setItem("refreshToken", newRefreshToken);
+        console.log("✅ Refresh token updated in localStorage");
+      }
+      if (user) {
+        localStorage.setItem("user", JSON.stringify(user));
+        console.log("✅ User info updated in localStorage");
+      }
+
+      return {
+        accessToken,
+        refreshToken: newRefreshToken,
+        user,
+        success: true,
+        message: apiRes.message || "Token đã được làm mới thành công"
+      };
+    }
+
+    return {
+      success: false,
+      message: apiRes.message || "Không thể làm mới token"
+    };
+  } catch (error) {
+    console.error("🔴 Refresh token error:", error);
+    return {
+      success: false,
+      message: error.response?.data?.message || "Phiên đăng nhập đã hết hạn"
+    };
+  }
+}
+
+/**
  * INTROSPECT TOKEN
  * Gọi POST /auth/introspect
  * IntrospectRequest: { token }
@@ -145,5 +198,6 @@ export default {
   register,
   verifyOtp,
   resendVerificationEmail,
+  refreshToken,
   fetchMe,
 };

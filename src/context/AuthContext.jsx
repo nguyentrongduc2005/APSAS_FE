@@ -144,39 +144,18 @@ export default function AuthProvider({ children }) {
           }
         }
 
-        // Chỉ gọi introspect khi chưa initialize hoặc khi thực sự cần thiết
-        if (!hasInitialized) {
-          console.log("🔍 Checking token validity (first time)...");
-          try {
-            const result = await authService.fetchMe(token);
-            console.log("🔍 Introspect result:", result);
-
-            if (!cancelled && !result?.valid) {
-              console.warn("⚠️ Token không còn hợp lệ, tiến hành logout");
-              logout();
-              return;
-            } else {
-              console.log("✅ Token is valid!");
-            }
-          } catch (err) {
-            // Chỉ logout nếu lỗi 401 (unauthorized)
-            if (err.response?.status === 401) {
-              console.warn("⚠️ Token unauthorized, logging out");
-              logout();
-              return;
-            } else {
-              // Các lỗi khác (network, server error) không logout
-              console.warn("⚠️ Introspect error (not logging out):", err.message);
-            }
-          }
-        }
+        // ✨ OPTIMIZATION: Không gọi introspect ở đây nữa!
+        // 🔄 API interceptor trong api.js sẽ tự động:
+        //    - Detect lỗi 401 
+        //    - Thử refresh token
+        //    - Logout nếu refresh fail
+        // 🚀 Kết quả: Ít API calls, performance tốt hơn
+        console.log("✅ Auth initialized - API interceptor will handle validation");
       } catch (err) {
         if (!cancelled) {
           console.error("🔴 Lỗi init auth:", err);
-          // Không tự động logout trừ khi là lỗi authentication
-          if (err.response?.status === 401) {
-            logout();
-          }
+          // Chỉ log error, không logout ở đây
+          // Để API interceptor handle authentication errors
         }
       } finally {
         if (!cancelled) {
@@ -217,6 +196,62 @@ export default function AuthProvider({ children }) {
     return authService.register(payload);
   };
 
+  // Validate token khi thực sự cần thiết (manual call)
+  const validateToken = async () => {
+    if (!token) return false;
+    
+    try {
+      const result = await authService.fetchMe(token);
+      if (!result?.valid) {
+        logout();
+        return false;
+      }
+      return true;
+    } catch (err) {
+      if (err.response?.status === 401) {
+        logout();
+        return false;
+      }
+      // Network/server errors không logout
+      return true;
+    }
+  };
+
+  // Update tokens and user after refresh
+  const updateTokens = (newAccessToken, newRefreshToken, newUser) => {
+    console.log("🔄 Updating tokens in AuthContext...");
+    
+    if (newAccessToken) {
+      setToken(newAccessToken);
+      localStorage.setItem(TOKEN_KEY, newAccessToken);
+    }
+    
+    if (newRefreshToken) {
+      localStorage.setItem(REFRESH_KEY, newRefreshToken);
+    }
+    
+    if (newUser) {
+      const normalizedUser = normalizeUserFromApi(newUser, newAccessToken);
+      setUser(normalizedUser);
+      localStorage.setItem(USER_KEY, JSON.stringify(normalizedUser));
+      console.log("✅ User updated in AuthContext:", normalizedUser);
+    }
+  };
+
+  // Listen for token refresh events from API interceptor
+  useEffect(() => {
+    const handleTokenRefresh = (event) => {
+      const { accessToken, refreshToken, user } = event.detail;
+      console.log("🔄 Token refreshed event received in AuthContext");
+      updateTokens(accessToken, refreshToken, user);
+    };
+
+    window.addEventListener('token-refreshed', handleTokenRefresh);
+    return () => {
+      window.removeEventListener('token-refreshed', handleTokenRefresh);
+    };
+  }, []);
+
   const value = {
     token,
     user,
@@ -225,6 +260,8 @@ export default function AuthProvider({ children }) {
     login,
     logout,
     register,
+    validateToken, // Manual token validation khi cần
+    updateTokens, // Update tokens after refresh
     // Update user in context and persist to localStorage
     updateUser: (patch) => {
       setUser((prev) => {
