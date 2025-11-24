@@ -30,11 +30,11 @@ export default function AuthGuard({ allow }) {
         // Kiểm tra token còn valid không
         const result = await fetchMe(token);
         if (!cancelled && !result?.valid) {
-          logout();
-          nav("/auth/login", {
-            replace: true,
-            state: { from: location },
-          });
+          // logout();
+          // nav("/auth/login", {
+          //   replace: true,
+          //   state: { from: location },
+          // });
           return;
         }
 
@@ -54,11 +54,11 @@ export default function AuthGuard({ allow }) {
       } catch (err) {
         console.error("AuthGuard error:", err);
         if (!cancelled) {
-          logout();
-          nav("/auth/login", {
-            replace: true,
-            state: { from: location },
-          });
+          // logout();
+          // nav("/auth/login", {
+          //   replace: true,
+          //   state: { from: location },
+          // });
         }
       }
     })();
