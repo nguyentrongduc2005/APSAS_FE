@@ -9,13 +9,13 @@ import api from "./api.js";
 export async function login({ email, password }) {
   try {
     const res = await api.post("/auth/login", { email, password });
-    const apiRes = res.data;        // { code, message, data }
+    const apiRes = res.data; // { code, message, data }
     const data = apiRes.data || {}; // LoginResponse
 
     return {
       accessToken: data.accessToken,
       refreshToken: data.refreshToken,
-      user: data.user,              // AuthUserDto
+      user: data.user, // AuthUserDto
       message: apiRes.message,
       code: apiRes.code,
     };
@@ -94,8 +94,7 @@ export async function resendVerificationEmail(email) {
     const apiRes = res.data; // ApiResponse<Void>
     return {
       success: true,
-      message:
-        apiRes.message || "Đã gửi lại mã xác thực tới email của bạn.",
+      message: apiRes.message || "Đã gửi lại mã xác thực tới email của bạn.",
     };
   } catch (error) {
     console.error("🔴 Resend code error:", error);
@@ -116,11 +115,26 @@ export async function fetchMe(token) {
   if (!token) return { valid: false };
 
   try {
+    console.log(
+      "🔍 Calling introspect with token:",
+      token.substring(0, 20) + "..."
+    );
     const res = await api.post("/auth/introspect", { token });
+    console.log("✅ Introspect full response:", res.data);
+
     const apiRes = res.data; // ApiResponse<IntrospecResponse>
-    return apiRes.data || { valid: false };
+
+    // Backend trả về: { code: "OK", message: "...", data: { valid: true } }
+    if (apiRes.code === "OK" || apiRes.code === "0") {
+      return apiRes.data || { valid: false };
+    }
+
+    console.warn("⚠️ Unexpected code:", apiRes.code);
+    return { valid: false };
   } catch (error) {
     console.error("🔴 Introspect error:", error);
+    console.error("Response:", error.response?.data);
+    console.error("Status:", error.response?.status);
     return { valid: false };
   }
 }
@@ -131,5 +145,5 @@ export default {
   register,
   verifyOtp,
   resendVerificationEmail,
-  fetchMe,  
+  fetchMe,
 };

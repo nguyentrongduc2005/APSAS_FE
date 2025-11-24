@@ -1,8 +1,4 @@
-import {
-  Outlet,
-  useNavigate,
-  useLocation,
-} from "react-router-dom";
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { fetchMe } from "../../services/authService.js";
