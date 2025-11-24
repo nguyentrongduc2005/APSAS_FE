@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import { BookOpen, FileText, Users, Layers } from "lucide-react";
+import { useParams, useNavigate } from "react-router-dom";
+import { BookOpen, FileText, Users, Layers, ChevronLeft } from "lucide-react";
 import LecturerCard from "../components/lecturer/LecturerCard.jsx";
 import OutcomeCard from "../components/student/OutcomeCard.jsx";
 import courseService from "../services/courseService";
@@ -28,6 +28,7 @@ function StatPill({ icon: Icon, head, val }) {
 
 export default function CourseDetail() {
   const { courseId } = useParams();
+  const navigate = useNavigate();
 
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -92,21 +93,24 @@ export default function CourseDetail() {
     );
   }
 
-  const imageSrc = course.avatarUrl || FALLBACK_BANNER;
+  const imageSrc = course.url || FALLBACK_BANNER;
   const categoryLabel = course.type || "Khóa học lập trình";
 
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 max-w-[1400px]">
       <div className="space-y-6">
         {/* Breadcrumb */}
-        <div
+        <button
+          onClick={() => navigate("/courses")}
           className="inline-flex items-center gap-2 rounded-full
-                      border border-[#202934] bg-[#0f1419] px-5 py-2 text-sm text-slate-200"
+                      border border-[#202934] bg-[#0f1419] px-5 py-2 text-sm text-slate-200
+                      hover:border-emerald-500 hover:text-emerald-400 transition cursor-pointer"
         >
+          <ChevronLeft size={16} />
           <span>Explore</span>
           <span className="opacity-50">/</span>
           <span className="text-emerald-400">{categoryLabel}</span>
-        </div>
+        </button>
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -130,8 +134,7 @@ export default function CourseDetail() {
                     {course.name}
                   </h1>
                   <p className="text-slate-300 text-sm leading-relaxed">
-                    {course.description ||
-                      "Khóa học lập trình trên nền tảng APSAS."}
+                    {course.description || "Không có mô tả"}
                   </p>
                 </div>
 
@@ -166,19 +169,49 @@ export default function CourseDetail() {
             {/* Lecturer Card */}
             <div className="rounded-xl border border-[#202934] bg-[#0f1419] p-5">
               <h3 className="text-white font-bold text-lg mb-4">Giảng viên</h3>
-              <div className="[&_a]:text-emerald-400 [&_a:hover]:underline">
-                {/* Tạm thời vẫn dùng card mặc định.
-                    Sau này có thể truyền dữ liệu course.instructor vào đây */}
+              {course.instructor ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                      <span className="text-emerald-400 font-bold text-lg">
+                        {course.instructor.name.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div>
+                      <h4 className="text-white font-semibold">
+                        {course.instructor.name}
+                      </h4>
+                      <p className="text-gray-400 text-sm">
+                        {course.instructor.email}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-4 pt-2 text-sm">
+                    <div>
+                      <p className="text-gray-400">Khóa học</p>
+                      <p className="text-white font-semibold">
+                        {course.instructor.coursesCount}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-400">Học viên</p>
+                      <p className="text-white font-semibold">
+                        {course.instructor.studentViews}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
                 <LecturerCard />
-              </div>
+              )}
             </div>
 
-            {/* Outcomes Card */}
+            {/* Description Card */}
             <div className="rounded-xl border border-[#202934] bg-[#0f1419] p-5">
-              <h3 className="text-white font-bold text-lg mb-4">
-                Kết quả học tập
-              </h3>
-              <OutcomeCard />
+              <h3 className="text-white font-bold text-lg mb-4">Mô tả</h3>
+              <p className="text-gray-300 text-sm">
+                {course.description || "Không có nội dung"}
+              </p>
             </div>
           </aside>
         </div>
