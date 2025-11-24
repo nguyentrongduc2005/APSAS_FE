@@ -1,224 +1,101 @@
 import api from "./api";
 
-// Service cho Admin Content Approvals
+/**
+ * Service for Admin Tutorial/Content Management
+ * Based on APSAS Admin API specification
+ */
 const adminContentService = {
-  // Lấy danh sách nội dung cần duyệt
+  /**
+   * Get list of tutorials waiting for approval
+   * Required permission: MANAGE_TUTORIALS
+   * @returns {Promise<{code: string, message: string, data: Array}>}
+   */
+  async getPendingTutorials() {
+    try {
+      const response = await api.get("/admin/tutorials/pending");
+      if (response.data.code === "ok") {
+        return response.data;
+      }
+      throw new Error(response.data.message || "Failed to fetch pending tutorials");
+    } catch (error) {
+      console.error("Error fetching pending tutorials:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get detailed information of a specific tutorial for review
+   * Required permission: MANAGE_TUTORIALS
+   * @param {number} tutorialId - The ID of the tutorial
+   * @returns {Promise<{code: string, message: string, data: Object}>}
+   */
+  async getTutorialById(tutorialId) {
+    try {
+      const response = await api.get(`/admin/tutorials/${tutorialId}`);
+      if (response.data.code === "ok") {
+        return response.data;
+      }
+      throw new Error(response.data.message || "Failed to fetch tutorial detail");
+    } catch (error) {
+      console.error("Error fetching tutorial detail:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Approve and publish a tutorial
+   * Required permission: PUBLISH_TUTORIALS
+   * @param {number} tutorialId - The ID of the tutorial to publish
+   * @returns {Promise<{code: string, message: string, data: Object}>}
+   */
+  async publishTutorial(tutorialId) {
+    try {
+      const response = await api.put(`/admin/tutorials/${tutorialId}/publish`);
+      if (response.data.code === "ok") {
+        return response.data;
+      }
+      throw new Error(response.data.message || "Failed to publish tutorial");
+    } catch (error) {
+      console.error("Error publishing tutorial:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Reject a tutorial (Note: This endpoint may not exist yet in backend)
+   * Required permission: MANAGE_TUTORIALS
+   * @param {number} tutorialId - The ID of the tutorial to reject
+   * @param {string} note - Rejection reason
+   * @returns {Promise<{code: string, message: string, data: Object}>}
+   */
+  async rejectTutorial(tutorialId, note = "") {
+    try {
+      const response = await api.put(`/admin/tutorials/${tutorialId}/reject`, { note });
+      if (response.data.code === "ok") {
+        return response.data;
+      }
+      throw new Error(response.data.message || "Failed to reject tutorial");
+    } catch (error) {
+      console.error("Error rejecting tutorial:", error);
+      // If endpoint doesn't exist, provide a helpful error
+      if (error.response?.status === 404) {
+        throw new Error("Chức năng từ chối tutorial chưa được hỗ trợ bởi backend API");
+      }
+      throw error;
+    }
+  },
+
+  // Legacy methods for backward compatibility with ContentApprovals page
   async getContents(params = {}) {
-    try {
-      // TODO: Gọi API thực tế
-      // const response = await api.get("/api/admin/contents", { params });
-      // return response.data;
-
-      // Mock data tạm thời
-      const {
-        page = 1,
-        limit = 10,
-        type = "",
-        status = "pending",
-        keyword = "",
-      } = params;
-
-      const allContents = [
-        {
-          id: "C001",
-          title: "Introduction to React Hooks",
-          type: "VIDEO",
-          author: "Nguyễn Văn A",
-          submittedAt: "2024-11-10",
-          status: "pending",
-          note: "",
-        },
-        {
-          id: "C002",
-          title: "Advanced JavaScript Patterns",
-          type: "PDF",
-          author: "Trần Thị B",
-          submittedAt: "2024-11-11",
-          status: "pending",
-          note: "",
-        },
-        {
-          id: "C003",
-          title: "Node.js Best Practices",
-          type: "VIDEO",
-          author: "Lê Minh C",
-          submittedAt: "2024-11-08",
-          status: "approved",
-          note: "Nội dung chất lượng cao",
-        },
-        {
-          id: "C004",
-          title: "CSS Grid Tutorial",
-          type: "PDF",
-          author: "Phạm Thị D",
-          submittedAt: "2024-11-09",
-          status: "rejected",
-          note: "Nội dung chưa đầy đủ",
-        },
-        {
-          id: "C005",
-          title: "Python Data Analysis",
-          type: "VIDEO",
-          author: "Hoàng Văn E",
-          submittedAt: "2024-11-12",
-          status: "pending",
-          note: "",
-        },
-        {
-          id: "C006",
-          title: "Database Design Principles",
-          type: "PDF",
-          author: "Đỗ Thị F",
-          submittedAt: "2024-11-13",
-          status: "pending",
-          note: "",
-        },
-        {
-          id: "C007",
-          title: "React State Management",
-          type: "VIDEO",
-          author: "Nguyễn Văn G",
-          submittedAt: "2024-11-07",
-          status: "approved",
-          note: "Rất hay",
-        },
-        {
-          id: "C008",
-          title: "Docker Fundamentals",
-          type: "PDF",
-          author: "Trần Thị H",
-          submittedAt: "2024-11-14",
-          status: "pending",
-          note: "",
-        },
-      ];
-
-      // Lọc theo type
-      let filteredContents = allContents;
-      if (type) {
-        filteredContents = filteredContents.filter((c) => c.type === type);
-      }
-
-      // Lọc theo status
-      if (status) {
-        filteredContents = filteredContents.filter((c) => c.status === status);
-      }
-
-      // Lọc theo keyword
-      if (keyword) {
-        const lowerKeyword = keyword.toLowerCase();
-        filteredContents = filteredContents.filter(
-          (c) =>
-            c.title.toLowerCase().includes(lowerKeyword) ||
-            c.author.toLowerCase().includes(lowerKeyword) ||
-            c.id.toLowerCase().includes(lowerKeyword)
-        );
-      }
-
-      // Tính toán pagination
-      const total = filteredContents.length;
-      const totalPages = Math.ceil(total / limit);
-      const start = (page - 1) * limit;
-      const end = start + limit;
-      const data = filteredContents.slice(start, end);
-
-      return {
-        data,
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages,
-        },
-      };
-    } catch (error) {
-      console.error("Error fetching contents:", error);
-      throw error;
-    }
+    return this.getPendingTutorials();
   },
 
-  // Lấy chi tiết nội dung
-  async getContentDetail(contentId) {
-    try {
-      // TODO: Gọi API thực tế
-      // const response = await api.get(`/api/admin/contents/${contentId}`);
-      // return response.data;
-
-      // Mock data chi tiết
-      return {
-        id: contentId,
-        title: "Introduction to React Hooks",
-        type: "VIDEO",
-        author: "Nguyễn Văn A",
-        submittedAt: "2024-11-10",
-        status: "pending",
-        note: "",
-        description:
-          "Comprehensive guide to React Hooks including useState, useEffect, and custom hooks",
-        duration: "5 hours 30 minutes",
-        contentCount: 15,
-        exerciseCount: 8,
-      };
-    } catch (error) {
-      console.error("Error fetching content detail:", error);
-      throw error;
-    }
-  },
-
-  // Duyệt nội dung
   async approveContent(contentId, note = "") {
-    try {
-      // TODO: Gọi API thực tế
-      // const response = await api.post(`/api/admin/contents/${contentId}/approve`, {
-      //   note,
-      // });
-      // return response.data;
-
-      // Mock success
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      return {
-        success: true,
-        message: "Nội dung đã được duyệt",
-        data: {
-          contentId,
-          status: "approved",
-          note,
-          approvedAt: new Date().toISOString(),
-        },
-      };
-    } catch (error) {
-      console.error("Error approving content:", error);
-      throw error;
-    }
+    return this.publishTutorial(contentId);
   },
 
-  // Từ chối nội dung
   async rejectContent(contentId, note = "") {
-    try {
-      // TODO: Gọi API thực tế
-      // const response = await api.post(`/api/admin/contents/${contentId}/reject`, {
-      //   note,
-      // });
-      // return response.data;
-
-      // Mock success
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      return {
-        success: true,
-        message: "Nội dung đã bị từ chối",
-        data: {
-          contentId,
-          status: "rejected",
-          note,
-          rejectedAt: new Date().toISOString(),
-        },
-      };
-    } catch (error) {
-      console.error("Error rejecting content:", error);
-      throw error;
-    }
+    return this.rejectTutorial(contentId, note);
   },
 };
 

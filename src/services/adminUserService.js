@@ -1,22 +1,28 @@
 import api from "./api";
 
-// Service cho Admin User Management
+/**
+ * Service for Admin User Management
+ * All endpoints require appropriate admin permissions
+ */
 const adminUserService = {
-  // Lấy danh sách người dùng
+  /**
+   * Get paginated list of users
+   * Required permission: VIEW_USERS
+   */
   async getUsers(params = {}) {
     try {
-      // TODO: Gọi API thực tế
-      // const response = await api.get("/api/admin/users", { params });
-      // return response.data;
+      const queryParams = {
+        page: params.page !== undefined ? params.page : 0,
+        size: params.size || 10,
+        sort: params.sort || "createdAt,desc",
+      };
 
-      // Mock data tạm thời
-      const {
-        page = 1,
-        limit = 10,
-        role = "",
-        status = "",
-        keyword = "",
-      } = params;
+      if (params.search) queryParams.search = params.search;
+      if (params.status) queryParams.status = params.status;
+      if (params.role) queryParams.role = params.role;
+
+      const response = await api.get("/admin/users", { params: queryParams });
+      return response.data;
 
       const allUsers = [
         {
@@ -115,101 +121,108 @@ const adminUserService = {
     }
   },
 
-  // Tạo người dùng mới
+  /**
+   * Get user detail by ID
+   * Required permission: VIEW_USERS
+   */
+  async getUserById(userId) {
+    try {
+      const response = await api.get(`/admin/users/${userId}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching user detail:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Create new user
+   * Required permission: CREATE_USERS
+   */
   async createUser(userData) {
     try {
-      // TODO: Gọi API thực tế
-      // const response = await api.post("/api/admin/users", userData);
-      // return response.data;
-
-      // Mock success
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      return {
-        success: true,
-        message: "Người dùng đã được tạo thành công",
-        data: {
-          id: "U" + String(Math.floor(Math.random() * 1000)).padStart(3, "0"),
-          ...userData,
-          createdAt: new Date().toISOString().slice(0, 10),
-        },
-      };
+      const response = await api.post("/admin/users", userData);
+      return response.data;
     } catch (error) {
       console.error("Error creating user:", error);
       throw error;
     }
   },
 
-  // Cập nhật người dùng
-  async updateUser(userId, userData) {
+  /**
+   * Update user status (ACTIVE, BLOCKED, UNVERIFIED)
+   * No specific permission required (accessible by admins)
+   */
+  async updateUserStatus(userId, status) {
     try {
-      // TODO: Gọi API thực tế
-      // const response = await api.put(`/api/admin/users/${userId}`, userData);
-      // return response.data;
+      const response = await api.put(`/admin/users/${userId}/status`, {
+        status,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error updating user status:", error);
+      throw error;
+    }
+  },
 
-      // Mock success
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      return {
-        success: true,
-        message: "Người dùng đã được cập nhật",
-        data: {
-          id: userId,
-          ...userData,
-        },
-      };
+  /**
+   * Update user roles
+   * Required permission: UPDATE_USERS
+   */
+  async updateUserRoles(userId, roleIds) {
+    try {
+      const response = await api.put(`/admin/users/${userId}/roles`, {
+        roleIds,
+      });
+      return response.data;
     } catch (error) {
       console.error("Error updating user:", error);
       throw error;
     }
   },
 
-  // Khóa/Mở khóa người dùng
-  async toggleUserStatus(userId, newStatus) {
-    try {
-      // TODO: Gọi API thực tế
-      // const response = await api.patch(`/api/admin/users/${userId}/status`, {
-      //   status: newStatus,
-      // });
-      // return response.data;
-
-      // Mock success
-      await new Promise((resolve) => setTimeout(resolve, 300));
-
-      return {
-        success: true,
-        message: `Người dùng đã được ${
-          newStatus === "active" ? "mở khóa" : "khóa"
-        }`,
-        data: {
-          userId,
-          status: newStatus,
-        },
-      };
-    } catch (error) {
-      console.error("Error toggling user status:", error);
-      throw error;
-    }
-  },
-
-  // Xóa người dùng
+  /**
+   * Delete user permanently
+   * Required permission: DELETE_USERS
+   */
   async deleteUser(userId) {
     try {
-      // TODO: Gọi API thực tế
-      // const response = await api.delete(`/api/admin/users/${userId}`);
-      // return response.data;
-
-      // Mock success
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      return {
-        success: true,
-        message: "Người dùng đã được xóa",
-      };
+      const response = await api.delete(`/admin/users/${userId}`);
+      return response.data;
     } catch (error) {
       console.error("Error deleting user:", error);
       throw error;
     }
+  },
+
+  /**
+   * Get user statistics
+   * Required permission: VIEW_USERS
+   */
+  async getUserStatistics() {
+    try {
+      const response = await api.get("/admin/users/statistics");
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching user statistics:", error);
+      throw error;
+    }
+  },
+
+  // Legacy method for backward compatibility
+  async toggleUserStatus(userId, newStatus) {
+    return this.updateUserStatus(userId, newStatus);
+  },
+
+  // Legacy method for backward compatibility
+  async updateUser(userId, userData) {
+    if (userData.roleIds) {
+      return this.updateUserRoles(userId, userData.roleIds);
+    }
+    if (userData.status) {
+      return this.updateUserStatus(userId, userData.status);
+    }
+    throw new Error("Invalid update data");
   },
 };
 

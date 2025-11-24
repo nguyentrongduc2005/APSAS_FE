@@ -2,43 +2,17 @@ import api from "./api";
 
 /**
  * Service for handling role and permission operations
+ * Based on APSAS Admin API specification
  */
 const rolePermissionService = {
   /**
-   * Get all roles
-   * @returns {Promise} List of roles
+   * Get all roles with their permissions
+   * Required permission: VIEW_ROLES
    */
   getRoles: async () => {
     try {
-      // TODO: Replace with actual API call
-      // const response = await api.get('/admin/roles');
-      // return response.data;
-
-      // Mock data
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve([
-            {
-              id: 1,
-              name: "Quản trị viên",
-              description: "Toàn quyền quản lý hệ thống",
-              userCount: 3,
-            },
-            {
-              id: 2,
-              name: "Giảng viên",
-              description: "Quản lý bài tập và điểm sinh viên",
-              userCount: 12,
-            },
-            {
-              id: 3,
-              name: "Sinh viên",
-              description: "Nộp bài và xem kết quả",
-              userCount: 156,
-            },
-          ]);
-        }, 300);
-      });
+      const response = await api.get('/admin/roles');
+      return response.data;
     } catch (error) {
       console.error("Error fetching roles:", error);
       throw error;
@@ -47,62 +21,12 @@ const rolePermissionService = {
 
   /**
    * Get all permissions
-   * @returns {Promise} List of permissions
+   * Required permission: VIEW_ROLES
    */
   getPermissions: async () => {
     try {
-      // TODO: Replace with actual API call
-      // const response = await api.get('/admin/permissions');
-      // return response.data;
-
-      // Mock data
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve([
-            {
-              id: 1,
-              name: "Xem danh sách người dùng",
-              description:
-                "Cho phép xem danh sách tất cả người dùng trong hệ thống",
-            },
-            {
-              id: 2,
-              name: "Tạo người dùng mới",
-              description: "Cho phép thêm người dùng mới vào hệ thống",
-            },
-            {
-              id: 3,
-              name: "Chỉnh sửa người dùng",
-              description: "Cho phép chỉnh sửa thông tin người dùng",
-            },
-            {
-              id: 4,
-              name: "Xóa người dùng",
-              description: "Cho phép xóa người dùng khỏi hệ thống",
-            },
-            {
-              id: 5,
-              name: "Xem danh sách bài tập",
-              description: "Cho phép xem tất cả bài tập trên hệ thống",
-            },
-            {
-              id: 6,
-              name: "Tạo bài tập mới",
-              description: "Cho phép tạo bài tập mới",
-            },
-            {
-              id: 7,
-              name: "Chấm điểm tự động",
-              description: "Cho phép sử dụng hệ thống chấm điểm tự động",
-            },
-            {
-              id: 8,
-              name: "Xem báo cáo",
-              description: "Cho phép xem các báo cáo và thống kê",
-            },
-          ]);
-        }, 300);
-      });
+      const response = await api.get('/admin/permissions');
+      return response.data;
     } catch (error) {
       console.error("Error fetching permissions:", error);
       throw error;
@@ -150,7 +74,63 @@ const rolePermissionService = {
           permission.description.toLowerCase().includes(keyword.toLowerCase())
       );
     } catch (error) {
-      console.error("Error searching permissions:", error);
+      console.error("Error fetching permissions:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get role detail by ID
+   * Required permission: VIEW_ROLES
+   */
+  getRoleById: async (roleId) => {
+    try {
+      const response = await api.get(`/admin/roles/${roleId}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching role detail:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Create new role
+   * Required permission: CREATE_ROLES
+   */
+  createRole: async (roleData) => {
+    try {
+      const response = await api.post('/admin/roles', roleData);
+      return response.data;
+    } catch (error) {
+      console.error("Error creating role:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Update existing role
+   * Required permission: UPDATE_ROLES
+   */
+  updateRole: async (roleId, roleData) => {
+    try {
+      const response = await api.put(`/admin/roles/${roleId}`, roleData);
+      return response.data;
+    } catch (error) {
+      console.error("Error updating role:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Delete role permanently
+   * Required permission: DELETE_ROLES
+   */
+  deleteRole: async (roleId) => {
+    try {
+      const response = await api.delete(`/admin/roles/${roleId}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error deleting role:", error);
       throw error;
     }
   },
