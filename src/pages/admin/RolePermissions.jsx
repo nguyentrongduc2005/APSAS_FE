@@ -1,74 +1,66 @@
-import { useState } from "react";
-import { Users } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Users, Plus, Edit2, Trash2 } from "lucide-react";
+import rolePermissionService from "../../services/rolePermissionService";
 
 function RolePermissions() {
   const [activeTab, setActiveTab] = useState("roles");
+  const [roles, setRoles] = useState([]);
+  const [permissions, setPermissions] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [roleSearch, setRoleSearch] = useState("");
+  const [permSearch, setPermSearch] = useState("");
 
-  // Mock data for roles
-  const roles = [
-    {
-      id: 1,
-      name: "Quản trị viên",
-      description: "Toàn quyền quản lý hệ thống",
-      userCount: 3,
-    },
-    {
-      id: 2,
-      name: "Giảng viên",
-      description: "Quản lý bài tập và điểm sinh viên",
-      userCount: 12,
-    },
-    {
-      id: 3,
-      name: "Sinh viên",
-      description: "Nộp bài và xem kết quả",
-      userCount: 156,
-    },
-  ];
+  // Fetch roles from API
+  const fetchRoles = async () => {
+    try {
+      setLoading(true);
+      const response = await rolePermissionService.getRoles();
+      if (response.code === "ok" && response.data) {
+        setRoles(response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching roles:", error);
+      alert("Không thể tải danh sách vai trò");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Mock data for permissions
-  const permissions = [
-    {
-      id: 1,
-      name: "Xem danh sách người dùng",
-      description: "Cho phép xem danh sách tất cả người dùng trong hệ thống",
-    },
-    {
-      id: 2,
-      name: "Tạo người dùng mới",
-      description: "Cho phép thêm người dùng mới vào hệ thống",
-    },
-    {
-      id: 3,
-      name: "Chỉnh sửa người dùng",
-      description: "Cho phép chỉnh sửa thông tin người dùng",
-    },
-    {
-      id: 4,
-      name: "Xóa người dùng",
-      description: "Cho phép xóa người dùng khỏi hệ thống",
-    },
-    {
-      id: 5,
-      name: "Xem danh sách bài tập",
-      description: "Cho phép xem tất cả bài tập trên hệ thống",
-    },
-    {
-      id: 6,
-      name: "Tạo bài tập mới",
-      description: "Cho phép tạo bài tập mới",
-    },
-    {
-      id: 7,
-      name: "Chấm điểm tự động",
-      description: "Cho phép sử dụng hệ thống chấm điểm tự động",
-    },
-    {
-      id: 8,
-      name: "Xem báo cáo",
-      description: "Cho phép xem các báo cáo và thống kê",
-    },
-  ];
+  // Fetch permissions from API
+  const fetchPermissions = async () => {
+    try {
+      setLoading(true);
+      const response = await rolePermissionService.getPermissions();
+      if (response.code === "ok" && response.data) {
+        setPermissions(response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching permissions:", error);
+      alert("Không thể tải danh sách quyền");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "roles") {
+      fetchRoles();
+    } else {
+      fetchPermissions();
+    }
+  }, [activeTab]);
+
+  // Filter roles by search
+  const filteredRoles = roles.filter((role) =>
+    role.name?.toLowerCase().includes(roleSearch.toLowerCase()) ||
+    role.description?.toLowerCase().includes(roleSearch.toLowerCase())
+  );
+
+  // Filter permissions by search
+  const filteredPermissions = permissions.filter((perm) =>
+    perm.name?.toLowerCase().includes(permSearch.toLowerCase()) ||
+    perm.description?.toLowerCase().includes(permSearch.toLowerCase())
+  );
 
   return (
     <div className="min-h-screen bg-[#0f1419] text-white">
@@ -111,11 +103,13 @@ function RolePermissions() {
             <>
               {/* Roles Header */}
               <div className="px-6 py-4 border-b border-[#202934] bg-[#0f1419]">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-4">
                   <div className="relative flex-1 max-w-md">
                     <input
                       type="text"
                       placeholder="Tìm kiếm vai trò ......."
+                      value={roleSearch}
+                      onChange={(e) => setRoleSearch(e.target.value)}
                       className="w-full bg-[#0b0f12] border border-[#202934] rounded-lg pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50"
                     />
                     <svg
@@ -136,56 +130,79 @@ function RolePermissions() {
               </div>
 
               {/* Roles Table */}
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-[#0f1419] border-b border-[#202934]">
-                    <tr>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                        Tên vai trò
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                        Mô tả
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                        Số người dùng
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                        Thao tác
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#202934]">
-                    {roles.map((role) => (
-                      <tr
-                        key={role.id}
-                        className="hover:bg-[#0f1419] transition"
-                      >
-                        <td className="px-6 py-4">
-                          <p className="text-sm font-semibold text-white">
-                            {role.name}
-                          </p>
-                        </td>
-                        <td className="px-6 py-4">
-                          <p className="text-sm text-gray-400">
-                            {role.description}
-                          </p>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-2 text-sm text-gray-300">
-                            <Users className="w-4 h-4" />
-                            <span>{role.userCount}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <button className="text-sm text-emerald-400 hover:text-emerald-300 font-medium transition">
-                            Xem chi tiết
-                          </button>
-                        </td>
+              {loading ? (
+                <div className="text-center py-12">
+                  <div className="inline-block w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-gray-400 mt-4">Đang tải...</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-[#0f1419] border-b border-[#202934]">
+                      <tr>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                          Tên vai trò
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                          Mô tả
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                          Số người dùng
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                          Số quyền
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                          Thao tác
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-[#202934]">
+                      {filteredRoles.length === 0 ? (
+                        <tr>
+                          <td colSpan="5" className="px-6 py-8 text-center text-gray-400">
+                            Không tìm thấy vai trò nào
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredRoles.map((role) => (
+                          <tr
+                            key={role.id}
+                            className="hover:bg-[#0f1419] transition"
+                          >
+                            <td className="px-6 py-4">
+                              <p className="text-sm font-semibold text-white">
+                                {role.name}
+                              </p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <p className="text-sm text-gray-400">
+                                {role.description}
+                              </p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-2 text-sm text-gray-300">
+                                <Users className="w-4 h-4" />
+                                <span>{role.userCount || 0}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="text-sm text-gray-300">
+                                {role.permissions?.length || 0} quyền
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <button className="text-sm text-emerald-400 hover:text-emerald-300 font-medium transition">
+                                Xem chi tiết
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </>
           ) : (
             <>
@@ -196,6 +213,8 @@ function RolePermissions() {
                     <input
                       type="text"
                       placeholder="Tìm kiếm quyền ......."
+                      value={permSearch}
+                      onChange={(e) => setPermSearch(e.target.value)}
                       className="w-full bg-[#0b0f12] border border-[#202934] rounded-lg pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50"
                     />
                     <svg
@@ -216,47 +235,62 @@ function RolePermissions() {
               </div>
 
               {/* Permissions Table */}
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-[#0f1419] border-b border-[#202934]">
-                    <tr>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                        Tên quyền
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                        Mô tả
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                        Thao tác
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#202934]">
-                    {permissions.map((permission) => (
-                      <tr
-                        key={permission.id}
-                        className="hover:bg-[#0f1419] transition"
-                      >
-                        <td className="px-6 py-4">
-                          <p className="text-sm font-semibold text-white">
-                            {permission.name}
-                          </p>
-                        </td>
-                        <td className="px-6 py-4">
-                          <p className="text-sm text-gray-400">
-                            {permission.description}
-                          </p>
-                        </td>
-                        <td className="px-6 py-4">
-                          <button className="text-sm text-emerald-400 hover:text-emerald-300 font-medium transition">
-                            Xem chi tiết
-                          </button>
-                        </td>
+              {loading ? (
+                <div className="text-center py-12">
+                  <div className="inline-block w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-gray-400 mt-4">Đang tải...</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-[#0f1419] border-b border-[#202934]">
+                      <tr>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                          ID
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                          Tên quyền
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                          Mô tả
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-[#202934]">
+                      {filteredPermissions.length === 0 ? (
+                        <tr>
+                          <td colSpan="3" className="px-6 py-8 text-center text-gray-400">
+                            Không tìm thấy quyền nào
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredPermissions.map((permission) => (
+                          <tr
+                            key={permission.id}
+                            className="hover:bg-[#0f1419] transition"
+                          >
+                            <td className="px-6 py-4">
+                              <span className="text-xs font-mono text-gray-500">
+                                {permission.id}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <p className="text-sm font-semibold text-white font-mono">
+                                {permission.name}
+                              </p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <p className="text-sm text-gray-400">
+                                {permission.description}
+                              </p>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </>
           )}
         </div>
