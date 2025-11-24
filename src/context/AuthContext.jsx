@@ -79,12 +79,14 @@ export default function AuthProvider({ children }) {
     }
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [hasInitialized, setHasInitialized] = useState(false);
 
   const isAuthenticated = !!token && !!user;
 
   const logout = () => {
     setToken(null);
     setUser(null);
+    setHasInitialized(false);
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(REFRESH_KEY);
     localStorage.removeItem(USER_KEY);
@@ -107,20 +109,24 @@ export default function AuthProvider({ children }) {
           console.log("❌ No token found");
           setUser(null);
           setIsLoading(false);
+          setHasInitialized(true);
           return;
         }
 
         // Nếu chưa có user, thì thử lấy từ localStorage hoặc decode JWT
-        if (!user) {
+        let currentUser = user;
+        if (!currentUser) {
           console.log("👤 Building user from token...");
           const localUserRaw = localStorage.getItem(USER_KEY);
           if (localUserRaw) {
             try {
               const parsed = JSON.parse(localUserRaw);
+              currentUser = parsed;
               setUser(parsed);
               console.log("✅ User loaded from localStorage:", parsed);
             } catch {
               const decodedUser = buildUserFromToken(token);
+              currentUser = decodedUser;
               setUser(decodedUser);
               if (decodedUser) {
                 localStorage.setItem(USER_KEY, JSON.stringify(decodedUser));
@@ -129,6 +135,7 @@ export default function AuthProvider({ children }) {
             }
           } else {
             const decodedUser = buildUserFromToken(token);
+            currentUser = decodedUser;
             setUser(decodedUser);
             if (decodedUser) {
               localStorage.setItem(USER_KEY, JSON.stringify(decodedUser));
@@ -137,26 +144,45 @@ export default function AuthProvider({ children }) {
           }
         }
 
-        // Gọi introspect để check token còn valid không
-        console.log("🔍 Checking token validity...");
-        const result = await authService.fetchMe(token);
-        console.log("🔍 Introspect result:", result);
+        // Chỉ gọi introspect khi chưa initialize hoặc khi thực sự cần thiết
+        if (!hasInitialized) {
+          console.log("🔍 Checking token validity (first time)...");
+          try {
+            const result = await authService.fetchMe(token);
+            console.log("🔍 Introspect result:", result);
 
-        if (!cancelled && !result?.valid) {
-          console.warn("⚠️ Token không còn hợp lệ, tiến hành logout");
-          logout();
-        } else {
-          console.log("✅ Token is valid!");
+            if (!cancelled && !result?.valid) {
+              console.warn("⚠️ Token không còn hợp lệ, tiến hành logout");
+              logout();
+              return;
+            } else {
+              console.log("✅ Token is valid!");
+            }
+          } catch (err) {
+            // Chỉ logout nếu lỗi 401 (unauthorized)
+            if (err.response?.status === 401) {
+              console.warn("⚠️ Token unauthorized, logging out");
+              logout();
+              return;
+            } else {
+              // Các lỗi khác (network, server error) không logout
+              console.warn("⚠️ Introspect error (not logging out):", err.message);
+            }
+          }
         }
       } catch (err) {
         if (!cancelled) {
           console.error("🔴 Lỗi init auth:", err);
-          logout();
+          // Không tự động logout trừ khi là lỗi authentication
+          if (err.response?.status === 401) {
+            logout();
+          }
         }
       } finally {
         if (!cancelled) {
           console.log("✅ AuthContext init completed, isLoading = false");
           setIsLoading(false);
+          setHasInitialized(true);
         }
       }
     };
@@ -167,7 +193,7 @@ export default function AuthProvider({ children }) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [token, hasInitialized]);
 
   // Hàm login: gọi service + cập nhật context + localStorage
   const login = async ({ email, password }) => {

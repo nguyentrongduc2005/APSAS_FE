@@ -240,12 +240,10 @@ export default function StudentMyCourses() {
       ) : (
         /* Course Grid */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredCourses.map((course) => {
-            console.log('Course data:', course); // Debug log
-            return (
-              <StudentCourseCard 
-                key={course.id} 
-                course={{
+          {filteredCourses.map((course) => (
+            <StudentCourseCard 
+              key={course.id} 
+              course={{
                   id: course.id,
                   title: course.name, // Chỉ truyền title từ course.name
                   instructor: course.lecture.name,
@@ -260,8 +258,7 @@ export default function StudentMyCourses() {
                   type: course.type
                 }} 
               />
-            );
-          })}
+          ))}
         </div>
       )}
 
