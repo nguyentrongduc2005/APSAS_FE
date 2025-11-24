@@ -1,9 +1,4 @@
-import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-} from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 import { jwtDecode } from "jwt-decode";
 import * as authService from "../services/authService.js";
 
@@ -58,9 +53,7 @@ function normalizeUserFromApi(userFromApi, token) {
   }
   if (!userFromApi) return null;
 
-  const rawRoles = Array.isArray(userFromApi.roles)
-    ? userFromApi.roles
-    : [];
+  const rawRoles = Array.isArray(userFromApi.roles) ? userFromApi.roles : [];
   const normalizedRoles = rawRoles.map(normalizeRoleName).filter(Boolean);
   const primaryRole = normalizedRoles[0];
 
@@ -103,8 +96,15 @@ export default function AuthProvider({ children }) {
 
     const init = async () => {
       try {
+        console.log(
+          "🔄 AuthContext init - token:",
+          token?.substring(0, 20) + "..."
+        );
+        console.log("🔄 AuthContext init - user:", user);
+
         // Không có token -> clear user
         if (!token) {
+          console.log("❌ No token found");
           setUser(null);
           setIsLoading(false);
           return;
@@ -112,17 +112,20 @@ export default function AuthProvider({ children }) {
 
         // Nếu chưa có user, thì thử lấy từ localStorage hoặc decode JWT
         if (!user) {
+          console.log("👤 Building user from token...");
           const localUserRaw = localStorage.getItem(USER_KEY);
           if (localUserRaw) {
             try {
               const parsed = JSON.parse(localUserRaw);
               setUser(parsed);
+              console.log("✅ User loaded from localStorage:", parsed);
             } catch {
               const decodedUser = buildUserFromToken(token);
               setUser(decodedUser);
               if (decodedUser) {
                 localStorage.setItem(USER_KEY, JSON.stringify(decodedUser));
               }
+              console.log("✅ User decoded from token:", decodedUser);
             }
           } else {
             const decodedUser = buildUserFromToken(token);
@@ -130,22 +133,31 @@ export default function AuthProvider({ children }) {
             if (decodedUser) {
               localStorage.setItem(USER_KEY, JSON.stringify(decodedUser));
             }
+            console.log("✅ User decoded from token:", decodedUser);
           }
         }
 
         // Gọi introspect để check token còn valid không
+        console.log("🔍 Checking token validity...");
         const result = await authService.fetchMe(token);
+        console.log("🔍 Introspect result:", result);
+
         if (!cancelled && !result?.valid) {
-          console.warn("Token không còn hợp lệ, tiến hành logout");
+          console.warn("⚠️ Token không còn hợp lệ, tiến hành logout");
           logout();
+        } else {
+          console.log("✅ Token is valid!");
         }
       } catch (err) {
         if (!cancelled) {
-          console.error("Lỗi init auth:", err);
+          console.error("🔴 Lỗi init auth:", err);
           logout();
         }
       } finally {
-        if (!cancelled) setIsLoading(false);
+        if (!cancelled) {
+          console.log("✅ AuthContext init completed, isLoading = false");
+          setIsLoading(false);
+        }
       }
     };
 
@@ -201,9 +213,7 @@ export default function AuthProvider({ children }) {
     },
   };
 
-  return (
-    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 /**
