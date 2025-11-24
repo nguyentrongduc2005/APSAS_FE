@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { BookOpen, CheckCircle, Clock, Plus, X } from "lucide-react";
+import { BookOpen, CheckCircle, Clock, Plus, X, ChevronLeft, ChevronRight } from "lucide-react";
 import StudentCourseCard from "../../components/student/CourseCard";
+import { studentCourseService } from "../../services/studentCourseService";
 
 export default function StudentMyCourses() {
   const { user } = useAuth();
@@ -9,6 +10,52 @@ export default function StudentMyCourses() {
   const [courseCode, setCourseCode] = useState("");
   const [isJoining, setIsJoining] = useState(false);
   const [error, setError] = useState("");
+  
+  // API state management
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [pagination, setPagination] = useState({
+    pageNumber: 0,
+    pageSize: 6,
+    totalPages: 0,
+    totalElements: 0,
+    first: true,
+    last: true
+  });
+  const [activeTab, setActiveTab] = useState("all");
+
+  // Load courses from API
+  const loadCourses = async (page = 0) => {
+    setLoading(true);
+    try {
+      const response = await studentCourseService.getMyCourses({
+        page,
+        size: 6
+      });
+      
+      if (response.code === "ok") {
+        setCourses(response.data.content);
+        setPagination({
+          pageNumber: response.data.number,
+          pageSize: response.data.size,
+          totalPages: response.data.totalPages,
+          totalElements: response.data.totalElements,
+          first: response.data.first,
+          last: response.data.last
+        });
+      }
+    } catch (err) {
+      console.error('Error loading courses:', err);
+      setError("Không thể tải danh sách khóa học");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load courses on component mount
+  useEffect(() => {
+    loadCourses();
+  }, []);
 
   const handleJoinCourse = async () => {
     if (!courseCode.trim()) {
@@ -20,65 +67,59 @@ export default function StudentMyCourses() {
     setError("");
 
     try {
-      // TODO: Gọi API để tham gia khóa học với courseCode
-      // await courseService.joinCourse(courseCode);
-
-      // Giả lập API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Thành công
-      alert(`Tham gia khóa học thành công với mã: ${courseCode}`);
-      setShowJoinModal(false);
-      setCourseCode("");
+      const response = await studentCourseService.joinCourse(courseCode);
+      
+      if (response.code === "ok") {
+        alert(`Tham gia khóa học thành công với mã: ${courseCode}`);
+        setShowJoinModal(false);
+        setCourseCode("");
+        // Reload courses after joining
+        loadCourses(pagination.pageNumber);
+      }
     } catch (err) {
-      setError(err.message || "Mã khóa học không hợp lệ");
+      setError(err.response?.data?.message || "Mã khóa học không hợp lệ");
     } finally {
       setIsJoining(false);
     }
   };
 
-  // Mock data - thay bằng API call
-  const enrolledCourses = [
-    {
-      id: 1,
-      title: "Java Programming Fundamentals",
-      instructor: "TS. Trần Minh Quân",
-      instructorAvatar: "/images/avatar-lecturer1.png",
-      thumbnail: "/images/course-java.png",
-      language: "Public",
-      studentCount: 45,
-      lessonCount: 13,
-      duration: 18,
-      progress: 65,
-      lastAccessed: "2 days ago",
-    },
-    {
-      id: 2,
-      title: "Web Development with React",
-      instructor: "TS. Nguyễn Văn A",
-      instructorAvatar: "/images/avatar-lecturer2.png",
-      thumbnail: "/images/course-react.png",
-      language: "Public",
-      studentCount: 120,
-      lessonCount: 24,
-      duration: 32,
-      progress: 30,
-      lastAccessed: "5 days ago",
-    },
-    {
-      id: 3,
-      title: "Python for Data Science",
-      instructor: "TS. Lê Văn C",
-      instructorAvatar: "/images/avatar-lecturer3.png",
-      thumbnail: "/images/course-python.png",
-      language: "Public",
-      studentCount: 89,
-      lessonCount: 18,
-      duration: 24,
-      progress: 90,
-      lastAccessed: "1 day ago",
-    },
-  ];
+  // Filter courses based on active tab
+  const getFilteredCourses = () => {
+    switch (activeTab) {
+      case "active":
+        return courses.filter(course => course.totalAssignmentCurrent > 0 && course.totalAssignmentCurrent < course.totalAssignment);
+      case "completed":
+        return courses.filter(course => course.totalAssignmentCurrent === course.totalAssignment);
+      default:
+        return courses;
+    }
+  };
+
+  const filteredCourses = getFilteredCourses();
+
+  // Calculate stats from actual data
+  const stats = {
+    total: courses.length,
+    completed: courses.filter(course => course.totalAssignmentCurrent === course.totalAssignment).length,
+    active: courses.filter(course => course.totalAssignmentCurrent > 0 && course.totalAssignmentCurrent < course.totalAssignment).length
+  };
+
+  // Pagination handlers
+  const handlePrevPage = () => {
+    if (!pagination.first) {
+      loadCourses(pagination.pageNumber - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (!pagination.last) {
+      loadCourses(pagination.pageNumber + 1);
+    }
+  };
+
+  const goToPage = (page) => {
+    loadCourses(page);
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8 space-y-6">
@@ -109,7 +150,7 @@ export default function StudentMyCourses() {
             <div>
               <p className="text-gray-400 text-sm">Khóa đã đăng ký</p>
               <p className="text-2xl font-bold text-white mt-1">
-                {enrolledCourses.length}
+                {stats.total}
               </p>
             </div>
             <div className="w-12 h-12 bg-blue-500/10 rounded-lg flex items-center justify-center">
@@ -123,7 +164,7 @@ export default function StudentMyCourses() {
             <div>
               <p className="text-gray-400 text-sm">Đã hoàn thành</p>
               <p className="text-2xl font-bold text-emerald-400 mt-1">
-                {enrolledCourses.filter((c) => c.progress === 100).length}
+                {stats.completed}
               </p>
             </div>
             <div className="w-12 h-12 bg-emerald-500/10 rounded-lg flex items-center justify-center">
@@ -137,11 +178,7 @@ export default function StudentMyCourses() {
             <div>
               <p className="text-gray-400 text-sm">Đang học</p>
               <p className="text-2xl font-bold text-blue-400 mt-1">
-                {
-                  enrolledCourses.filter(
-                    (c) => c.progress > 0 && c.progress < 100
-                  ).length
-                }
+                {stats.active}
               </p>
             </div>
             <div className="w-12 h-12 bg-yellow-500/10 rounded-lg flex items-center justify-center">
@@ -153,26 +190,83 @@ export default function StudentMyCourses() {
 
       {/* Filter Tabs */}
       <div className="flex gap-3 border-b border-[#202934] overflow-x-auto">
-        <button className="px-4 py-2 text-emerald-400 border-b-2 border-emerald-400 font-medium whitespace-nowrap">
-          Tất cả
+        <button 
+          onClick={() => setActiveTab("all")}
+          className={`px-4 py-2 font-medium whitespace-nowrap transition ${
+            activeTab === "all" 
+              ? "text-emerald-400 border-b-2 border-emerald-400" 
+              : "text-gray-400 hover:text-white"
+          }`}
+        >
+          Tất cả ({stats.total})
         </button>
-        <button className="px-4 py-2 text-gray-400 hover:text-white transition whitespace-nowrap">
-          Đang học
+        <button 
+          onClick={() => setActiveTab("active")}
+          className={`px-4 py-2 font-medium whitespace-nowrap transition ${
+            activeTab === "active" 
+              ? "text-emerald-400 border-b-2 border-emerald-400" 
+              : "text-gray-400 hover:text-white"
+          }`}
+        >
+          Đang học ({stats.active})
         </button>
-        <button className="px-4 py-2 text-gray-400 hover:text-white transition whitespace-nowrap">
-          Đã hoàn thành
+        <button 
+          onClick={() => setActiveTab("completed")}
+          className={`px-4 py-2 font-medium whitespace-nowrap transition ${
+            activeTab === "completed" 
+              ? "text-emerald-400 border-b-2 border-emerald-400" 
+              : "text-gray-400 hover:text-white"
+          }`}
+        >
+          Đã hoàn thành ({stats.completed})
         </button>
       </div>
 
-      {/* Course Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {enrolledCourses.map((course) => (
-          <StudentCourseCard key={course.id} course={course} />
-        ))}
-      </div>
+      {/* Loading State */}
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(6)].map((_, index) => (
+            <div key={index} className="bg-[#0f1419] border border-[#202934] rounded-lg p-6 animate-pulse">
+              <div className="bg-gray-700 h-40 rounded-lg mb-4"></div>
+              <div className="bg-gray-700 h-4 rounded mb-2"></div>
+              <div className="bg-gray-700 h-3 rounded mb-4 w-3/4"></div>
+              <div className="flex gap-2">
+                <div className="bg-gray-700 h-3 rounded w-1/4"></div>
+                <div className="bg-gray-700 h-3 rounded w-1/4"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        /* Course Grid */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredCourses.map((course) => {
+            console.log('Course data:', course); // Debug log
+            return (
+              <StudentCourseCard 
+                key={course.id} 
+                course={{
+                  id: course.id,
+                  title: course.name, // Chỉ truyền title từ course.name
+                  instructor: course.lecture.name,
+                  instructorAvatar: course.lecture.avatarUrl,
+                  thumbnail: course.avatarUrl,
+                  language: course.visibility,
+                  studentCount: course.currentMember,
+                  lessonCount: course.totalLession,
+                  duration: course.totalLession * 2,
+                  progress: Math.round((course.totalAssignmentCurrent / course.totalAssignment) * 100) || 0,
+                  lastAccessed: "Vừa xem",
+                  type: course.type
+                }} 
+              />
+            );
+          })}
+        </div>
+      )}
 
       {/* Empty State (nếu không có khóa học) */}
-      {enrolledCourses.length === 0 && (
+      {!loading && filteredCourses.length === 0 && (
         <div className="text-center py-12 bg-[#0f1419] border border-[#202934] rounded-lg">
           <div className="flex justify-center mb-4">
             <BookOpen size={64} className="text-gray-600" />
@@ -186,6 +280,48 @@ export default function StudentMyCourses() {
           <button className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-black font-medium rounded-lg transition">
             Khám phá khóa học
           </button>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {!loading && filteredCourses.length > 0 && pagination.totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 mt-8">
+          <button
+            onClick={handlePrevPage}
+            disabled={pagination.first}
+            className="p-2 rounded-lg border border-[#202934] text-gray-400 hover:text-white hover:border-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          
+          <div className="flex gap-1">
+            {[...Array(pagination.totalPages)].map((_, index) => (
+              <button
+                key={index}
+                onClick={() => goToPage(index)}
+                className={`px-3 py-1 rounded-lg text-sm font-medium transition ${
+                  pagination.pageNumber === index
+                    ? "bg-emerald-500 text-black"
+                    : "text-gray-400 hover:text-white border border-[#202934] hover:border-emerald-500"
+                }`}
+              >
+                {index + 1}
+              </button>
+            ))}
+          </div>
+          
+          <button
+            onClick={handleNextPage}
+            disabled={pagination.last}
+            className="p-2 rounded-lg border border-[#202934] text-gray-400 hover:text-white hover:border-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition"
+          >
+            <ChevronRight size={20} />
+          </button>
+          
+          <span className="text-sm text-gray-400 ml-4">
+            Trang {pagination.pageNumber + 1} / {pagination.totalPages} 
+            ({pagination.totalElements} khóa học)
+          </span>
         </div>
       )}
 
