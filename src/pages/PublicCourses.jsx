@@ -2,12 +2,6 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Users, Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import CourseCard from "../components/common/CourseCard";
-import {
-  continueCourse,
-  featured,
-  interview,
-  learn,
-} from "../constants/courses";
 import courseService from "../services/courseService";
 
 function Section({ title, children, action }) {
@@ -25,43 +19,46 @@ function Section({ title, children, action }) {
 export default function PublicCourses() {
   const navigate = useNavigate();
 
-  // state cho list khóa public lấy từ API
+  // state lấy khóa học từ DB
   const [publicCourses, setPublicCourses] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6; // số khóa học mỗi trang (trùng với BE)
+  const PAGE_SIZE = 9;
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
-
-  // state cho ô search
   const [searchText, setSearchText] = useState("");
 
-  // gọi API mỗi khi đổi trang hoặc đổi search
+  // load course từ BE
   useEffect(() => {
-    const fetchCourses = async () => {
-      setLoading(true);
+    const loadCourses = async () => {
       try {
-        const res = await courseService.getPublicCourses({
-          page: currentPage - 1, // FE (1-based) -> BE (0-based)
-          size: itemsPerPage,
-          search: searchText.trim(),
-        });
+        setLoading(true);
 
-        // BE trả về { code, message, data: pageObject }
-        // => res.data chính là pageObject
-        const data = res?.data || res;
+        const page = currentPage - 1; // BE dùng page index từ 0
+        const result = await courseService.getPublicCoursesList({
+  page,
+  size: PAGE_SIZE,
+  search: searchText,   // dùng đúng tên param
+});
 
-        setPublicCourses(data?.content || []);
-        setTotalPages(data?.totalPages || 1);
-      } catch (error) {
-        console.error("Failed to load public courses", error);
+        // result là object có { content, totalPages, ... }
+        setPublicCourses(result.content || []);
+        setTotalPages(result.totalPages || 1);
+      } catch (err) {
+        console.error("Error loading public courses:", err);
         setPublicCourses([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchCourses();
+    loadCourses();
   }, [currentPage, searchText]);
+
+  // Tách data cho các section
+  const heroCourse = publicCourses[0] || null;
+  const featuredCourses = publicCourses.slice(0, 3);
+  const interviewCourses = publicCourses.slice(3, 6);
+  const learnCourses = publicCourses.slice(6, 9);
 
   const handlePageChange = (page) => {
     if (page < 1 || page > totalPages) return;
@@ -88,36 +85,52 @@ export default function PublicCourses() {
               <label className="text-white font-semibold mb-3 block text-sm">
                 ■ Continue Previous:
               </label>
-              <div
-                className="bg-[#0b0f12] border border-[#202934] rounded-lg overflow-hidden hover:border-emerald-500/50 transition cursor-pointer"
-                onClick={() => navigate(`/course/${continueCourse.id}`)}
-              >
-                <div className="flex gap-3 p-3">
-                  <div className="w-24 h-16 shrink-0 rounded overflow-hidden">
-                    <img
-                      src={continueCourse.image}
-                      alt="continue"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-white font-semibold mb-1 truncate text-sm">
-                      {continueCourse.title}
-                    </h3>
-                    <p className="text-gray-400 text-xs mb-2 line-clamp-2">
-                      {continueCourse.desc}
-                    </p>
-                    <div className="flex gap-3 text-xs text-gray-400">
-                      <span className="flex items-center gap-1">
-                        <Users size={12} /> {continueCourse.stats.learners}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock size={12} /> {continueCourse.stats.progress}
-                      </span>
+
+              {heroCourse ? (
+                <div
+                  className="bg-[#0b0f12] border border-[#202934] rounded-xl overflow-hidden hover:border-emerald-500/50 transition cursor-pointer"
+                  onClick={() => navigate(`/course/${heroCourse.id}`)}
+                >
+                  <div className="flex gap-3 p-3">
+                    <div className="w-24 h-16 shrink-0 rounded overflow-hidden">
+                      <img
+                        src={
+                          heroCourse.avatarUrl ||
+                          "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&h=450&fit=crop"
+                        }
+                        alt={heroCourse.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+
+                    <div className="flex-1 space-y-1">
+                      <h3 className="text-white font-medium text-sm">
+                        {heroCourse.name}
+                      </h3>
+                      <p className="text-gray-400 text-xs line-clamp-2">
+                        {heroCourse.description || "Khóa học trên APSAS"}
+                      </p>
+
+                      <div className="flex items-center gap-3 text-xs text-gray-400">
+                        <span className="inline-flex items-center gap-1">
+                          <Users size={12} />
+                          {heroCourse.studentsCount ?? 0} người học
+                        </span>
+                        {heroCourse.lessonsCount && (
+                          <span className="inline-flex items-center gap-1">
+                            <Clock size={12} />
+                            {heroCourse.lessonsCount} bài
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <p className="text-gray-500 text-xs">
+                  Chưa có khóa học public nào.
+                </p>
+              )}
             </div>
           </div>
 
@@ -151,8 +164,20 @@ export default function PublicCourses() {
           }
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {featured.map((c, i) => (
-              <CourseCard key={i} {...c} />
+            {featuredCourses.map((course) => (
+              <CourseCard
+                key={course.id}
+                id={course.id}
+                title={course.name}
+                desc={course.description}
+                image={
+                  course.avatarUrl ||
+                  "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&h=450&fit=crop"
+                }
+                stats={{
+                  learners: course.studentsCount ?? 0,
+                }}
+              />
             ))}
           </div>
         </Section>
@@ -170,8 +195,20 @@ export default function PublicCourses() {
           }
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {interview.map((c, i) => (
-              <CourseCard key={i} {...c} />
+            {interviewCourses.map((course) => (
+              <CourseCard
+                key={course.id}
+                id={course.id}
+                title={course.name}
+                desc={course.description}
+                image={
+                  course.avatarUrl ||
+                  "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&h=450&fit=crop"
+                }
+                stats={{
+                  learners: course.studentsCount ?? 0,
+                }}
+              />
             ))}
           </div>
         </Section>
@@ -189,8 +226,20 @@ export default function PublicCourses() {
           }
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {learn.map((c, i) => (
-              <CourseCard key={i} {...c} />
+            {learnCourses.map((course) => (
+              <CourseCard
+                key={course.id}
+                id={course.id}
+                title={course.name}
+                desc={course.description}
+                image={
+                  course.avatarUrl ||
+                  "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&h=450&fit=crop"
+                }
+                stats={{
+                  learners: course.studentsCount ?? 0,
+                }}
+              />
             ))}
           </div>
         </Section>
@@ -198,10 +247,9 @@ export default function PublicCourses() {
         {/* Divider */}
         <div className="border-t border-[#202934]"></div>
 
-        {/* All Courses with Pagination (dữ liệu từ API) */}
+        {/* All Courses with Pagination */}
         <Section title="Tất cả khóa học">
           <div className="space-y-4">
-            {/* Ô search nhỏ cho phần tất cả khóa học */}
             <div className="flex justify-between items-center gap-3 flex-wrap">
               <input
                 type="text"

@@ -1,258 +1,213 @@
-import { useState } from "react";
-import { useAuth } from "../../context/AuthContext";
+// src/pages/student/MyCourses.jsx
+import React, { useState, useEffect } from "react";
 import { BookOpen, CheckCircle, Clock, Plus, X } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
 import StudentCourseCard from "../../components/student/CourseCard";
+import courseService from "../../services/courseService";
 
-export default function StudentMyCourses() {
+export default function MyCourses() {
   const { user } = useAuth();
+
+  const [enrolledCourses, setEnrolledCourses] = useState([]);
+  const [isLoadingCourses, setIsLoadingCourses] = useState(true);
+
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [courseCode, setCourseCode] = useState("");
   const [isJoining, setIsJoining] = useState(false);
   const [error, setError] = useState("");
 
+  // =========================
+  // 1. Load danh sách khóa học từ BE
+  // =========================
+  useEffect(() => {
+    const loadCourses = async () => {
+      try {
+        setIsLoadingCourses(true);
+        setError("");
+
+        // GỌI API BE: GET /api/courses/student/my-courses
+        const data = await courseService.getStudentCourses();
+
+        // data có thể là:
+        // - mảng: [ {id, ...}, ... ]
+        // - hoặc object phân trang: { content: [...] }
+        const list = data?.content ?? data ?? [];
+
+        setEnrolledCourses(list);
+      } catch (e) {
+        console.error("Error loading student courses:", e);
+        setError("Không tải được danh sách khoá học, vui lòng thử lại.");
+      } finally {
+        setIsLoadingCourses(false);
+      }
+    };
+
+    loadCourses();
+  }, []);
+
+  // =========================
+  // 2. Join khoá học bằng mã code
+  // =========================
   const handleJoinCourse = async () => {
     if (!courseCode.trim()) {
-      setError("Vui lòng nhập mã khóa học");
+      setError("Vui lòng nhập mã lớp.");
       return;
     }
 
-    setIsJoining(true);
-    setError("");
-
     try {
-      // TODO: Gọi API để tham gia khóa học với courseCode
-      // await courseService.joinCourse(courseCode);
+      setIsJoining(true);
+      setError("");
 
-      // Giả lập API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Gọi API join bằng code
+      await courseService.joinCourseByCode(courseCode.trim());
 
-      // Thành công
-      alert(`Tham gia khóa học thành công với mã: ${courseCode}`);
+      // Join xong thì load lại danh sách khoá học
+      const data = await courseService.getStudentCourses();
+      const list = data?.content ?? data ?? [];
+      setEnrolledCourses(list);
+
       setShowJoinModal(false);
       setCourseCode("");
-    } catch (err) {
-      setError(err.message || "Mã khóa học không hợp lệ");
+    } catch (e) {
+      console.error("Join course error:", e);
+      setError("Không tham gia được khoá học. Vui lòng kiểm tra lại mã.");
     } finally {
       setIsJoining(false);
     }
   };
 
-  // Mock data - thay bằng API call
-  const enrolledCourses = [
-    {
-      id: 1,
-      title: "Java Programming Fundamentals",
-      instructor: "TS. Trần Minh Quân",
-      instructorAvatar: "/images/avatar-lecturer1.png",
-      thumbnail: "/images/course-java.png",
-      language: "Public",
-      studentCount: 45,
-      lessonCount: 13,
-      duration: 18,
-      progress: 65,
-      lastAccessed: "2 days ago",
-    },
-    {
-      id: 2,
-      title: "Web Development with React",
-      instructor: "TS. Nguyễn Văn A",
-      instructorAvatar: "/images/avatar-lecturer2.png",
-      thumbnail: "/images/course-react.png",
-      language: "Public",
-      studentCount: 120,
-      lessonCount: 24,
-      duration: 32,
-      progress: 30,
-      lastAccessed: "5 days ago",
-    },
-    {
-      id: 3,
-      title: "Python for Data Science",
-      instructor: "TS. Lê Văn C",
-      instructorAvatar: "/images/avatar-lecturer3.png",
-      thumbnail: "/images/course-python.png",
-      language: "Public",
-      studentCount: 89,
-      lessonCount: 18,
-      duration: 24,
-      progress: 90,
-      lastAccessed: "1 day ago",
-    },
-  ];
-
   return (
-    <div className="max-w-7xl mx-auto px-6 py-8 space-y-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white">
-            Khóa học của tôi
+          <h1 className="text-2xl font-semibold text-white flex items-center gap-2">
+            <BookOpen size={24} className="text-emerald-400" />
+            Khoá học của tôi
           </h1>
-          <p className="text-gray-400 mt-1">
-            Chào {user?.name}! Tiếp tục hành trình học tập của bạn.
+          <p className="text-sm text-slate-400 mt-1">
+            Xin chào, {user?.fullName || user?.username || "bạn"} 👋. 
+            Đây là các khoá học bạn đang tham gia.
           </p>
         </div>
 
         <button
-          onClick={() => setShowJoinModal(true)}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-black font-medium rounded-lg transition whitespace-nowrap"
+          onClick={() => {
+            setShowJoinModal(true);
+            setError("");
+          }}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500 text-black font-medium text-sm hover:bg-emerald-400 transition"
         >
-          <Plus size={20} />
-          Tham gia khóa học
+          <Plus size={18} />
+          Tham gia khoá học
         </button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div className="bg-[#0f1419] border border-[#202934] rounded-lg p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-400 text-sm">Khóa đã đăng ký</p>
-              <p className="text-2xl font-bold text-white mt-1">
-                {enrolledCourses.length}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-blue-500/10 rounded-lg flex items-center justify-center">
-              <BookOpen size={24} className="text-blue-400" />
+      {/* Stats (tuỳ thích) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-[#0f1419] border border-[#202934] rounded-xl p-4 flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
+            <CheckCircle size={20} />
+          </div>
+          <div>
+            <div className="text-xs text-slate-400">Tổng khoá học</div>
+            <div className="text-lg font-semibold text-white">
+              {enrolledCourses.length}
             </div>
           </div>
         </div>
 
-        <div className="bg-[#0f1419] border border-[#202934] rounded-lg p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-400 text-sm">Đã hoàn thành</p>
-              <p className="text-2xl font-bold text-emerald-400 mt-1">
-                {enrolledCourses.filter((c) => c.progress === 100).length}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-emerald-500/10 rounded-lg flex items-center justify-center">
-              <CheckCircle size={24} className="text-emerald-400" />
+        <div className="bg-[#0f1419] border border-[#202934] rounded-xl p-4 flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-sky-500/10 text-sky-400">
+            <Clock size={20} />
+          </div>
+          <div>
+            <div className="text-xs text-slate-400">Tiến độ</div>
+            <div className="text-lg font-semibold text-white">
+              Đang phát triển
             </div>
           </div>
         </div>
 
-        <div className="bg-[#0f1419] border border-[#202934] rounded-lg p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-400 text-sm">Đang học</p>
-              <p className="text-2xl font-bold text-blue-400 mt-1">
-                {
-                  enrolledCourses.filter(
-                    (c) => c.progress > 0 && c.progress < 100
-                  ).length
-                }
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-yellow-500/10 rounded-lg flex items-center justify-center">
-              <Clock size={24} className="text-yellow-400" />
+        <div className="bg-[#0f1419] border border-[#202934] rounded-xl p-4 flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-violet-500/10 text-violet-400">
+            <BookOpen size={20} />
+          </div>
+          <div>
+            <div className="text-xs text-slate-400">Chế độ</div>
+            <div className="text-lg font-semibold text-white">
+              Student mode
             </div>
           </div>
         </div>
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex gap-3 border-b border-[#202934] overflow-x-auto">
-        <button className="px-4 py-2 text-emerald-400 border-b-2 border-emerald-400 font-medium whitespace-nowrap">
-          Tất cả
-        </button>
-        <button className="px-4 py-2 text-gray-400 hover:text-white transition whitespace-nowrap">
-          Đang học
-        </button>
-        <button className="px-4 py-2 text-gray-400 hover:text-white transition whitespace-nowrap">
-          Đã hoàn thành
-        </button>
-      </div>
-
-      {/* Course Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {enrolledCourses.map((course) => (
-          <StudentCourseCard key={course.id} course={course} />
-        ))}
-      </div>
-
-      {/* Empty State (nếu không có khóa học) */}
-      {enrolledCourses.length === 0 && (
-        <div className="text-center py-12 bg-[#0f1419] border border-[#202934] rounded-lg">
-          <div className="flex justify-center mb-4">
-            <BookOpen size={64} className="text-gray-600" />
-          </div>
-          <h3 className="text-xl font-semibold text-white mb-2">
-            Chưa có khóa học
-          </h3>
-          <p className="text-gray-400 mb-6">
-            Bắt đầu học bằng cách đăng ký một khóa học
-          </p>
-          <button className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-black font-medium rounded-lg transition">
-            Khám phá khóa học
-          </button>
+      {/* Danh sách khoá học */}
+      {isLoadingCourses ? (
+        <div className="text-slate-300">Đang tải danh sách khoá học...</div>
+      ) : error ? (
+        <div className="text-red-400 text-sm">{error}</div>
+      ) : enrolledCourses.length === 0 ? (
+        <div className="text-slate-300 text-sm">
+          Bạn chưa tham gia khoá học nào.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {enrolledCourses.map((course) => (
+            <StudentCourseCard key={course.id} course={course} />
+          ))}
         </div>
       )}
 
-      {/* Join Course Modal */}
+      {/* Modal join khoá học */}
       {showJoinModal && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={() => setShowJoinModal(false)}
-        >
-          <div
-            className="bg-[#0f1419] border border-[#202934] rounded-xl max-w-md w-full p-6 space-y-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between">
-              <h3 className="text-xl font-bold text-white">
-                Tham gia khóa học
-              </h3>
-              <button
-                onClick={() => setShowJoinModal(false)}
-                className="p-1 hover:bg-[#202934] rounded-lg transition"
-              >
-                <X size={20} className="text-gray-400" />
-              </button>
-            </div>
-
-            {/* Description */}
-            <p className="text-gray-400 text-sm">
-              Nhập mã khóa học mà giảng viên đã cung cấp để tham gia
-            </p>
-
-            {/* Input */}
-            <div className="space-y-2">
-              <label className="text-white text-sm font-medium">
-                Mã khóa học
-              </label>
-              <input
-                type="text"
-                value={courseCode}
-                onChange={(e) => {
-                  setCourseCode(e.target.value.toUpperCase());
-                  setError("");
-                }}
-                placeholder="VD: ABC123"
-                className="w-full px-4 py-3 bg-[#0b0f12] border border-[#202934] rounded-lg text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none transition"
-                autoFocus
-              />
-              {error && <p className="text-red-400 text-sm">{error}</p>}
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-3 pt-2">
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60">
+          <div className="bg-[#0f1419] border border-[#202934] rounded-xl p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-white">
+                Tham gia khoá học
+              </h2>
               <button
                 onClick={() => {
                   setShowJoinModal(false);
-                  setCourseCode("");
                   setError("");
                 }}
-                className="flex-1 px-4 py-2.5 bg-[#0b0f12] border border-[#202934] hover:border-emerald-500 text-white font-medium rounded-lg transition"
-                disabled={isJoining}
+                className="text-slate-400 hover:text-white"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <label className="block text-sm text-slate-300 mb-2">
+              Nhập mã khoá học:
+            </label>
+            <input
+              value={courseCode}
+              onChange={(e) => setCourseCode(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg bg-[#111827] border border-[#1f2937] text-sm text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              placeholder="VD: ABC123"
+            />
+
+            {error && (
+              <p className="text-xs text-red-400 mt-2">
+                {error}
+              </p>
+            )}
+
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => {
+                  setShowJoinModal(false);
+                  setError("");
+                }}
+                className="px-4 py-2 rounded-lg text-sm text-slate-300 hover:bg-white/5"
               >
                 Hủy
               </button>
               <button
                 onClick={handleJoinCourse}
                 disabled={isJoining}
-                className="flex-1 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-black font-medium rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 rounded-lg text-sm bg-emerald-500 text-black font-medium hover:bg-emerald-400 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {isJoining ? "Đang tham gia..." : "Tham gia"}
               </button>

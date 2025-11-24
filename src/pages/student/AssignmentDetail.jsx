@@ -1,6 +1,6 @@
-import React, { useState, lazy, Suspense } from "react";
+// src/pages/student/AssignmentDetail.jsx
+import React, { useState, useEffect, lazy, Suspense } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-const Editor = lazy(() => import("@monaco-editor/react"));
 import {
   ArrowLeft,
   Play,
@@ -9,371 +9,423 @@ import {
   CheckCircle2,
   Clock,
 } from "lucide-react";
+import api from "../../services/api";
+
+const Editor = lazy(() => import("@monaco-editor/react"));
+
+const unwrap = (res) => res?.data?.data ?? res?.data ?? res;
 
 export default function StudentAssignmentDetail() {
   const navigate = useNavigate();
   const { assignmentId } = useParams();
 
-  const [activeTab, setActiveTab] = useState("practice"); // practice | submissions
+  // Trang
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
-  const defaultCode = {
-    javascript:
-      "// Viết code JavaScript của bạn ở đây\nfunction solution(input) {\n  // Your code here\n  return result;\n}\n",
-    python:
-      "# Viết code Python của bạn ở đây\ndef solution(input):\n    # Your code here\n    return result\n",
-    java: "// Viết code Java của bạn ở đây\npublic class Solution {\n    public static String solution(String input) {\n        // Your code here\n        return result;\n    }\n}\n",
-    cpp: "// Viết code C++ của bạn ở đây\n#include <iostream>\n#include <string>\nusing namespace std;\n\nstring solution(string input) {\n    // Your code here\n    return result;\n}\n",
-  };
+  // Bài tập
+  const [assignment, setAssignment] = useState(null);
 
-  const [language, setLanguage] = useState("javascript");
-  const [code, setCode] = useState(defaultCode.javascript);
+  // Code editor
+  const [code, setCode] = useState("");
+  const [language, setLanguage] = useState("java");
+
+  // Run code
   const [isRunning, setIsRunning] = useState(false);
-  const [output, setOutput] = useState("");
+  const [runResult, setRunResult] = useState(null);
+  const [runError, setRunError] = useState("");
 
-  const handleLanguageChange = (newLanguage) => {
-    setLanguage(newLanguage);
-    setCode(defaultCode[newLanguage]);
-  };
+  // Submit
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [submitSuccess, setSubmitSuccess] = useState("");
 
-  // Mock data - TODO: Fetch from API
-  const assignment = {
-    id: assignmentId,
-    title: "Implement Singly Linked List",
-    descriptionHtml: `
-      <h3>Yêu cầu:</h3>
-      <p>Viết chương trình tạo một Singly Linked List với các thao tác cơ bản:</p>
-      <ul>
-        <li>Thêm node vào đầu danh sách</li>
-        <li>Thêm node vào cuối danh sách</li>
-        <li>Xóa node theo giá trị</li>
-        <li>Tìm kiếm node</li>
-        <li>In toàn bộ danh sách</li>
-      </ul>
-      <h3>Input:</h3>
-      <p>Một mảng các số nguyên</p>
-      <h3>Output:</h3>
-      <p>Danh sách liên kết đã được tạo và in ra theo format: <code>1 -> 2 -> 3 -> null</code></p>
-    `,
-    testCases: [
-      { input: "[1, 2, 3, 4, 5]", output: "1 -> 2 -> 3 -> 4 -> 5 -> null" },
-      { input: "[10, 20, 30]", output: "10 -> 20 -> 30 -> null" },
-      { input: "[]", output: "null" },
-    ],
-  };
+  // Lịch sử nộp bài
+  const [submissions, setSubmissions] = useState([]);
+  const [loadingSubmissions, setLoadingSubmissions] = useState(false);
 
-  const languages = [
-    { value: "javascript", label: "JavaScript" },
-    { value: "python", label: "Python" },
-    { value: "java", label: "Java" },
-    { value: "cpp", label: "C++" },
-  ];
+  // ==============================
+  // 1) Load assignment + submissions từ BE
+  // ==============================
+  useEffect(() => {
+    if (!assignmentId) return;
 
-  const handleRun = async () => {
-    setIsRunning(true);
-    setOutput("");
+    const loadAll = async () => {
+      try {
+        setLoading(true);
+        setLoadError("");
 
-    // Mock run code
-    setTimeout(() => {
-      setOutput(
-        "Running code...\n\nTest case 1: Passed ✓\nTest case 2: Passed ✓\nTest case 3: Passed ✓"
-      );
-      setIsRunning(false);
-    }, 1500);
-  };
+        // 1. Chi tiết assignment
+        const assignmentRes = await api.get(
+          `/student/assignments/${assignmentId}`
+        );
+        const assignmentData = unwrap(assignmentRes);
 
-  const handleSubmit = async () => {
+        setAssignment(assignmentData || null);
+        setLanguage(assignmentData?.language || "java");
+        setCode(assignmentData?.starterCode || "");
+
+        // 2. Lịch sử submissions
+        setLoadingSubmissions(true);
+        try {
+          const subsRes = await api.get(
+            `/student/assignments/${assignmentId}/submissions`
+          );
+          const subsData = unwrap(subsRes);
+          const list = subsData?.content ?? subsData ?? [];
+          setSubmissions(Array.isArray(list) ? list : []);
+        } finally {
+          setLoadingSubmissions(false);
+        }
+      } catch (err) {
+        console.error("Error loading assignment detail:", err);
+        setLoadError("Không tải được thông tin bài tập.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAll();
+  }, [assignmentId]);
+
+  // ==============================
+  // 2) Run code
+  // ==============================
+  const handleRunCode = async () => {
+    if (!assignmentId) return;
     if (!code.trim()) {
-      alert("Vui lòng viết code trước khi nộp bài!");
+      setRunError("Vui lòng nhập code trước khi chạy.");
       return;
     }
 
-    const confirmed = window.confirm("Bạn có chắc chắn muốn nộp bài?");
-    if (confirmed) {
-      // TODO: Call API to submit
-      alert("Nộp bài thành công!");
-      navigate(-1);
+    setIsRunning(true);
+    setRunError("");
+    setRunResult(null);
+
+    try {
+      const res = await api.post(`/student/assignments/${assignmentId}/run`, {
+        code,
+        language,
+      });
+      const data = unwrap(res);
+      setRunResult(data || null);
+    } catch (err) {
+      console.error("Run code error:", err);
+      setRunError("Không thể chạy code. Vui lòng thử lại.");
+    } finally {
+      setIsRunning(false);
     }
   };
 
-  // Mock submissions data
-  const submissions = [
-    {
-      id: 1,
-      submittedAt: "2024-03-15 14:30:00",
-      language: "JavaScript",
-      status: "passed",
-      score: 100,
-      testsPassed: 3,
-      testsTotal: 3,
-    },
-    {
-      id: 2,
-      submittedAt: "2024-03-15 13:45:00",
-      language: "Python",
-      status: "failed",
-      score: 66,
-      testsPassed: 2,
-      testsTotal: 3,
-    },
-    {
-      id: 3,
-      submittedAt: "2024-03-15 12:20:00",
-      language: "JavaScript",
-      status: "passed",
-      score: 100,
-      testsPassed: 3,
-      testsTotal: 3,
-    },
-  ];
+  // ==============================
+  // 3) Submit code
+  // ==============================
+  const handleSubmitCode = async () => {
+    if (!assignmentId) return;
+    if (!code.trim()) {
+      setSubmitError("Vui lòng nhập code trước khi nộp.");
+      return;
+    }
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <section className="bg-[#0f1419] border border-[#202934] rounded-xl p-6">
+    setIsSubmitting(true);
+    setSubmitError("");
+    setSubmitSuccess("");
+
+    try {
+      const res = await api.post(
+        `/student/assignments/${assignmentId}/submit`,
+        {
+          code,
+          language,
+        }
+      );
+      const data = unwrap(res);
+      setSubmitSuccess("Nộp bài thành công!");
+
+      // Reload submissions sau khi nộp
+      try {
+        setLoadingSubmissions(true);
+        const subsRes = await api.get(
+          `/student/assignments/${assignmentId}/submissions`
+        );
+        const subsData = unwrap(subsRes);
+        const list = subsData?.content ?? subsData ?? [];
+        setSubmissions(Array.isArray(list) ? list : []);
+      } finally {
+        setLoadingSubmissions(false);
+      }
+
+      // Nếu BE trả kết quả, cũng hiển thị vào runResult
+      if (data) {
+        setRunResult(data);
+      }
+    } catch (err) {
+      console.error("Submit code error:", err);
+      setSubmitError("Không thể nộp bài. Vui lòng thử lại.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // ==============================
+  // 4) UI loading / lỗi
+  // ==============================
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition mb-4"
+          className="flex items-center gap-2 text-sm text-gray-400 hover:text-white mb-4"
         >
-          <ArrowLeft size={18} />
+          <ArrowLeft size={16} />
           Quay lại
         </button>
+        <p className="text-gray-400 text-sm">Đang tải dữ liệu bài tập...</p>
+      </div>
+    );
+  }
 
-        <div>
-          <h1 className="text-2xl font-bold text-white mb-4">
-            {assignment.title}
-          </h1>
+  if (loadError || !assignment) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-4">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-2 text-sm text-gray-400 hover:text-white"
+        >
+          <ArrowLeft size={16} />
+          Quay lại
+        </button>
+        <div className="bg-[#0f1419] border border-[#202934] rounded-xl p-6">
+          <p className="text-red-400 text-sm">
+            {loadError || "Không tìm thấy bài tập."}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
-          {/* Tabs */}
-          <div className="flex gap-2 border-b border-[#202934]">
-            <button
-              onClick={() => setActiveTab("practice")}
-              className={`px-4 py-2 font-medium transition ${
-                activeTab === "practice"
-                  ? "text-emerald-400 border-b-2 border-emerald-400"
-                  : "text-gray-400 hover:text-white"
-              }`}
-            >
-              Làm bài
-            </button>
-            <button
-              onClick={() => setActiveTab("submissions")}
-              className={`px-4 py-2 font-medium transition ${
-                activeTab === "submissions"
-                  ? "text-emerald-400 border-b-2 border-emerald-400"
-                  : "text-gray-400 hover:text-white"
-              }`}
-            >
-              Bài nộp ({submissions.length})
-            </button>
-          </div>
+  // Gỡ dữ liệu ra từ assignment
+  const {
+    title,
+    description,
+    descriptionHtml,
+    maxScore,
+    skill,
+    difficulty,
+    estimatedTime,
+  } = assignment;
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      {/* Header */}
+      <section className="bg-[#0f1419] border border-[#202934] rounded-xl p-6">
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 text-sm text-gray-400 hover:text-white"
+          >
+            <ArrowLeft size={16} />
+            Quay lại
+          </button>
+          <span className="text-xs text-gray-500">
+            Assignment ID: {assignmentId}
+          </span>
+        </div>
+
+        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
+          {title || "Bài tập"}
+        </h1>
+
+        <div className="flex flex-wrap gap-3 text-xs text-gray-400">
+          {skill?.name && (
+            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-300">
+              <CheckCircle2 size={14} />
+              {skill.name}
+            </span>
+          )}
+          {difficulty && (
+            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 text-blue-300">
+              Độ khó: {difficulty}
+            </span>
+          )}
+          {estimatedTime && (
+            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-yellow-500/10 text-yellow-300">
+              <Clock size={14} />
+              {estimatedTime} phút
+            </span>
+          )}
+          {maxScore != null && (
+            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gray-500/10 text-gray-300">
+              Điểm tối đa: {maxScore}
+            </span>
+          )}
         </div>
       </section>
 
-      {activeTab === "practice" ? (
-        <>
-          {/* Description */}
-          <section className="bg-[#0f1419] border border-[#202934] rounded-xl p-6">
-            <div
-              className="prose prose-invert max-w-none text-gray-300"
-              dangerouslySetInnerHTML={{ __html: assignment.descriptionHtml }}
-              style={{
-                "--tw-prose-headings": "#fff",
-                "--tw-prose-links": "#10b981",
-                "--tw-prose-code": "#10b981",
-              }}
-            />
-          </section>
-
-          {/* Code Editor Section */}
-          <section className="bg-[#0f1419] border border-[#202934] rounded-xl p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-white">Code Editor</h2>
-
-              {/* Language Selector */}
-              <select
-                value={language}
-                onChange={(e) => handleLanguageChange(e.target.value)}
-                className="px-4 py-2 bg-[#0b0f12] border border-[#202934] rounded-lg text-white focus:outline-none focus:border-emerald-500 transition"
-              >
-                {languages.map((lang) => (
-                  <option key={lang.value} value={lang.value}>
-                    {lang.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Monaco Code Editor */}
-            <div className="border border-[#202934] rounded-lg overflow-hidden">
-              <Suspense
-                fallback={
-                  <div className="p-6 text-sm text-gray-400">Loading editor...</div>
-                }
-              >
-                <Editor
-                  height="400px"
-                  language={language}
-                  value={code}
-                  onChange={(value) => setCode(value || "")}
-                  theme="vs-dark"
-                  options={{
-                    minimap: { enabled: false },
-                    fontSize: 14,
-                    lineNumbers: "on",
-                    scrollBeyondLastLine: false,
-                    automaticLayout: true,
-                    tabSize: 2,
-                    wordWrap: "on",
-                    padding: { top: 16, bottom: 16 },
-                  }}
-                />
-              </Suspense>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handleRun}
-                disabled={isRunning}
-                className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Play size={18} />
-                {isRunning ? "Đang chạy..." : "Chạy code"}
-              </button>
-
-              <button
-                onClick={handleSubmit}
-                className="inline-flex items-center gap-2 px-6 py-2.5 bg-emerald-500 text-black rounded-lg hover:bg-emerald-600 transition font-medium"
-              >
-                <Send size={18} />
-                Nộp bài
-              </button>
-            </div>
-
-            {/* Output */}
-            {output && (
-              <div className="mt-4 p-4 bg-[#0b0f12] border border-[#202934] rounded-lg">
-                <h3 className="text-sm font-semibold text-white mb-2">
-                  Output:
-                </h3>
-                <pre className="text-sm text-gray-300 font-mono whitespace-pre-wrap">
-                  {output}
-                </pre>
-              </div>
-            )}
-          </section>
-
-          {/* Test Cases Section */}
-          <section className="bg-[#0f1419] border border-[#202934] rounded-xl p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-white">Test Cases</h2>
-
-            <div className="space-y-3">
-              {assignment.testCases.map((testCase, index) => (
-                <div
-                  key={index}
-                  className="bg-[#0b0f12] border border-[#202934] rounded-lg p-4 space-y-3"
-                >
-                  <div className="text-sm font-semibold text-emerald-400">
-                    Test Case {index + 1}
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <div className="text-xs text-gray-500 mb-2">Input:</div>
-                      <div className="p-3 bg-[#0f1419] border border-[#202934] rounded-lg">
-                        <code className="text-sm text-white font-mono">
-                          {testCase.input}
-                        </code>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="text-xs text-gray-500 mb-2">
-                        Expected Output:
-                      </div>
-                      <div className="p-3 bg-[#0f1419] border border-[#202934] rounded-lg">
-                        <code className="text-sm text-white font-mono">
-                          {testCase.output}
-                        </code>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        </>
-      ) : (
-        /* Submissions Tab */
-        <section className="bg-[#0f1419] border border-[#202934] rounded-xl p-6">
-          <h2 className="text-lg font-semibold text-white mb-4">
-            Lịch sử nộp bài
+      {/* Nội dung + code editor */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Mô tả đề bài */}
+        <section className="bg-[#0f1419] border border-[#202934] rounded-xl p-6 space-y-4">
+          <h2 className="text-lg font-semibold text-white mb-2">
+            Mô tả bài tập
           </h2>
 
-          <div className="space-y-3">
-            {submissions.map((submission) => (
-              <div
-                key={submission.id}
-                onClick={() =>
-                  navigate(`/student/submissions/${submission.id}`)
-                }
-                className="bg-[#0b0f12] border border-[#202934] rounded-lg p-4 hover:border-emerald-500/50 transition cursor-pointer"
+          {descriptionHtml ? (
+            <div
+              className="prose prose-invert max-w-none text-sm text-gray-200"
+              dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+            />
+          ) : (
+            <p className="text-sm text-gray-300 whitespace-pre-line">
+              {description || "Đề bài chưa có mô tả chi tiết."}
+            </p>
+          )}
+        </section>
+
+        {/* Code editor */}
+        <section className="bg-[#0f1419] border border-[#202934] rounded-xl p-6 space-y-4">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-lg font-semibold text-white">Code của bạn</h2>
+            <div className="flex items-center gap-3">
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="text-xs bg-[#05070a] border border-[#202934] text-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-emerald-500"
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${
-                          submission.status === "passed"
-                            ? "text-emerald-400 bg-emerald-500/10"
-                            : "text-red-400 bg-red-500/10"
-                        }`}
-                      >
-                        {submission.status === "passed" ? (
-                          <>
-                            <CheckCircle2 size={14} />
-                            Đạt
-                          </>
-                        ) : (
-                          <>
-                            <FileText size={14} />
-                            Không đạt
-                          </>
-                        )}
-                      </span>
-                      <span className="text-sm text-gray-400">
-                        {submission.language}
-                      </span>
-                      <span className="text-sm text-gray-500">
-                        {submission.testsPassed}/{submission.testsTotal} test
-                        cases
-                      </span>
-                    </div>
+                <option value="java">Java</option>
+                <option value="cpp">C++</option>
+                <option value="python">Python</option>
+                <option value="javascript">JavaScript</option>
+              </select>
+            </div>
+          </div>
 
-                    <div className="flex items-center gap-2 text-sm text-gray-400">
-                      <Clock size={14} />
-                      {submission.submittedAt}
-                    </div>
-                  </div>
+          <div className="border border-[#202934] rounded-lg overflow-hidden h-[320px] bg-[#05070a]">
+            <Suspense
+              fallback={
+                <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
+                  Đang tải editor...
+                </div>
+              }
+            >
+              <Editor
+                height="100%"
+                defaultLanguage={language}
+                language={language}
+                value={code}
+                onChange={(val) => setCode(val ?? "")}
+                theme="vs-dark"
+                options={{
+                  fontSize: 14,
+                  minimap: { enabled: false },
+                  scrollBeyondLastLine: false,
+                }}
+              />
+            </Suspense>
+          </div>
 
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-emerald-400">
-                      {submission.score}%
-                    </div>
-                  </div>
+          <div className="flex flex-wrap gap-3 justify-end">
+            {runError && (
+              <p className="text-xs text-red-400 mr-auto">{runError}</p>
+            )}
+            {submitError && (
+              <p className="text-xs text-red-400 mr-auto">{submitError}</p>
+            )}
+            {submitSuccess && (
+              <p className="text-xs text-emerald-400 mr-auto">
+                {submitSuccess}
+              </p>
+            )}
+
+            <button
+              onClick={handleRunCode}
+              disabled={isRunning}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-[#05070a] border border-[#202934] hover:border-emerald-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Play size={16} />
+              {isRunning ? "Đang chạy..." : "Chạy thử"}
+            </button>
+            <button
+              onClick={handleSubmitCode}
+              disabled={isSubmitting}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-emerald-500 hover:bg-emerald-600 text-black disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Send size={16} />
+              {isSubmitting ? "Đang nộp..." : "Nộp bài"}
+            </button>
+          </div>
+        </section>
+      </div>
+
+      {/* Kết quả chạy gần nhất */}
+      {runResult && (
+        <section className="bg-[#0f1419] border border-[#202934] rounded-xl p-6 space-y-3">
+          <h2 className="text-lg font-semibold text-white mb-2">
+            Kết quả chạy
+          </h2>
+          <pre className="bg-[#05070a] border border-[#202934] rounded-lg p-3 text-xs text-gray-200 overflow-auto max-h-64">
+            {JSON.stringify(runResult, null, 2)}
+          </pre>
+        </section>
+      )}
+
+      {/* Lịch sử nộp bài */}
+      <section className="bg-[#0f1419] border border-[#202934] rounded-xl p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-white">
+            Lịch sử nộp bài
+          </h2>
+        </div>
+
+        {loadingSubmissions ? (
+          <p className="text-gray-400 text-sm">
+            Đang tải lịch sử nộp bài...
+          </p>
+        ) : submissions.length === 0 ? (
+          <div className="text-center py-12 text-gray-500">
+            <FileText size={48} className="mx-auto mb-3 opacity-50" />
+            <p>Chưa có bài nộp nào</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {submissions.map((sub) => (
+              <div
+                key={sub.id}
+                className="flex items-center justify-between px-3 py-2 rounded-lg bg-[#05070a] border border-[#202934]"
+              >
+                <div className="flex flex-col">
+                  <span className="text-sm text-white">
+                    Lần nộp #{sub.attemptNo ?? sub.attempt ?? sub.id}
+                  </span>
+                  <span className="text-xs text-gray-400">
+                    {sub.submittedAt
+                      ? new Date(sub.submittedAt).toLocaleString("vi-VN")
+                      : ""}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 text-xs">
+                  {sub.status && (
+                    <span
+                      className={`px-2 py-1 rounded-full ${
+                        sub.status === "PASSED" || sub.status === "ACCEPTED"
+                          ? "bg-emerald-500/10 text-emerald-300"
+                          : "bg-yellow-500/10 text-yellow-300"
+                      }`}
+                    >
+                      {sub.status}
+                    </span>
+                  )}
+                  {sub.score != null && (
+                    <span className="px-2 py-1 rounded-full bg-blue-500/10 text-blue-300">
+                      {sub.score}/{maxScore ?? 100} điểm
+                    </span>
+                  )}
                 </div>
               </div>
             ))}
           </div>
-
-          {submissions.length === 0 && (
-            <div className="text-center py-12 text-gray-500">
-              <FileText size={48} className="mx-auto mb-3 opacity-50" />
-              <p>Chưa có bài nộp nào</p>
-            </div>
-          )}
-        </section>
-      )}
+        )}
+      </section>
     </div>
   );
 }

@@ -1,500 +1,245 @@
-import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+// src/pages/student/SubmissionDetail.jsx
+import React, { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
-  CheckCircle2,
   Clock,
-  Cpu,
-  Database,
-  AlertCircle,
-  Sparkles,
-  User,
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  Code2,
 } from "lucide-react";
-import Editor from "@monaco-editor/react";
+import submissionService from "../../services/submissionService";
 
 export default function SubmissionDetail() {
   const { submissionId } = useParams();
   const navigate = useNavigate();
 
-  // Mock submission data
-  const submission = {
-    id: submissionId,
-    assignmentTitle: "Implement Singly Linked List",
-    studentName: "Nguyễn Văn A",
-    submittedAt: "2024-11-15 14:30:25",
-    language: "java",
-    status: "passed", // passed, failed, pending
-    score: 95,
-    runtime: "142ms",
-    memory: "38.5MB",
-    timeComplexity: "O(n)",
-    spaceComplexity: "O(1)",
-    testCasesPassed: 18,
-    totalTestCases: 20,
-    testCases: [
-      {
-        id: 1,
-        input: "[1, 2, 3]",
-        expectedOutput: "1 -> 2 -> 3 -> null",
-        actualOutput: "1 -> 2 -> 3 -> null",
-        passed: true,
-      },
-      {
-        id: 2,
-        input: "[5, 10, 15, 20]",
-        expectedOutput: "5 -> 10 -> 15 -> 20 -> null",
-        actualOutput: "5 -> 10 -> 15 -> 20 -> null",
-        passed: true,
-      },
-      {
-        id: 3,
-        input: "[]",
-        expectedOutput: "null",
-        actualOutput: "null",
-        passed: true,
-      },
-      {
-        id: 4,
-        input: "[1]",
-        expectedOutput: "1 -> null",
-        actualOutput: "1 -> null",
-        passed: true,
-      },
-      {
-        id: 5,
-        input: "[100, 200]",
-        expectedOutput: "100 -> 200 -> null",
-        actualOutput: "100 -> 200",
-        passed: false,
-      },
-    ],
-    code: `public class LinkedList {
-    private Node head;
-    
-    private static class Node {
-        int data;
-        Node next;
-        
-        Node(int data) {
-            this.data = data;
-            this.next = null;
-        }
+  const [submission, setSubmission] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const loadSubmission = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const data = await submissionService.getSubmissionDetail(submissionId);
+
+        // data là object chi tiết submission, map nhẹ lại cho FE
+        setSubmission({
+          id: data.id,
+          assignmentTitle: data.assignmentTitle || data.assignmentName,
+          courseName: data.courseName,
+          language: data.language || "java",
+          status: data.status, // PENDING / RUNNING / PASSED / FAILED...
+          score: data.score ?? null,
+          maxScore: data.maxScore ?? null,
+          attemptNo: data.attemptNo,
+          submittedAt: data.submittedAt,
+          code: data.code,
+          stdout: data.stdout,
+          stderr: data.stderr,
+          runtime: data.runtime,
+          memory: data.memory,
+        });
+      } catch (err) {
+        console.error("Error loading submission detail:", err);
+        setError("Không thể tải thông tin bài nộp.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (submissionId) {
+      loadSubmission();
     }
-    
-    public void insertAtBeginning(int data) {
-        Node newNode = new Node(data);
-        newNode.next = head;
-        head = newNode;
+  }, [submissionId]);
+
+  const renderStatusBadge = () => {
+    if (!submission?.status) return null;
+
+    const status = submission.status.toUpperCase();
+
+    if (status === "PASSED" || status === "ACCEPTED") {
+      return (
+        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-300 text-xs font-medium">
+          <CheckCircle size={14} />
+          Đạt
+        </span>
+      );
     }
-    
-    public void insertAtEnd(int data) {
-        Node newNode = new Node(data);
-        
-        if (head == null) {
-            head = newNode;
-            return;
-        }
-        
-        Node current = head;
-        while (current.next != null) {
-            current = current.next;
-        }
-        current.next = newNode;
+
+    if (status === "FAILED" || status === "REJECTED") {
+      return (
+        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-red-500/10 text-red-300 text-xs font-medium">
+          <XCircle size={14} />
+          Không đạt
+        </span>
+      );
     }
-    
-    public void delete(int data) {
-        if (head == null) return;
-        
-        if (head.data == data) {
-            head = head.next;
-            return;
-        }
-        
-        Node current = head;
-        while (current.next != null && current.next.data != data) {
-            current = current.next;
-        }
-        
-        if (current.next != null) {
-            current.next = current.next.next;
-        }
+
+    if (status === "PENDING" || status === "RUNNING") {
+      return (
+        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-yellow-500/10 text-yellow-300 text-xs font-medium">
+          <Clock size={14} />
+          Đang chấm
+        </span>
+      );
     }
-    
-    public void display() {
-        Node current = head;
-        while (current != null) {
-            System.out.print(current.data + " -> ");
-            current = current.next;
-        }
-        System.out.println("null");
-    }
-}`,
-    aiFeedback: {
-      text: "Code của bạn đã implement đúng các phương thức cơ bản của Linked List với cấu trúc rõ ràng. Tuy nhiên, nên thêm null check cho tham số, tối ưu method delete bằng cách giảm số lần duyệt, và có thể thêm các method hỗ trợ như size() và search() để code hoàn thiện hơn.",
-      suggestions: [
-        "Nên thêm null check cho tham số data trong các phương thức insert để tránh NullPointerException",
-        "Method delete có thể tối ưu bằng cách giảm số lần duyệt và trả về boolean để biết thao tác thành công hay không",
-        "Nên thêm method size() để biết số phần tử trong danh sách",
-        "Có thể thêm method search() để tìm kiếm phần tử trong danh sách",
-        "Nên thêm validation cho input và xử lý các edge case tốt hơn",
-      ],
-    },
-    lecturerFeedback: {
-      comment:
-        "Bài làm tốt! Em đã nắm vững các thao tác cơ bản trên Linked List. Tuy nhiên, em cần chú ý thêm về việc xử lý exception và tối ưu code. Hãy tham khảo feedback của AI để cải thiện code nhé.",
-      rating: 4.5,
-      createdAt: "2024-11-15 16:45:00",
-    },
+
+    return (
+      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-slate-500/10 text-slate-300 text-xs font-medium">
+        <AlertTriangle size={14} />
+        {submission.status}
+      </span>
+    );
   };
 
-  const getStatusBadge = () => {
-    if (submission.status === "passed") {
-      return {
-        bg: "bg-emerald-500/10",
-        border: "border-emerald-500/20",
-        text: "text-emerald-400",
-        icon: <CheckCircle2 size={16} />,
-        label: "PASSED",
-      };
-    } else if (submission.status === "failed") {
-      return {
-        bg: "bg-red-500/10",
-        border: "border-red-500/20",
-        text: "text-red-400",
-        icon: <AlertCircle size={16} />,
-        label: "FAILED",
-      };
-    } else {
-      return {
-        bg: "bg-amber-500/10",
-        border: "border-amber-500/20",
-        text: "text-amber-400",
-        icon: <Clock size={16} />,
-        label: "PENDING",
-      };
-    }
-  };
+  if (loading) {
+    return (
+      <div className="max-w-5xl mx-auto px-6 py-8">
+        <p className="text-gray-400 text-sm">Đang tải chi tiết bài nộp...</p>
+      </div>
+    );
+  }
 
-  const statusBadge = getStatusBadge();
+  if (error || !submission) {
+    return (
+      <div className="max-w-5xl mx-auto px-6 py-8 space-y-4">
+        <button
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-2 text-gray-400 hover:text-white text-sm mb-2"
+        >
+          <ArrowLeft size={16} />
+          Quay lại
+        </button>
+
+        <div className="bg-[#0f1419] border border-red-500/40 text-red-300 rounded-lg p-4 flex items-center gap-3">
+          <AlertTriangle size={20} />
+          <span>{error || "Không tìm thấy thông tin bài nộp."}</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-[#0f1419] text-white">
-      <div className="max-w-[1920px] mx-auto px-6 py-8 space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <button
-              onClick={() => navigate(-1)}
-              className="flex items-center gap-2 text-gray-400 hover:text-white transition text-sm mb-2"
-            >
-              <ArrowLeft size={16} />
-              Quay lại
-            </button>
-            <h1 className="text-2xl font-bold">{submission.assignmentTitle}</h1>
-            <p className="text-sm text-gray-400">
-              Nộp lúc: {submission.submittedAt}
+    <div className="max-w-5xl mx-auto px-6 py-8 space-y-6">
+      {/* Back button */}
+      <button
+        onClick={() => navigate(-1)}
+        className="inline-flex items-center gap-2 text-gray-400 hover:text-white text-sm"
+      >
+        <ArrowLeft size={16} />
+        Quay lại
+      </button>
+
+      {/* Header */}
+      <div className="bg-[#0f1419] border border-[#202934] rounded-lg p-5 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs text-gray-400 uppercase tracking-wide">
+              Bài nộp #{submission.id}
             </p>
+            <h1 className="text-xl sm:text-2xl font-bold text-white">
+              {submission.assignmentTitle || "Chi tiết bài nộp"}
+            </h1>
+            {submission.courseName && (
+              <p className="text-gray-400 text-sm mt-1">
+                Khóa học: {submission.courseName}
+              </p>
+            )}
           </div>
-
-          {/* Status Badge */}
-          <div
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold border ${statusBadge.bg} ${statusBadge.border} ${statusBadge.text}`}
-          >
-            {statusBadge.icon}
-            {statusBadge.label}
-          </div>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <div className="bg-[#0b0f12] border border-[#202934] rounded-xl p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                <CheckCircle2 size={20} className="text-emerald-400" />
+          <div className="flex flex-col items-end gap-2">
+            {renderStatusBadge()}
+            {submission.submittedAt && (
+              <div className="flex items-center gap-1 text-xs text-gray-400">
+                <Clock size={14} />
+                <span>Đã nộp: {submission.submittedAt}</span>
               </div>
-              <div>
-                <p className="text-xs text-gray-400">Điểm</p>
-                <p className="text-xl font-bold text-emerald-400">
-                  {submission.score}%
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-[#0b0f12] border border-[#202934] rounded-xl p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                <Clock size={20} className="text-blue-400" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-400">Runtime</p>
-                <p className="text-xl font-bold text-white">
-                  {submission.runtime}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-[#0b0f12] border border-[#202934] rounded-xl p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                <Database size={20} className="text-purple-400" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-400">Memory</p>
-                <p className="text-xl font-bold text-white">
-                  {submission.memory}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-[#0b0f12] border border-[#202934] rounded-xl p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                <Cpu size={20} className="text-amber-400" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-400">Test Cases</p>
-                <p className="text-xl font-bold text-white">
-                  {submission.testCasesPassed}/{submission.totalTestCases}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-[#0b0f12] border border-[#202934] rounded-xl p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
-                <Clock size={20} className="text-orange-400" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-400">Time Complexity</p>
-                <p className="text-xl font-bold text-white">
-                  {submission.timeComplexity}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-[#0b0f12] border border-[#202934] rounded-xl p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-pink-500/10 flex items-center justify-center">
-                <Database size={20} className="text-pink-400" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-400">Space Complexity</p>
-                <p className="text-xl font-bold text-white">
-                  {submission.spaceComplexity}
-                </p>
-              </div>
-            </div>
+            )}
           </div>
         </div>
 
-        {/* Main Content: Code + Feedback */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left: Code Editor */}
-          <div className="space-y-4">
-            <div className="bg-[#0b0f12] border border-[#202934] rounded-xl overflow-hidden">
-              <div className="px-6 py-4 border-b border-[#202934] bg-[#0f1419]">
-                <h2 className="text-lg font-semibold text-white">
-                  Code đã nộp
-                </h2>
-                <p className="text-sm text-gray-400 mt-1">
-                  Ngôn ngữ:{" "}
-                  {submission.language === "java"
-                    ? "Java"
-                    : submission.language === "python"
-                    ? "Python"
-                    : submission.language === "javascript"
-                    ? "JavaScript"
-                    : "C++"}
-                </p>
-              </div>
-              <div className="h-[600px]">
-                <Editor
-                  height="100%"
-                  language={submission.language}
-                  value={submission.code}
-                  theme="vs-dark"
-                  options={{
-                    readOnly: true,
-                    minimap: { enabled: false },
-                    fontSize: 14,
-                    lineNumbers: "on",
-                    scrollBeyondLastLine: false,
-                    automaticLayout: true,
-                  }}
-                />
-              </div>
+        {/* Score + attempt */}
+        <div className="flex flex-wrap gap-4 mt-2 text-sm text-gray-300">
+          {submission.score != null && (
+            <div>
+              <span className="text-gray-400">Điểm: </span>
+              <span className="font-semibold text-emerald-400">
+                {submission.score}
+                {submission.maxScore ? ` / ${submission.maxScore}` : ""}
+              </span>
+            </div>
+          )}
+          {submission.attemptNo != null && (
+            <div>
+              <span className="text-gray-400">Lần nộp: </span>
+              <span className="font-semibold">{submission.attemptNo}</span>
+            </div>
+          )}
+          {submission.language && (
+            <div>
+              <span className="text-gray-400">Ngôn ngữ: </span>
+              <span className="font-semibold uppercase">
+                {submission.language}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Code & Result */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Code */}
+        <div className="bg-[#0f1419] border border-[#202934] rounded-lg p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-gray-300">
+              <Code2 size={16} />
+              <span>Source code</span>
             </div>
           </div>
-
-          {/* Right: Feedback */}
-          <div className="space-y-4">
-            {/* AI Feedback */}
-            <div className="bg-[#0b0f12] border border-[#202934] rounded-xl p-6 space-y-4">
-              <div className="flex items-center gap-2">
-                <Sparkles className="text-purple-400" size={20} />
-                <h2 className="text-lg font-semibold text-white">
-                  AI Feedback
-                </h2>
-              </div>
-
-              <div className="space-y-4">
-                {/* Feedback Text */}
-                <div>
-                  <p className="text-sm text-gray-400 leading-relaxed">
-                    {submission.aiFeedback.text}
-                  </p>
-                </div>
-
-                {/* Suggestions */}
-                <div>
-                  <h3 className="text-sm font-semibold text-blue-400 mb-3">
-                    Gợi ý cải thiện
-                  </h3>
-                  <ul className="space-y-2">
-                    {submission.aiFeedback.suggestions.map(
-                      (suggestion, idx) => (
-                        <li
-                          key={idx}
-                          className="text-sm text-gray-400 flex items-start gap-2"
-                        >
-                          <span className="text-blue-400 mt-1">•</span>
-                          <span>{suggestion}</span>
-                        </li>
-                      )
-                    )}
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            {/* Lecturer Feedback */}
-            <div className="bg-[#0b0f12] border border-[#202934] rounded-xl p-6 space-y-4">
-              <div className="flex items-center gap-2">
-                <User className="text-emerald-400" size={20} />
-                <h2 className="text-lg font-semibold text-white">
-                  Feedback Giảng viên
-                </h2>
-              </div>
-
-              {submission.lecturerFeedback ? (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className="flex gap-1">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <span
-                          key={star}
-                          className={`text-lg ${
-                            star <= submission.lecturerFeedback.rating
-                              ? "text-yellow-400"
-                              : "text-gray-600"
-                          }`}
-                        >
-                          ★
-                        </span>
-                      ))}
-                    </div>
-                    <span className="text-sm text-gray-400">
-                      {submission.lecturerFeedback.rating}/5.0
-                    </span>
-                  </div>
-
-                  <p className="text-sm text-gray-300 leading-relaxed">
-                    {submission.lecturerFeedback.comment}
-                  </p>
-
-                  <p className="text-xs text-gray-500">
-                    Đánh giá lúc: {submission.lecturerFeedback.createdAt}
-                  </p>
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <User size={32} className="mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">Giảng viên chưa đánh giá</p>
-                </div>
-              )}
-            </div>
+          <div className="bg-[#05070a] border border-[#202934] rounded-lg p-3 overflow-auto max-h-[400px]">
+            <pre className="text-xs sm:text-sm text-gray-100 whitespace-pre">
+              {submission.code || "// Không có source code"}
+            </pre>
           </div>
         </div>
 
-        {/* Test Cases Section */}
-        <div className="bg-[#0f1419] border border-[#202934] rounded-xl p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-white">
-              Public Test Cases
-            </h2>
-            <span className="text-sm text-gray-400">
-              {submission.testCases.filter((tc) => tc.passed).length}/
-              {submission.testCases.length} passed
-            </span>
+        {/* Result */}
+        <div className="bg-[#0f1419] border border-[#202934] rounded-lg p-4 space-y-3">
+          <h2 className="text-sm font-semibold text-white">Kết quả chấm</h2>
+
+          {/* Runtime info */}
+          {(submission.runtime || submission.memory) && (
+            <div className="flex flex-wrap gap-3 text-xs text-gray-400">
+              {submission.runtime && <span>Thời gian: {submission.runtime}</span>}
+              {submission.memory && <span>Bộ nhớ: {submission.memory}</span>}
+            </div>
+          )}
+
+          {/* Stdout */}
+          <div>
+            <p className="text-xs font-medium text-gray-300 mb-1">Output</p>
+            <div className="bg-[#05070a] border border-[#202934] rounded-lg p-3 max-h-40 overflow-auto">
+              <pre className="text-xs text-gray-100 whitespace-pre-wrap">
+                {submission.stdout || "Không có output."}
+              </pre>
+            </div>
           </div>
 
-          <div className="space-y-3">
-            {submission.testCases.map((testCase) => (
-              <div
-                key={testCase.id}
-                className={`bg-[#0b0f12] border rounded-lg p-4 ${
-                  testCase.passed
-                    ? "border-emerald-500/30"
-                    : "border-red-500/30"
-                }`}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-white">
-                      Test Case #{testCase.id}
-                    </span>
-                    {testCase.passed ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                        <CheckCircle2 size={12} />
-                        Passed
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20">
-                        <AlertCircle size={12} />
-                        Failed
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <div>
-                    <p className="text-xs text-gray-400 mb-1">Input:</p>
-                    <code className="block text-sm text-gray-300 bg-black/30 px-3 py-2 rounded">
-                      {testCase.input}
-                    </code>
-                  </div>
-
-                  <div>
-                    <p className="text-xs text-gray-400 mb-1">
-                      Expected Output:
-                    </p>
-                    <code className="block text-sm text-gray-300 bg-black/30 px-3 py-2 rounded">
-                      {testCase.expectedOutput}
-                    </code>
-                  </div>
-
-                  <div>
-                    <p className="text-xs text-gray-400 mb-1">Actual Output:</p>
-                    <code
-                      className={`block text-sm px-3 py-2 rounded ${
-                        testCase.passed
-                          ? "text-emerald-300 bg-emerald-500/10"
-                          : "text-red-300 bg-red-500/10"
-                      }`}
-                    >
-                      {testCase.actualOutput}
-                    </code>
-                  </div>
-                </div>
+          {/* Stderr */}
+          {submission.stderr && submission.stderr.trim() !== "" && (
+            <div>
+              <p className="text-xs font-medium text-red-300 mb-1">Error</p>
+              <div className="bg-[#170909] border border-red-900/60 rounded-lg p-3 max-h-40 overflow-auto">
+                <pre className="text-xs text-red-200 whitespace-pre-wrap">
+                  {submission.stderr}
+                </pre>
               </div>
-            ))}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -80,12 +80,12 @@ export default function AppRoutes() {
 
         {/* === Các trang Student (Chỉ student) === */}
         <Route element={<AuthGuard allow={["student"]} />}>
-          <Route path="student/my-courses" element={<StudentMyCourses />} />
-          <Route path="student/progress" element={<StudentProgress />} />
-          <Route
-            path="student/my-courses/:courseId"
-            element={<StudentCourseDetail />}
-          />
+  <Route path="student/my-courses" element={<StudentMyCourses />} />
+  <Route path="student/progress" element={<StudentProgress />} />
+  <Route
+    path="student/my-courses/:courseId"   // ✅ :courseId
+    element={<StudentCourseDetail />}
+  />
           <Route
             path="student/assignments/:assignmentId"
             element={<StudentAssignmentDetail />}
