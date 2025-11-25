@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import {
   ArrowLeft,
@@ -18,6 +18,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
+import lecturerService from "../../services/lecturerService";
 
 export default function CourseOverview() {
   const { courseId } = useParams();
@@ -25,29 +26,39 @@ export default function CourseOverview() {
   const [activeTab, setActiveTab] = useState("overview");
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [thumbnailPreview, setThumbnailPreview] = useState(null);
+  const [uploadedFile, setUploadedFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [courseThumbnail, setCourseThumbnail] = useState(
-    "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800&h=450&fit=crop"
-  );
+  const [course, setCourse] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Mock data - trong thực tế sẽ fetch từ API dựa trên courseId
-  const course = {
-    id: courseId,
-    title: "Java Programming Fundamentals",
-    description:
-      "Khóa học lập trình Java từ cơ bản đến nâng cao, bao gồm OOP, Collections, Exception Handling và nhiều chủ đề khác.",
-    instructor: "Trần Minh Khôi",
-    thumbnail: courseThumbnail,
-    totalStudents: 45,
-    totalLessons: 13,
-    totalAssignments: 8,
-    progress: 85,
-    avgProgress: 72,
-    avgRating: 4.8,
-    totalReviews: 32,
-    createdAt: "2024-01-15",
-    lastUpdated: "2024-11-01",
-  };
+  // Load course data from API
+  useEffect(() => {
+    const loadCourseData = async () => {
+      try {
+        setLoading(true);
+        const response = await lecturerService.getCourseOverview(courseId);
+        
+        if (response.code === "0" || response.code === "ok") {
+          setCourse(response.data);
+        } else {
+          throw new Error(response.message || "Failed to load course data");
+        }
+      } catch (err) {
+        console.error('Error loading course:', err);
+        setError(err.message || "Có lỗi xảy ra khi tải dữ liệu khóa học");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (courseId) {
+      loadCourseData();
+    } else {
+      setError("Không tìm thấy ID khóa học");
+      setLoading(false);
+    }
+  }, [courseId]);
 
   const handleImageSelect = (e) => {
     const file = e.target.files[0];
@@ -56,6 +67,10 @@ export default function CourseOverview() {
         alert("Kích thước ảnh không được vượt quá 5MB");
         return;
       }
+      // Store the actual file for upload
+      setUploadedFile(file);
+      
+      // Create preview
       const reader = new FileReader();
       reader.onloadend = () => {
         setThumbnailPreview(reader.result);
@@ -65,7 +80,7 @@ export default function CourseOverview() {
   };
 
   const handleUploadThumbnail = async () => {
-    if (!thumbnailPreview) {
+    if (!thumbnailPreview || !uploadedFile) {
       alert("Vui lòng chọn ảnh");
       return;
     }
@@ -73,21 +88,23 @@ export default function CourseOverview() {
     try {
       setIsUploading(true);
 
-      // TODO: Call API to upload image
-      // const formData = new FormData();
-      // formData.append('thumbnail', file);
-      // await api.post(`/courses/${courseId}/thumbnail`, formData);
-
-      // Mock API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      setCourseThumbnail(thumbnailPreview);
-      setShowUploadModal(false);
-      setThumbnailPreview(null);
-      alert("Cập nhật ảnh thành công!");
+      // Call API to upload image
+      const response = await lecturerService.uploadCourseAvatar(courseId, uploadedFile);
+      
+      if (response.code === "ok" || response.code === "0") {
+        // Update course avatar URL with new uploaded image
+        const newAvatarUrl = response.data?.avatarUrl || response.data?.url || thumbnailPreview;
+        setCourse(prev => ({ ...prev, avatarUrl: newAvatarUrl }));
+        setShowUploadModal(false);
+        setThumbnailPreview(null);
+        setUploadedFile(null);
+        alert("Cập nhật ảnh thành công!");
+      } else {
+        throw new Error(response.message || "Upload failed");
+      }
     } catch (error) {
       console.error("Error uploading thumbnail:", error);
-      alert("Có lỗi xảy ra khi tải ảnh lên");
+      alert("Có lỗi xảy ra khi tải ảnh lên: " + (error.message || "Unknown error"));
     } finally {
       setIsUploading(false);
     }
@@ -96,51 +113,27 @@ export default function CourseOverview() {
   const handleCancelUpload = () => {
     setShowUploadModal(false);
     setThumbnailPreview(null);
+    setUploadedFile(null);
   };
 
-  // Mock course content modules
+  // Combine contents and assignments from API data
   const modules = [
-    {
-      id: 1,
+    ...(course?.contents?.map(content => ({
+      id: content.id,
       type: "content",
-      title: "Introduction to Java",
-      duration: "45 phút",
-      imageCount: 5,
-    },
-    {
-      id: 2,
-      type: "content",
-      title: "Variables and Data Types",
-      duration: "60 phút",
-      imageCount: 8,
-    },
-    {
-      id: 3,
+      title: content.title,
+      orderNo: content.orderNo,
+      duration: "45 phút", // Default duration
+      imageCount: 0, // Default image count
+    })) || []),
+    ...(course?.assignments?.map(assignment => ({
+      id: assignment.id,
       type: "assignment",
-      title: "Lab 1: Basic Java Programming",
-      deadline: "2024-03-20",
-    },
-    {
-      id: 4,
-      type: "content",
-      title: "Control Flow Statements",
-      duration: "50 phút",
-      imageCount: 6,
-    },
-    {
-      id: 5,
-      type: "assignment",
-      title: "Lab 2: Control Structures",
-      deadline: "2024-03-25",
-    },
-    {
-      id: 6,
-      type: "content",
-      title: "Object-Oriented Programming",
-      duration: "90 phút",
-      imageCount: 12,
-    },
-  ];
+      title: assignment.title,
+      orderNo: assignment.orderNo || 99,
+      deadline: assignment.dueAt ? new Date(assignment.dueAt).toLocaleDateString('vi-VN') : "Chưa có hạn",
+    })) || [])
+  ].sort((a, b) => a.orderNo - b.orderNo);
 
   // Mock help requests from students
   const helpRequests = [
@@ -182,6 +175,53 @@ export default function CourseOverview() {
     },
   ];
 
+  // Loading state
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-[#0f1419] border border-[#202934] rounded-2xl p-6 animate-pulse">
+          <div className="h-4 bg-gray-700 rounded mb-4 w-1/3"></div>
+          <div className="h-8 bg-gray-700 rounded mb-4 w-2/3"></div>
+          <div className="h-4 bg-gray-700 rounded mb-4"></div>
+          <div className="grid grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-20 bg-gray-700 rounded"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-[#0f1419] border border-red-500/50 rounded-2xl p-6 text-center">
+          <div className="text-red-400 text-lg mb-2">Có lỗi xảy ra</div>
+          <div className="text-gray-400 mb-4">{error}</div>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition"
+          >
+            Thử lại
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // No course data
+  if (!course) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-[#0f1419] border border-[#202934] rounded-2xl p-6 text-center">
+          <div className="text-gray-400">Không tìm thấy dữ liệu khóa học</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -201,24 +241,21 @@ export default function CourseOverview() {
               Tổng quan
             </span>
           </div>
-          <div className="text-sm text-blue-400 font-semibold">
-            Tiến độ khóa học: {course.progress}%
-          </div>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
           <div className="space-y-4">
             <p className="text-sm text-emerald-400 font-medium">Khóa học</p>
-            <h1 className="text-3xl font-bold text-white">{course.title}</h1>
+            <h1 className="text-3xl font-bold text-white">{course.name}</h1>
             <p className="text-gray-400 leading-relaxed">
               {course.description}
             </p>
-            <p className="text-gray-400">Giảng viên: {course.instructor}</p>
+            <p className="text-gray-400">Giảng viên: {course.instructor?.name}</p>
           </div>
           <div className="relative aspect-video lg:aspect-square rounded-xl overflow-hidden bg-[#0b0f12] group">
             <img
-              src={course.thumbnail}
-              alt={course.title}
+              src={course.avatarUrl || "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800&h=450&fit=crop"}
+              alt={course.name}
               className="w-full h-full object-cover"
             />
             {/* Upload Button Overlay */}
@@ -253,7 +290,7 @@ export default function CourseOverview() {
             <div>
               <p className="text-sm text-gray-400">Bài học</p>
               <p className="text-xl font-semibold text-white">
-                {course.totalLessons}
+                {course.contents?.length || 0}
               </p>
             </div>
           </div>
@@ -262,9 +299,9 @@ export default function CourseOverview() {
               <BarChart3 size={22} className="text-yellow-400" />
             </div>
             <div>
-              <p className="text-sm text-gray-400">Tiến độ TB</p>
+              <p className="text-sm text-gray-400">Giảng viên</p>
               <p className="text-xl font-semibold text-white">
-                {course.avgProgress}%
+                {course.instructor?.coursesCount || 0}
               </p>
             </div>
           </div>
@@ -275,7 +312,7 @@ export default function CourseOverview() {
             <div>
               <p className="text-sm text-gray-400">Bài tập</p>
               <p className="text-xl font-semibold text-white">
-                {course.totalAssignments}
+                {course.assignments?.length || 0}
               </p>
             </div>
           </div>
@@ -329,7 +366,7 @@ export default function CourseOverview() {
               Nội dung khóa học
             </h2>
             <div className="space-y-2">
-              {modules.map((item, index) => (
+              {modules.map((item) => (
                 <div
                   key={item.id}
                   onClick={() => {
@@ -342,7 +379,7 @@ export default function CourseOverview() {
                   className={`flex items-center gap-4 p-4 bg-[#0b0f12] border border-[#202934] rounded-xl hover:border-emerald-500/50 transition cursor-pointer`}
                 >
                   {/* Icon */}
-                  <div className="flex-shrink-0">
+                  <div className="shrink-0">
                     {item.type === "content" ? (
                       <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
                         <Play size={18} className="text-emerald-400" />
@@ -388,7 +425,15 @@ export default function CourseOverview() {
         {/* Assignments Tab */}
         {activeTab === "assignments" && (
           <section className="bg-[#0f1419] border border-[#202934] rounded-2xl p-6">
-            <h2 className="text-xl font-semibold text-white mb-4">Bài tập</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-white">Bài tập</h2>
+              <Link
+                to={`/lecturer/courses/${courseId}/assignments`}
+                className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-black font-medium rounded-lg transition text-sm"
+              >
+                Xem tất cả
+              </Link>
+            </div>
             <div className="space-y-2">
               {modules
                 .filter((item) => item.type === "assignment")
@@ -398,7 +443,7 @@ export default function CourseOverview() {
                     onClick={() => navigate(`/lecturer/assignments/${item.id}`)}
                     className="flex items-center gap-4 p-4 bg-[#0b0f12] border border-[#202934] rounded-xl hover:border-emerald-500/50 transition cursor-pointer"
                   >
-                    <div className="flex-shrink-0">
+                    <div className="shrink-0">
                       <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
                         <ListChecks size={18} className="text-blue-400" />
                       </div>
@@ -577,7 +622,7 @@ export default function CourseOverview() {
               </button>
               <button
                 onClick={handleUploadThumbnail}
-                disabled={isUploading || !thumbnailPreview}
+                disabled={isUploading || !uploadedFile}
                 className="flex-1 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isUploading ? "Đang tải..." : "Cập nhật"}

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import {
   ArrowLeft,
@@ -15,6 +15,7 @@ import {
 import {
   lecturerAssignments,
 } from "../../constants/lecturerAssignments";
+import lecturerService from "../../services/lecturerService";
 
 const statusBadge = {
   completed: "text-emerald-400 bg-emerald-500/10",
@@ -26,22 +27,65 @@ export default function CourseAssignments() {
   const { courseId } = useParams();
   const navigate = useNavigate();
   
-  // Mock data - trong thực tế sẽ fetch từ API dựa trên courseId
-  const course = {
-    id: courseId,
-    title: "Java Programming Fundamentals",
-    instructor: "Trần Minh Khôi",
-    totalStudents: 45,
-    totalLessons: 13,
-    progress: 85,
-    avgProgress: 72,
-  };
+  // State for course and assignments data
+  const [course, setCourse] = useState(null);
+  const [assignments, setAssignments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Filter assignments by course - trong thực tế sẽ fetch từ API
-  const assignments = useMemo(() => 
-    lecturerAssignments.filter(() => true), // Mock: hiển thị tất cả assignments
-    []
-  );
+  // Load course and assignments data
+  useEffect(() => {
+    const loadCourseData = async () => {
+      try {
+        setLoading(true);
+        
+        // Load course overview and assignments in parallel
+        const [courseResponse, assignmentsResponse] = await Promise.all([
+          lecturerService.getCourseOverview(courseId),
+          lecturerService.getCourseAssignments(courseId)
+        ]);
+        
+        // Set course data
+        if (courseResponse.code === "ok" || courseResponse.code === "0") {
+          setCourse(courseResponse.data);
+        } else {
+          throw new Error(courseResponse.message || "Failed to load course data");
+        }
+        
+        // Set assignments data
+        if (assignmentsResponse.code === "ok" || assignmentsResponse.code === "0") {
+          // Transform API data to match UI expectations
+          const transformedAssignments = assignmentsResponse.data.map(assignment => ({
+            id: assignment.id,
+            title: assignment.title,
+            deadline: assignment.dueAt ? new Date(assignment.dueAt).toLocaleDateString('vi-VN') : "Chưa có hạn",
+            dueAt: assignment.dueAt,
+            status: "in-progress", // Default status, can be enhanced based on API
+            statusLabel: "Đang diễn ra",
+            submitted: 0, // Will need additional API call for submission stats
+            total: course?.totalStudents || 0,
+            progress: 0, // Will be calculated from submissions
+            avgScore: null, // Will need additional API call for scores
+          }));
+          setAssignments(transformedAssignments);
+        } else {
+          setAssignments([]); // Set empty array if no assignments
+        }
+      } catch (err) {
+        console.error('Error loading course assignments:', err);
+        setError(err.message || "Có lỗi xảy ra khi tải dữ liệu");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (courseId) {
+      loadCourseData();
+    } else {
+      setError("Không tìm thấy ID khóa học");
+      setLoading(false);
+    }
+  }, [courseId]);
 
   const [deadlineModal, setDeadlineModal] = useState({
     open: false,
@@ -61,6 +105,52 @@ export default function CourseAssignments() {
 
   const closeDeadlineModal = () =>
     setDeadlineModal({ open: false, assignment: null, date: "", time: "23:59" });
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-[#0f1419] border border-[#202934] rounded-2xl p-6 animate-pulse">
+          <div className="h-4 bg-gray-700 rounded mb-4 w-1/3"></div>
+          <div className="h-8 bg-gray-700 rounded mb-4 w-2/3"></div>
+          <div className="grid grid-cols-3 gap-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-20 bg-gray-700 rounded"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-[#0f1419] border border-red-500/50 rounded-2xl p-6 text-center">
+          <div className="text-red-400 text-lg mb-2">Có lỗi xảy ra</div>
+          <div className="text-gray-400 mb-4">{error}</div>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition"
+          >
+            Thử lại
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // No course data
+  if (!course) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-[#0f1419] border border-[#202934] rounded-2xl p-6 text-center">
+          <div className="text-gray-400">Không tìm thấy dữ liệu khóa học</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -88,9 +178,9 @@ export default function CourseAssignments() {
             Khóa học
           </p>
           <h1 className="text-3xl font-bold text-white">
-            {course.title}
+            {course.name}
           </h1>
-          <p className="text-gray-400">{course.instructor}</p>
+          <p className="text-gray-400">{course.instructor?.name}</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -112,7 +202,7 @@ export default function CourseAssignments() {
             <div>
               <p className="text-sm text-gray-400">Bài học</p>
               <p className="text-xl font-semibold text-white">
-                {course.totalLessons}
+                {course.contents?.length || 0}
               </p>
             </div>
           </div>
@@ -121,9 +211,9 @@ export default function CourseAssignments() {
               <BarChart3 size={22} className="text-yellow-400" />
             </div>
             <div>
-              <p className="text-sm text-gray-400">Tiến độ TB</p>
+              <p className="text-sm text-gray-400">Bài tập</p>
               <p className="text-xl font-semibold text-white">
-                {course.avgProgress}%
+                {assignments.length}
               </p>
             </div>
           </div>

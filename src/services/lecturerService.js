@@ -2,6 +2,8 @@ import api from "./api";
 
 // Service cho Lecturer Resources và Courses
 const lecturerService = {
+  // Inject api instance
+  api,
   /**
    * Lấy danh sách khóa học của giảng viên
    * @param {Object} params - Query parameters
@@ -138,6 +140,32 @@ const lecturerService = {
       return response.data;
     } catch (error) {
       console.error('Error uploading course avatar:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Lấy danh sách assignments theo courseId
+   * @param {string|number} courseId - ID của khóa học
+   * @returns {Promise} API response
+   */
+  async getCourseAssignments(courseId) {
+    try {
+      const response = await api.get(`/assignment/${courseId}/assignments`);
+      return response.data;
+    } catch (error) {
+      console.error('Error getting course assignments:', error);
+      throw error;
+    }
+  },
+
+  // Get course overview for teacher
+  async getCourseOverview(courseId) {
+    try {
+      const response = await api.get(`/courses/${courseId}/teacher-overview`);
+      return response.data;
+    } catch (error) {
+      console.error('Error getting course overview:', error);
       throw error;
     }
   },
