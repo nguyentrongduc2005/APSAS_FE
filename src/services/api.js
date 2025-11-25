@@ -150,7 +150,7 @@ api.interceptors.response.use(
 
   async (error) => {
     const originalRequest = error.config;
-    
+
     console.log("🔍 Response interceptor triggered:", {
       status: error.response?.status,
       url: originalRequest?.url,
@@ -161,7 +161,7 @@ api.interceptors.response.use(
     // Nếu lỗi 401 & chưa retry → thử refresh token
     if (error.response?.status === 401 && !originalRequest._retry) {
       console.log("🔄 Attempting token refresh...");
-      
+
       if (isRefreshing) {
         console.log("⏳ Already refreshing, adding to queue...");
         // Chờ token được refresh xong
@@ -191,7 +191,7 @@ api.interceptors.response.use(
           // Refresh token hết hạn → logout
           processQueue(error, null);
           isRefreshing = false;
-          
+
           localStorage.removeItem("token");
           localStorage.removeItem("refreshToken");
           localStorage.removeItem("user");
@@ -222,12 +222,12 @@ api.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         console.log("🔄 Retrying original request with new token...");
         return api(originalRequest);
-        
+
       } catch (refreshError) {
         console.error("🔴 Refresh token service threw error:", refreshError);
         processQueue(refreshError, null);
         isRefreshing = false;
-        
+
         localStorage.removeItem("token");
         localStorage.removeItem("refreshToken");
         localStorage.removeItem("user");

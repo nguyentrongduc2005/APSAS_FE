@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { BookOpen, CheckCircle, Clock, Plus, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { BookOpen, CheckCircle, Clock, Plus, X, ChevronLeft, ChevronRight, CheckCircle2 } from "lucide-react";
 import StudentCourseCard from "../../components/student/CourseCard";
 import { studentCourseService } from "../../services/studentCourseService";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 
 export default function StudentMyCourses() {
   const { user } = useAuth();
@@ -10,6 +11,8 @@ export default function StudentMyCourses() {
   const [courseCode, setCourseCode] = useState("");
   const [isJoining, setIsJoining] = useState(false);
   const [error, setError] = useState("");
+  const [successData, setSuccessData] = useState(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   
   // API state management
   const [courses, setCourses] = useState([]);
@@ -67,17 +70,27 @@ export default function StudentMyCourses() {
     setError("");
 
     try {
-      const response = await studentCourseService.joinCourse(courseCode);
+      const response = await studentCourseService.joinCourseByCode(courseCode);
       
-      if (response.code === "ok") {
-        alert(`Tham gia khóa học thành công với mã: ${courseCode}`);
+      if (response.code === "ok" && response.data?.joined) {
+        const joinedCourse = response.data.course;
+        
+        // Lưu dữ liệu thành công và hiển thị success modal
+        setSuccessData(joinedCourse);
         setShowJoinModal(false);
+        setShowSuccessModal(true);
         setCourseCode("");
-        // Reload courses after joining
+        
+        // Reload courses để hiển thị khóa học mới
         loadCourses(pagination.pageNumber);
+      } else {
+        setError(response.message || "Không thể tham gia khóa học");
       }
     } catch (err) {
-      setError(err.response?.data?.message || "Mã khóa học không hợp lệ");
+      const errorMessage = err.response?.data?.message || 
+                          err.message || 
+                          "Mã khóa học không hợp lệ hoặc đã hết hạn";
+      setError(errorMessage);
     } finally {
       setIsJoining(false);
     }
@@ -322,6 +335,103 @@ export default function StudentMyCourses() {
         </div>
       )}
 
+      {/* Success Modal */}
+      {showSuccessModal && successData && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setShowSuccessModal(false)}
+        >
+          <div
+            className="bg-[#0f1419] border border-emerald-800 rounded-xl max-w-md w-full p-6 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Success Header */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-emerald-500/10 rounded-lg flex items-center justify-center">
+                  <CheckCircle2 size={24} className="text-emerald-400" />
+                </div>
+                <h3 className="text-xl font-bold text-emerald-400">
+                  Tham gia thành công!
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowSuccessModal(false)}
+                className="p-1 hover:bg-[#202934] rounded-lg transition"
+              >
+                <X size={20} className="text-gray-400" />
+              </button>
+            </div>
+
+            {/* Course Info */}
+            <div className="bg-[#0b0f12] border border-[#202934] rounded-lg p-4 space-y-3">
+              <div className="flex items-start gap-3">
+                {successData.avatarUrl ? (
+                  <img 
+                    src={successData.avatarUrl} 
+                    alt={successData.name}
+                    className="w-16 h-16 rounded-lg object-cover"
+                  />
+                ) : (
+                  <div className="w-16 h-16 bg-emerald-500/10 rounded-lg flex items-center justify-center">
+                    <BookOpen size={24} className="text-emerald-400" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-bold text-white text-lg leading-tight">
+                    {successData.name}
+                  </h4>
+                  <p className="text-emerald-400 text-sm mt-1">
+                    Quản lí bởi: {successData.lecture.name}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-[#202934]">
+                <div className="text-center">
+                  <p className="text-gray-400 text-xs">Số thành viên</p>
+                  <p className="text-white font-semibold">{successData.currentMember}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-gray-400 text-xs">Số bài học</p>
+                  <p className="text-white font-semibold">{successData.totalLession}</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div className="text-center">
+                  <p className="text-gray-400 text-xs">Loại khóa học</p>
+                  <p className="text-blue-400 font-medium text-sm">{successData.type}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-gray-400 text-xs">Truy cập</p>
+                  <p className="text-yellow-400 font-medium text-sm">{successData.visibility}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setShowSuccessModal(false)}
+                className="flex-1 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-black font-medium rounded-lg transition"
+              >
+                Tuyệt vời!
+              </button>
+              <button
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  // Navigate to course detail hoặc course list
+                }}
+                className="flex-1 px-4 py-2.5 bg-[#0b0f12] border border-emerald-500 hover:bg-emerald-500/10 text-emerald-400 font-medium rounded-lg transition"
+              >
+                Xem khóa học
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Join Course Modal */}
       {showJoinModal && (
         <div
@@ -359,12 +469,18 @@ export default function StudentMyCourses() {
                 type="text"
                 value={courseCode}
                 onChange={(e) => {
-                  setCourseCode(e.target.value.toUpperCase());
+                  // Cho phép A-Z, 0-9, dấu gạch ngang (-) và underscore (_)
+                  // Tự động UPPERCASE và trim khoảng trắng 2 đầu
+                  let value = e.target.value.replace(/[^a-zA-Z0-9_-]/g, '').toUpperCase();
+                  // Trim khoảng trắng đầu cuối
+                  value = value.trim();
+                  setCourseCode(value);
                   setError("");
                 }}
-                placeholder="VD: ABC123"
-                className="w-full px-4 py-3 bg-[#0b0f12] border border-[#202934] rounded-lg text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none transition"
+                placeholder="VD: JAVA-K14-2024"
+                className="w-full px-4 py-3 bg-[#0b0f12] border border-[#202934] rounded-lg text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none transition uppercase tracking-wider"
                 autoFocus
+                maxLength={20}
               />
               {error && <p className="text-red-400 text-sm">{error}</p>}
             </div>
