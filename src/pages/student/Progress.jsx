@@ -12,10 +12,12 @@ import AchievementCard from "../../components/student/AchievementCard";
 export default function StudentProgress() {
   const navigate = useNavigate();
   const { user } = useAuth();
+
   const [activeTab, setActiveTab] = useState("hoat-dong");
   const [loading, setLoading] = useState(true);
 
-  // State for data
+  const [rawProgress, setRawProgress] = useState([]);
+
   const [stats, setStats] = useState({
     totalCourses: 0,
     completed: 0,
@@ -25,26 +27,37 @@ export default function StudentProgress() {
   const [currentCourses, setCurrentCourses] = useState([]);
   const [achievements, setAchievements] = useState([]);
 
-  // Fetch initial data
+  // ==== FETCH DATA TỪ API ====
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const studentId = user?.id || "mock-student-id";
 
-        // Gọi các service song song
-        const [statsData, scoreData, coursesData, achievementsData] =
-          await Promise.all([
-            progressService.getStats(studentId),
-            progressService.getScoreData(studentId, "7days"),
-            progressService.getCurrentCourses(studentId),
-            progressService.getAchievements(studentId),
-          ]);
+        // Chưa có user (chưa login) thì không call
+        if (!user?.id) {
+          setLoading(false);
+          return;
+        }
 
-        setStats(statsData);
-        setActivityData(scoreData);
-        setCurrentCourses(coursesData);
-        setAchievements(achievementsData);
+        // 1. Gọi API thật: GET /progress/{studentId}
+        const progressList = await progressService.getProgress(user.id);
+        setRawProgress(progressList);
+
+        // 2. Tính stats tổng quan
+        const newStats = progressService.computeStats(progressList);
+        setStats(newStats);
+
+        // 3. Data cho biểu đồ
+        const chartData = progressService.buildChartData(progressList);
+        setActivityData(chartData);
+
+        // 4. Danh sách khóa học đang học
+        const courses = progressService.buildCurrentCourses(progressList);
+        setCurrentCourses(courses);
+
+        // 5. Thành tích
+        const achs = progressService.buildAchievements(progressList);
+        setAchievements(achs);
       } catch (error) {
         console.error("Error fetching progress data:", error);
       } finally {
@@ -55,18 +68,15 @@ export default function StudentProgress() {
     fetchData();
   }, [user?.id]);
 
-  // Handle date range change - fetch new data from service
+  // Đổi range biểu đồ (tạm thời chỉ remap từ rawProgress)
   const handleDateRangeChange = async (range) => {
-    try {
-      const studentId = user?.id || "mock-student-id";
-      const newData = await progressService.getScoreData(studentId, range);
-      setActivityData(newData);
-    } catch (error) {
-      console.error("Error fetching score data:", error);
-    }
+    if (!rawProgress.length) return;
+
+    const chartData = progressService.buildChartData(rawProgress);
+    setActivityData(chartData);
   };
 
-  // Map achievements with icons
+  // Map icon cho achievements
   const achievementsWithIcons = achievements.map((achievement) => ({
     ...achievement,
     icon:
@@ -87,7 +97,7 @@ export default function StudentProgress() {
 
   return (
     <div className="space-y-6">
-      {/* Header with Avatar and Stats */}
+      {/* Header với avatar + stats */}
       <ProfileHeader
         user={user}
         stats={stats}
@@ -97,7 +107,7 @@ export default function StudentProgress() {
       {/* Tabs */}
       <ProgressTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
-      {/* Tab Content */}
+      {/* Tab hoạt động */}
       {activeTab === "hoat-dong" && (
         <ActivityChart
           data={activityData}
@@ -105,25 +115,38 @@ export default function StudentProgress() {
         />
       )}
 
+      {/* Tab đang làm */}
       {activeTab === "dang-lam" && (
         <div className="space-y-4">
-          <h3 className="text-white font-bold text-lg">Bài tập đang làm</h3>
+          <h3 className="text-white font-bold text-lg">
+            Bài tập / khóa học đang học
+          </h3>
           {currentCourses.map((course) => (
             <CourseProgressCard key={course.id} course={course} />
           ))}
         </div>
       )}
 
+      {/* Tab hoàn tất */}
       {activeTab === "hoan-tat" && (
         <div className="space-y-4">
           <h3 className="text-white font-bold text-lg mb-4">
             Thành tích gần đây
           </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {achievementsWithIcons.map((achievement) => (
-              <AchievementCard key={achievement.id} achievement={achievement} />
-            ))}
-          </div>
+          {achievementsWithIcons.length === 0 ? (
+            <p className="text-gray-400 text-sm">
+              Bạn chưa hoàn thành khóa học nào.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {achievementsWithIcons.map((achievement) => (
+                <AchievementCard
+                  key={achievement.id}
+                  achievement={achievement}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
