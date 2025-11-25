@@ -10,124 +10,107 @@ import {
   Circle,
   Save,
 } from "lucide-react";
-import { getResourceDetail } from "../../services/resourceService";
+import lecturerService from "../../services/lecturerService";
 
 export default function ApplyResourceToCourse() {
-  const { resourceId } = useParams();
+  const { id } = useParams(); // Changed from resourceId to id
   const navigate = useNavigate();
-  const [resource, setResource] = useState(null);
+  const [tutorial, setTutorial] = useState(null); // Changed from resource to tutorial
   const [loading, setLoading] = useState(true);
-  const [selectedItems, setSelectedItems] = useState([]); // Array of { id, type, timeSettings }
-  const [courseName, setCourseName] = useState("");
-  const [courseDescription, setCourseDescription] = useState("");
+  const [selectedContents, setSelectedContents] = useState(new Set()); // Content IDs
+  const [assignmentSchedules, setAssignmentSchedules] = useState({}); // Assignment schedules
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    const fetchResource = async () => {
+    const fetchTutorialDetail = async () => {
       try {
         setLoading(true);
-        const data = await getResourceDetail(resourceId);
-        setResource(data);
-        // Auto-fill course name from resource
-        setCourseName(data.title || "");
+        const response = await lecturerService.getTutorialDetail(id);
+        
+        if (response.code === "ok") {
+          setTutorial(response.data);
+          
+          // Initialize all contents as selected by default
+          const contentIds = new Set();
+          if (response.data.items) {
+            response.data.items
+              .filter(item => item.itemType === "CONTENT")
+              .forEach(content => contentIds.add(content.id));
+          }
+          setSelectedContents(contentIds);
+
+          // Initialize assignment schedules
+          const schedules = {};
+          if (response.data.items) {
+            response.data.items
+              .filter(item => item.itemType === "ASSIGNMENT")
+              .forEach(assignment => {
+                schedules[assignment.id] = {
+                  openAt: "",
+                  dueAt: ""
+                };
+              });
+          }
+          setAssignmentSchedules(schedules);
+        }
       } catch (error) {
-        console.error("Error fetching resource:", error);
+        console.error("Error fetching tutorial detail:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchResource();
-  }, [resourceId]);
+    fetchTutorialDetail();
+  }, [id]);
 
-  const isItemSelected = (itemId) => {
-    return selectedItems.some((item) => item.id === itemId);
-  };
-
-  const toggleItemSelection = (item) => {
-    if (isItemSelected(item.id)) {
-      // Deselect
-      setSelectedItems((prev) => prev.filter((i) => i.id !== item.id));
+  const handleContentToggle = (contentId) => {
+    const newSelected = new Set(selectedContents);
+    if (newSelected.has(contentId)) {
+      newSelected.delete(contentId);
     } else {
-      // Select with default time settings
-      const newItem = {
-        id: item.id,
-        type: item.type,
-        title: item.title,
-        orderNo: item.orderNo,
-        timeSettings:
-          item.type === "assignment"
-            ? {
-                duration: 60, // minutes
-                deadline: 7, // days from now
-              }
-            : null,
-      };
-      setSelectedItems((prev) => [...prev, newItem]);
+      newSelected.add(contentId);
     }
+    setSelectedContents(newSelected);
   };
 
-  const updateTimeSettings = (itemId, field, value) => {
-    setSelectedItems((prev) =>
-      prev.map((item) =>
-        item.id === itemId
-          ? {
-              ...item,
-              timeSettings: {
-                ...item.timeSettings,
-                [field]: parseInt(value) || 0,
-              },
-            }
-          : item
-      )
-    );
+  const handleScheduleChange = (assignmentId, field, value) => {
+    setAssignmentSchedules(prev => ({
+      ...prev,
+      [assignmentId]: {
+        ...prev[assignmentId],
+        [field]: value
+      }
+    }));
   };
 
-  const getItemTimeSettings = (itemId) => {
-    const item = selectedItems.find((i) => i.id === itemId);
-    return item?.timeSettings;
-  };
-
-  const handleCreateCourse = async () => {
-    if (!courseName.trim()) {
-      alert("Vui lòng nhập tên khóa học");
+  const handleCreateCourse = () => {
+    if (selectedContents.size === 0) {
+      alert("Vui lòng chọn ít nhất một bài học");
       return;
     }
 
-    if (!courseDescription.trim()) {
-      alert("Vui lòng nhập mô tả khóa học");
-      return;
-    }
+    // Prepare data to pass to create course page
+    const selectedContentIds = Array.from(selectedContents);
+    const schedules = Object.entries(assignmentSchedules)
+      .filter(([, schedule]) => schedule.openAt && schedule.dueAt)
+      .map(([assignmentId, schedule]) => ({
+        assignmentId: parseInt(assignmentId),
+        openAt: schedule.openAt,
+        dueAt: schedule.dueAt
+      }));
 
-    if (selectedItems.length === 0) {
-      alert("Vui lòng chọn ít nhất một nội dung");
-      return;
-    }
+    const courseData = {
+      tutorialId: tutorial.id,
+      selectedContentIds,
+      assignmentSchedules: schedules,
+      tutorialTitle: tutorial.title,
+      tutorialSummary: tutorial.summary
+    };
 
-    try {
-      setIsSaving(true);
-
-      // TODO: Call API to create course with selected items
-      const courseData = {
-        name: courseName,
-        description: courseDescription,
-        resourceId: resourceId,
-        selectedItems: selectedItems,
-      };
-
-      console.log("Creating course with data:", courseData);
-
-      // Mock API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      alert("Tạo khóa học thành công!");
-      navigate("/lecturer/my-courses");
-    } catch (error) {
-      console.error("Error creating course:", error);
-      alert("Có lỗi xảy ra khi tạo khóa học");
-    } finally {
-      setIsSaving(false);
-    }
+    // Navigate to create course page with data
+    navigate("/courses/create", { 
+      state: courseData 
+    });
   };
 
   if (loading) {
@@ -138,10 +121,10 @@ export default function ApplyResourceToCourse() {
     );
   }
 
-  if (!resource) {
+  if (!tutorial) {
     return (
       <div className="min-h-screen bg-[#0f1419] flex items-center justify-center">
-        <div className="text-white text-lg">Không tìm thấy tài nguyên</div>
+        <div className="text-white text-lg">Không tìm thấy tutorial</div>
       </div>
     );
   }
@@ -161,51 +144,25 @@ export default function ApplyResourceToCourse() {
 
           <div>
             <h1 className="text-3xl font-bold text-white mb-2">
-              Áp dụng tài nguyên vào khóa học
+              Áp dụng tutorial vào khóa học
             </h1>
-            <p className="text-gray-400">{resource.summary}</p>
+            <h2 className="text-xl font-semibold text-emerald-400 mb-2">{tutorial.title}</h2>
+            <p className="text-gray-400">{tutorial.summary}</p>
             <div className="flex items-center gap-4 mt-4 text-sm text-gray-500">
               <span className="flex items-center gap-1">
                 <User size={14} />
-                {resource.author}
+                {tutorial.createdByName || `User #${tutorial.createdBy}`}
               </span>
               <span>•</span>
               <span className="flex items-center gap-1">
                 <Calendar size={14} />
-                Tạo: {resource.createdAt}
+                Tạo: {tutorial.createdAt?.substring(0, 10) || ""}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Course Name Input */}
-        <div className="bg-[#0b0f12] border border-[#202934] rounded-xl p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Tên khóa học <span className="text-red-400">*</span>
-            </label>
-            <input
-              type="text"
-              value={courseName}
-              onChange={(e) => setCourseName(e.target.value)}
-              placeholder="Nhập tên khóa học..."
-              className="w-full px-4 py-3 bg-[#0f1419] border border-[#202934] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 transition"
-            />
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Mô tả khóa học <span className="text-red-400">*</span>
-            </label>
-            <textarea
-              value={courseDescription}
-              onChange={(e) => setCourseDescription(e.target.value)}
-              placeholder="Nhập mô tả khóa học..."
-              rows={4}
-              className="w-full px-4 py-3 bg-[#0f1419] border border-[#202934] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 transition resize-none"
-            />
-          </div>
-        </div>
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -217,7 +174,7 @@ export default function ApplyResourceToCourse() {
               <div>
                 <p className="text-xs text-gray-400">Bài học</p>
                 <p className="text-xl font-bold text-white">
-                  {resource.totalContents || 0}
+                  {tutorial.items ? tutorial.items.filter(item => item.itemType === "CONTENT").length : 0}
                 </p>
               </div>
             </div>
@@ -231,7 +188,7 @@ export default function ApplyResourceToCourse() {
               <div>
                 <p className="text-xs text-gray-400">Bài tập</p>
                 <p className="text-xl font-bold text-white">
-                  {resource.totalAssignments || 0}
+                  {tutorial.items ? tutorial.items.filter(item => item.itemType === "ASSIGNMENT").length : 0}
                 </p>
               </div>
             </div>
@@ -245,181 +202,182 @@ export default function ApplyResourceToCourse() {
               <div>
                 <p className="text-xs text-gray-400">Đã chọn</p>
                 <p className="text-xl font-bold text-white">
-                  {selectedItems.length}
+                  {selectedContents.size}
                 </p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Content List with Checkboxes */}
-        <div className="bg-[#0b0f12] border border-[#202934] rounded-xl p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-white">
-              Chọn nội dung cho khóa học
-            </h2>
-            <button
-              onClick={() => {
-                if (selectedItems.length === resource.items?.length) {
-                  setSelectedItems([]);
-                } else {
-                  const allItems = resource.items.map((item) => ({
-                    id: item.id,
-                    type: item.type,
-                    title: item.title,
-                    orderNo: item.orderNo,
-                    timeSettings:
-                      item.type === "assignment"
-                        ? { duration: 60, deadline: 7 }
-                        : null,
-                  }));
-                  setSelectedItems(allItems);
-                }
-              }}
-              className="text-sm text-emerald-400 hover:text-emerald-300 transition"
-            >
-              {selectedItems.length === resource.items?.length
-                ? "Bỏ chọn tất cả"
-                : "Chọn tất cả"}
-            </button>
-          </div>
-
-          {resource.items && resource.items.length > 0 ? (
-            <div className="space-y-3">
-              {resource.items.map((item) => {
-                const selected = isItemSelected(item.id);
-                const timeSettings = getItemTimeSettings(item.id);
-
-                return (
-                  <div
-                    key={item.id}
-                    className={`border rounded-lg transition ${
-                      selected
-                        ? "bg-emerald-500/5 border-emerald-500/30"
-                        : "bg-[#0f1419] border-[#202934]"
-                    }`}
-                  >
-                    {/* Item Header with Checkbox */}
+        {/* Content Selection Grid */}
+        <div className="grid lg:grid-cols-2 gap-6">
+          {/* Lessons Selection */}
+          <div className="bg-[#0b0f12] border border-[#202934] rounded-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                <FileText size={20} />
+                Chọn bài học
+              </h3>
+              <button
+                onClick={() => {
+                  const contentItems = tutorial.items?.filter(item => item.itemType === "CONTENT") || [];
+                  if (contentItems.length > 0) {
+                    const allContentIds = new Set(contentItems.map(c => c.id));
+                    if (selectedContents.size === contentItems.length) {
+                      setSelectedContents(new Set());
+                    } else {
+                      setSelectedContents(allContentIds);
+                    }
+                  }
+                }}
+                className="text-sm text-emerald-400 hover:text-emerald-300 transition"
+              >
+                {(() => {
+                  const contentItems = tutorial.items?.filter(item => item.itemType === "CONTENT") || [];
+                  return selectedContents.size === contentItems.length
+                    ? "Bỏ chọn tất cả"
+                    : "Chọn tất cả";
+                })()}
+              </button>
+            </div>
+            
+            {(() => {
+              const contentItems = tutorial.items?.filter(item => item.itemType === "CONTENT") || [];
+              return contentItems.length > 0 ? (
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {contentItems.map((content) => (
                     <div
-                      onClick={() => toggleItemSelection(item)}
-                      className="flex items-center gap-3 p-4 cursor-pointer hover:bg-[#0f1419]/50 transition"
+                      key={content.id}
+                      className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition ${
+                        selectedContents.has(content.id)
+                          ? "bg-emerald-500/5 border-emerald-500/30"
+                          : "bg-[#0f1419] border-[#202934] hover:border-emerald-500/50"
+                      }`}
+                      onClick={() => handleContentToggle(content.id)}
                     >
                       <div className="shrink-0">
-                        {selected ? (
-                          <CheckCircle size={24} className="text-emerald-400" />
+                        {selectedContents.has(content.id) ? (
+                          <CheckCircle size={20} className="text-emerald-400" />
                         ) : (
-                          <Circle size={24} className="text-gray-600" />
+                          <Circle size={20} className="text-gray-600" />
                         )}
                       </div>
-
-                      <div
-                        className={`p-2 rounded-lg ${
-                          item.type === "content"
-                            ? "bg-blue-500/10"
-                            : "bg-purple-500/10"
-                        }`}
-                      >
-                        {item.type === "content" ? (
-                          <FileText size={18} className="text-blue-400" />
-                        ) : (
-                          <ListChecks size={18} className="text-purple-400" />
-                        )}
+                      <div className="w-8 h-8 bg-blue-500/10 rounded-lg flex items-center justify-center">
+                        <FileText size={16} className="text-blue-400" />
                       </div>
-
-                      <div className="flex-1">
-                        <p className="text-white font-medium">{item.title}</p>
-                        <p className="text-xs text-gray-500">
-                          Order: {item.orderNo} •{" "}
-                          {item.type === "content" ? "Bài học" : "Bài tập"}
-                        </p>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white font-medium truncate">{content.title}</p>
+                        <div className="flex items-center gap-4 text-xs text-gray-500 mt-1">
+                          <span>Thứ tự: {content.orderNo}</span>
+                          <span>Hình ảnh: {content.imageCount}</span>
+                          <span>Video: {content.videoCount}</span>
+                        </div>
                       </div>
                     </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-gray-400">
+                  <FileText size={48} className="mx-auto mb-3 opacity-50" />
+                  <p>Không có bài học nào</p>
+                </div>
+              );
+            })()}
+          </div>
 
-                    {/* Time Settings for Assignments */}
-                    {selected && item.type === "assignment" && timeSettings && (
-                      <div className="px-4 pb-4 space-y-3 border-t border-[#202934] pt-4">
-                        <p className="text-sm font-medium text-gray-300">
-                          Cài đặt thời gian
-                        </p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-xs text-gray-400 mb-1">
-                              Thời gian làm bài (phút)
-                            </label>
-                            <input
-                              type="number"
-                              min="1"
-                              value={timeSettings.duration}
-                              onChange={(e) =>
-                                updateTimeSettings(
-                                  item.id,
-                                  "duration",
-                                  e.target.value
-                                )
-                              }
-                              onClick={(e) => e.stopPropagation()}
-                              className="w-full px-3 py-2 bg-[#0f1419] border border-[#202934] rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs text-gray-400 mb-1">
-                              Hạn nộp (số ngày từ bây giờ)
-                            </label>
-                            <input
-                              type="number"
-                              min="1"
-                              value={timeSettings.deadline}
-                              onChange={(e) =>
-                                updateTimeSettings(
-                                  item.id,
-                                  "deadline",
-                                  e.target.value
-                                )
-                              }
-                              onClick={(e) => e.stopPropagation()}
-                              className="w-full px-3 py-2 bg-[#0f1419] border border-[#202934] rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500"
-                            />
+          {/* Assignment Scheduling */}
+          <div className="bg-[#0b0f12] border border-[#202934] rounded-xl p-6">
+            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <Calendar size={20} />
+              Lên lịch bài tập
+            </h3>
+            
+            {(() => {
+              const assignmentItems = tutorial.items?.filter(item => item.itemType === "ASSIGNMENT") || [];
+              return assignmentItems.length > 0 ? (
+                <div className="space-y-4 max-h-96 overflow-y-auto">
+                  {assignmentItems.map((assignment) => (
+                    <div
+                      key={assignment.id}
+                      className="p-4 bg-[#0f1419] border border-[#202934] rounded-lg"
+                    >
+                      <div className="flex items-start gap-2 mb-3">
+                        <div className="w-6 h-6 bg-purple-500/10 rounded flex items-center justify-center mt-0.5">
+                          <ListChecks size={14} className="text-purple-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-white font-medium truncate">{assignment.title}</h4>
+                          <div className="flex items-center gap-4 text-xs text-gray-500 mt-1">
+                            <span>Điểm tối đa: {assignment.maxScore}</span>
+                            <span>Kỹ năng: {assignment.skillName}</span>
+                            <span>Số lần thử: {assignment.attemptsLimit}</span>
                           </div>
                         </div>
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="text-center py-12 text-gray-400">
-              <FileText size={48} className="mx-auto mb-3 opacity-50" />
-              <p>Chưa có nội dung nào</p>
-            </div>
-          )}
+                      <div className="grid grid-cols-1 gap-3">
+                        <div>
+                          <label className="block text-sm text-gray-400 mb-1">
+                            Thời gian mở
+                          </label>
+                          <input
+                            type="datetime-local"
+                            value={assignmentSchedules[assignment.id]?.openAt || ""}
+                            onChange={(e) => handleScheduleChange(assignment.id, "openAt", e.target.value)}
+                            className="w-full px-3 py-2 bg-[#0b0f12] border border-[#202934] rounded-lg text-white text-sm focus:border-emerald-500 focus:outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm text-gray-400 mb-1">
+                            Hạn nộp
+                          </label>
+                          <input
+                            type="datetime-local"
+                            value={assignmentSchedules[assignment.id]?.dueAt || ""}
+                            onChange={(e) => handleScheduleChange(assignment.id, "dueAt", e.target.value)}
+                            className="w-full px-3 py-2 bg-[#0b0f12] border border-[#202934] rounded-lg text-white text-sm focus:border-emerald-500 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-gray-400">
+                  <ListChecks size={48} className="mx-auto mb-3 opacity-50" />
+                  <p>Không có bài tập nào</p>
+                </div>
+              );
+            })()}
+          </div>
         </div>
 
-        {/* Create Course Button */}
+        {/* Action Buttons */}
         <div className="bg-[#0b0f12] border border-[#202934] rounded-xl p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-white font-medium">
-                Đã chọn {selectedItems.length} nội dung
+                Đã chọn {selectedContents.size} bài học
               </p>
               <p className="text-sm text-gray-400 mt-1">
-                {selectedItems.filter((item) => item.type === "content").length}{" "}
-                bài học,{" "}
-                {
-                  selectedItems.filter((item) => item.type === "assignment")
-                    .length
-                }{" "}
-                bài tập
+                {Object.values(assignmentSchedules).filter(s => s.openAt && s.dueAt).length} bài tập đã lên lịch
               </p>
             </div>
-            <button
-              onClick={handleCreateCourse}
-              disabled={isSaving || selectedItems.length === 0}
-              className="flex items-center gap-2 px-6 py-3 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Save size={20} />
-              {isSaving ? "Đang tạo..." : "Tạo khóa học"}
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => navigate("/resources")}
+                className="px-6 py-2.5 text-gray-400 hover:text-white border border-[#202934] hover:border-emerald-500 rounded-lg transition"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleCreateCourse}
+                disabled={selectedContents.size === 0}
+                className="flex items-center gap-2 px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-black font-medium rounded-lg transition"
+              >
+                <Save size={20} />
+                Tạo khóa học
+              </button>
+            </div>
           </div>
         </div>
       </div>

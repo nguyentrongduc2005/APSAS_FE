@@ -34,6 +34,8 @@ import ProviderResources from "../pages/provider/ProviderResources";
 import ResourceManagement from "../pages/provider/ResourceManagement";
 import TeacherTutorialLibrary from "../pages/lecturer/ResourceLibrary";
 import ResourceModeration from "../pages/admin/ResourceModeration";
+import ApplyResourceToCourse from "../pages/lecturer/ApplyResourceToCourse";
+import CreateCourse from "../pages/lecturer/CreateCourse";
 
 const Dashboard = () => <div>Dashboard</div>;
 
@@ -99,11 +101,9 @@ export default function AppRoutes() {
             path="lecturer/courses/:courseId/assignments"
             element={<CourseAssignments />}
           />
-          <Route
-            path="lecturer/courses/create"
-            element={<div>Create Course Page</div>}
-          />
           <Route path="resources" element={<TeacherTutorialLibrary />} />
+          <Route path="resources/:id/apply" element={<ApplyResourceToCourse />} />
+          <Route path="courses/create" element={<CreateCourse />} />
         </Route>
 
         <Route element={<AuthGuard allow={["provider"]} />}>

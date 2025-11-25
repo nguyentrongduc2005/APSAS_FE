@@ -88,6 +88,36 @@ const lecturerService = {
       throw error;
     }
   },
+
+  /**
+   * Lấy chi tiết tutorial để áp dụng vào khóa học
+   * @param {string|number} tutorialId - ID của tutorial
+   * @returns {Promise} API response
+   */
+  async getTutorialDetail(tutorialId) {
+    try {
+      const response = await api.get(`/tutorials/${tutorialId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching tutorial detail:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Tạo khóa học mới từ tutorial
+   * @param {Object} courseData - Dữ liệu khóa học
+   * @returns {Promise} API response
+   */
+  async createCourse(courseData) {
+    try {
+      const response = await api.post('/courses/create', courseData);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating course:', error);
+      throw error;
+    }
+  },
 };
 
 export default lecturerService;
