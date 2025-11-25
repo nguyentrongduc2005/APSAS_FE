@@ -107,13 +107,21 @@ export async function resendVerificationEmail(email) {
 /**
  * REFRESH TOKEN
  * Gọi POST /auth/refresh-token
- * RefreshTokenRequest: { refreshToken }
+ * RefreshTokenRequest: { refreshToken, userId }
  * Response: { code: "OK", message: "...", data: { accessToken, refreshToken, user } }
  */
-export async function refreshToken(refreshTokenValue) {
+export async function refreshToken(refreshTokenValue, userId) {
   try {
+    // Nếu không truyền userId, lấy từ localStorage
+    if (!userId) {
+      const userStr = localStorage.getItem("user");
+      const user = userStr ? JSON.parse(userStr) : null;
+      userId = user?.id;
+    }
+
     const res = await api.post("/auth/refresh-token", {
-      refreshToken: refreshTokenValue
+      refreshToken: refreshTokenValue,
+      userId: userId
     });
 
     const apiRes = res.data; // ApiResponse<RefreshTokenResponse>
