@@ -118,6 +118,29 @@ const lecturerService = {
       throw error;
     }
   },
+
+  /**
+   * Upload avatar cho khóa học
+   * @param {string|number} courseId - ID của khóa học
+   * @param {File} file - File ảnh để upload
+   * @returns {Promise} API response
+   */
+  async uploadCourseAvatar(courseId, file) {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await api.post(`/courses/${courseId}/avatar`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error uploading course avatar:', error);
+      throw error;
+    }
+  },
 };
 
 export default lecturerService;

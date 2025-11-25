@@ -1,15 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, BookOpen, Save, AlertCircle, Settings, List } from "lucide-react";
+import { ArrowLeft, BookOpen, Save, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Alert, AlertDescription } from "../../components/ui/alert";
 import lecturerService from "../../services/lecturerService";
 
 export default function CreateCourse() {
   const navigate = useNavigate();
   const location = useLocation();
   const courseData = location.state;
-
-  // Tab state
-  const [activeTab, setActiveTab] = useState("basic");
 
   // Form state
   const [formData, setFormData] = useState({
@@ -24,6 +22,8 @@ export default function CreateCourse() {
   // UI state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
+  const [alertMessage, setAlertMessage] = useState(null);
+  const [alertType, setAlertType] = useState("default");
 
   useEffect(() => {
     // Redirect if no course data from apply page
@@ -99,15 +99,17 @@ export default function CreateCourse() {
     }
 
     setIsSubmitting(true);
+    setAlertMessage(null);
 
     try {
+      // Create course
       const requestData = {
         name: formData.name.trim(),
         description: formData.description.trim() || null,
         code: formData.code.trim() || null,
         visibility: formData.visibility,
         type: formData.type.trim() || "NORMAL",
-        avatarUrl: null, // Set to null as requested
+        avatarUrl: null,
         limit: formData.limit ? parseInt(formData.limit) : null,
         tutorialId: courseData.tutorialId,
         selectedContentIds: courseData.selectedContentIds,
@@ -117,15 +119,23 @@ export default function CreateCourse() {
       const response = await lecturerService.createCourse(requestData);
 
       if (response.code === "ok" || response.code === "200") {
-        // Success
-        alert("Tạo khóa học thành công!");
-        navigate("lecturer/my-courses");
+        const courseId = response.data?.courseId; // Fix: use courseId instead of id
+        
+        // Show success and navigate to avatar upload
+        setAlertMessage('Tạo khóa học thành công! Đang chuyển tới trang tải ảnh đại diện...');
+        setAlertType('default');
+        
+        setTimeout(() => {
+          navigate(`/courses/${courseId}/upload-avatar`, {
+            state: { courseName: formData.name, courseId: courseId }
+          });
+        }, 1500);
       } else {
         throw new Error(response.message || "Tạo khóa học thất bại");
       }
     } catch (error) {
-      console.error("Error creating course:", error);
-      alert("Có lỗi xảy ra khi tạo khóa học: " + (error.message || "Vui lòng thử lại"));
+      setAlertMessage(error.response?.data?.message || error.message || "Có lỗi xảy ra khi tạo khóa học. Vui lòng thử lại.");
+      setAlertType('destructive');
     } finally {
       setIsSubmitting(false);
     }
@@ -166,33 +176,19 @@ export default function CreateCourse() {
           </div>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="bg-[#0b0f12] border border-[#202934] rounded-xl p-2">
-          <div className="flex gap-2">
-            <button
-              onClick={() => setActiveTab("basic")}
-              className={`flex items-center gap-2 px-4 py-3 rounded-lg transition ${
-                activeTab === "basic"
-                  ? "bg-emerald-500 text-black font-medium"
-                  : "text-gray-400 hover:text-white hover:bg-[#1a1f26]"
-              }`}
-            >
-              <Settings size={18} />
-              Thông tin cơ bản
-            </button>
-            <button
-              onClick={() => setActiveTab("content")}
-              className={`flex items-center gap-2 px-4 py-3 rounded-lg transition ${
-                activeTab === "content"
-                  ? "bg-emerald-500 text-black font-medium"
-                  : "text-gray-400 hover:text-white hover:bg-[#1a1f26]"
-              }`}
-            >
-              <List size={18} />
-              Nội dung khóa học
-            </button>
-          </div>
-        </div>
+        {/* Alert Message */}
+        {alertMessage && (
+          <Alert variant={alertType} className="bg-[#0b0f12] border-emerald-500 text-white">
+            {alertType === 'destructive' ? (
+              <AlertCircle className="h-4 w-4 text-red-400" />
+            ) : (
+              <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+            )}
+            <AlertDescription className={alertType === 'destructive' ? 'text-red-300' : 'text-emerald-300'}>
+              {alertMessage}
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Course Info Summary */}
         <div className="bg-[#0b0f12] border border-[#202934] rounded-xl p-6">
@@ -209,226 +205,135 @@ export default function CreateCourse() {
           </div>
         </div>
 
-        {/* Tab Content */}
+        {/* Course Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Tab 1: Basic Information */}
-          {activeTab === "basic" && (
-            <div className="bg-[#0b0f12] border border-[#202934] rounded-xl p-6">
-              <h3 className="text-lg font-semibold text-white mb-6">Thông tin cơ bản</h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Course Name */}
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Tên khóa học <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => handleInputChange("name", e.target.value)}
-                    placeholder="Nhập tên khóa học..."
-                    maxLength={160}
-                    className={`w-full px-4 py-3 bg-[#0f1419] border rounded-lg text-white placeholder-gray-500 focus:outline-none transition ${
-                      errors.name ? "border-red-500" : "border-[#202934] focus:border-emerald-500"
-                    }`}
-                  />
-                  {errors.name && <p className="text-red-400 text-sm mt-1">{errors.name}</p>}
-                  <p className="text-gray-500 text-xs mt-1">
-                    Tối đa 160 ký tự. Bắt buộc phải nhập.
-                  </p>
-                </div>
-
-                {/* Course Code */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Mã khóa học
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.code}
-                    onChange={(e) => handleInputChange("code", e.target.value.toUpperCase())}
-                    placeholder="VD: JAVA-SPRING-2025"
-                    maxLength={60}
-                    className={`w-full px-4 py-3 bg-[#0f1419] border rounded-lg text-white placeholder-gray-500 focus:outline-none transition ${
-                      errors.code ? "border-red-500" : "border-[#202934] focus:border-emerald-500"
-                    }`}
-                  />
-                  {errors.code && <p className="text-red-400 text-sm mt-1">{errors.code}</p>}
-                  <p className="text-gray-500 text-xs mt-1">
-                    Chỉ chữ HOA, số, gạch ngang (-), gạch dưới (_). Tối đa 60 ký tự.
-                  </p>
-                </div>
-
-                {/* Visibility */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Quyền truy cập
-                  </label>
-                  <select
-                    value={formData.visibility}
-                    onChange={(e) => handleInputChange("visibility", e.target.value)}
-                    className="w-full px-4 py-3 bg-[#0f1419] border border-[#202934] rounded-lg text-white focus:outline-none focus:border-emerald-500 transition"
-                  >
-                    <option value="PUBLIC">PUBLIC - Công khai</option>
-                    <option value="PRIVATE">PRIVATE - Riêng tư</option>
-                    <option value="UNLISTED">UNLISTED - Không công khai</option>
-                  </select>
-                </div>
-
-                {/* Course Type */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Loại khóa học
-                  </label>
-                  <select
-                    value={formData.type}
-                    onChange={(e) => handleInputChange("type", e.target.value)}
-                    className="w-full px-4 py-3 bg-[#0f1419] border border-[#202934] rounded-lg text-white focus:outline-none focus:border-emerald-500 transition"
-                  >
-                    <option value="NORMAL">NORMAL - Khóa học thường</option>
-                    <option value="PREMIUM">PREMIUM - Khóa học cao cấp</option>
-                    <option value="FREE">FREE - Khóa học miễn phí</option>
-                  </select>
-                </div>
-
-                {/* Student Limit */}
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Giới hạn học viên
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="1000"
-                    value={formData.limit}
-                    onChange={(e) => handleInputChange("limit", e.target.value)}
-                    placeholder="Để trống nếu không giới hạn"
-                    className={`w-full px-4 py-3 bg-[#0f1419] border rounded-lg text-white placeholder-gray-500 focus:outline-none transition ${
-                      errors.limit ? "border-red-500" : "border-[#202934] focus:border-emerald-500"
-                    }`}
-                  />
-                  {errors.limit && <p className="text-red-400 text-sm mt-1">{errors.limit}</p>}
-                  <p className="text-gray-500 text-xs mt-1">
-                    Từ 1 đến 1000 học viên. Để trống nếu không giới hạn.
-                  </p>
-                </div>
-
-                {/* Description */}
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Mô tả khóa học
-                  </label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => handleInputChange("description", e.target.value)}
-                    placeholder="Nhập mô tả chi tiết về khóa học..."
-                    rows={4}
-                    className="w-full px-4 py-3 bg-[#0f1419] border border-[#202934] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 transition resize-none"
-                  />
-                </div>
+          <div className="bg-[#0b0f12] border border-[#202934] rounded-xl p-6">
+            <h3 className="text-lg font-semibold text-white mb-6">Thông tin khóa học</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Course Name */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Tên khóa học <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => handleInputChange("name", e.target.value)}
+                  placeholder="Nhập tên khóa học..."
+                  maxLength={160}
+                  className={`w-full px-4 py-3 bg-[#0f1419] border rounded-lg text-white placeholder-gray-500 focus:outline-none transition ${
+                    errors.name ? "border-red-500" : "border-[#202934] focus:border-emerald-500"
+                  }`}
+                />
+                {errors.name && <p className="text-red-400 text-sm mt-1">{errors.name}</p>}
+                <p className="text-gray-500 text-xs mt-1">
+                  Tối đa 160 ký tự. Bắt buộc phải nhập.
+                </p>
               </div>
 
-              {/* Tab 1 Navigation */}
-              <div className="flex justify-end mt-6">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("content")}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-black font-medium rounded-lg transition"
+              {/* Course Code */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Mã khóa học
+                </label>
+                <input
+                  type="text"
+                  value={formData.code}
+                  onChange={(e) => handleInputChange("code", e.target.value.toUpperCase())}
+                  placeholder="VD: JAVA-SPRING-2025"
+                  maxLength={60}
+                  className={`w-full px-4 py-3 bg-[#0f1419] border rounded-lg text-white placeholder-gray-500 focus:outline-none transition ${
+                    errors.code ? "border-red-500" : "border-[#202934] focus:border-emerald-500"
+                  }`}
+                />
+                {errors.code && <p className="text-red-400 text-sm mt-1">{errors.code}</p>}
+                <p className="text-gray-500 text-xs mt-1">
+                  Chỉ chữ HOA, số, gạch ngang (-), gạch dưới (_). Tối đa 60 ký tự.
+                </p>
+              </div>
+
+              {/* Visibility */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Quyền truy cập
+                </label>
+                <select
+                  value={formData.visibility}
+                  onChange={(e) => handleInputChange("visibility", e.target.value)}
+                  className="w-full px-4 py-3 bg-[#0f1419] border border-[#202934] rounded-lg text-white focus:outline-none focus:border-emerald-500 transition"
                 >
-                  Tiếp theo: Nội dung khóa học
-                  <ArrowLeft size={16} className="rotate-180" />
-                </button>
+                  <option value="PUBLIC">PUBLIC - Công khai</option>
+                  <option value="PRIVATE">PRIVATE - Riêng tư</option>
+                  <option value="UNLISTED">UNLISTED - Không công khai</option>
+                </select>
+              </div>
+
+              {/* Course Type */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Loại khóa học
+                </label>
+                <select
+                  value={formData.type}
+                  onChange={(e) => handleInputChange("type", e.target.value)}
+                  className="w-full px-4 py-3 bg-[#0f1419] border border-[#202934] rounded-lg text-white focus:outline-none focus:border-emerald-500 transition"
+                >
+                  <option value="NORMAL">NORMAL - Khóa học thường</option>
+                  <option value="PREMIUM">PREMIUM - Khóa học cao cấp</option>
+                  <option value="FREE">FREE - Khóa học miễn phí</option>
+                </select>
+              </div>
+
+              {/* Student Limit */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Giới hạn học viên
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="1000"
+                  value={formData.limit}
+                  onChange={(e) => handleInputChange("limit", e.target.value)}
+                  placeholder="Để trống nếu không giới hạn"
+                  className={`w-full px-4 py-3 bg-[#0f1419] border rounded-lg text-white placeholder-gray-500 focus:outline-none transition ${
+                    errors.limit ? "border-red-500" : "border-[#202934] focus:border-emerald-500"
+                  }`}
+                />
+                {errors.limit && <p className="text-red-400 text-sm mt-1">{errors.limit}</p>}
+                <p className="text-gray-500 text-xs mt-1">
+                  Từ 1 đến 1000 học viên. Để trống nếu không giới hạn.
+                </p>
+              </div>
+
+              {/* Description */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Mô tả khóa học
+                </label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => handleInputChange("description", e.target.value)}
+                  placeholder="Nhập mô tả chi tiết về khóa học..."
+                  rows={4}
+                  className="w-full px-4 py-3 bg-[#0f1419] border border-[#202934] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 transition resize-none"
+                />
               </div>
             </div>
-          )}
 
-          {/* Tab 2: Content Selection */}
-          {activeTab === "content" && courseData && (
-            <div className="bg-[#0b0f12] border border-[#202934] rounded-xl p-6">
-              <h3 className="text-lg font-semibold text-white mb-6">Nội dung khóa học</h3>
-              
-              <div className="space-y-6">
-                {/* Summary */}
-                <div className="bg-[#0f1419] border border-[#202934] rounded-lg p-4">
-                  <div className="flex items-center gap-3 mb-3">
-                    <BookOpen size={20} className="text-emerald-400" />
-                    <h4 className="font-medium text-white">{courseData.tutorialTitle}</h4>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                    <div className="text-gray-400">
-                      <span className="text-white font-medium">{courseData.selectedContentIds.length}</span> bài học đã chọn
-                    </div>
-                    <div className="text-gray-400">
-                      <span className="text-white font-medium">{courseData.assignmentSchedules.length}</span> bài tập đã lên lịch
-                    </div>
-                    <div className="text-gray-400">
-                      Tutorial ID: <span className="text-white font-medium">{courseData.tutorialId}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Selected Contents Preview */}
-                <div>
-                  <h5 className="text-white font-medium mb-3">Bài học đã chọn:</h5>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {courseData.selectedContentIds.map((contentId) => (
-                      <div key={contentId} className="bg-[#1a1f26] border border-[#202934] rounded-lg p-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
-                          <span className="text-white text-sm">Content ID: {contentId}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Assignment Schedules Preview */}
-                <div>
-                  <h5 className="text-white font-medium mb-3">Lịch bài tập:</h5>
-                  <div className="space-y-3">
-                    {courseData.assignmentSchedules.map((schedule, index) => (
-                      <div key={index} className="bg-[#1a1f26] border border-[#202934] rounded-lg p-4">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                          <div>
-                            <span className="text-gray-400">Assignment ID:</span>
-                            <div className="text-white font-medium">{schedule.assignmentId}</div>
-                          </div>
-                          <div>
-                            <span className="text-gray-400">Mở:</span>
-                            <div className="text-white">{schedule.openAt || "Chưa đặt"}</div>
-                          </div>
-                          <div>
-                            <span className="text-gray-400">Hạn nộp:</span>
-                            <div className="text-white">{schedule.dueAt || "Chưa đặt"}</div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Tab 2 Navigation */}
-              <div className="flex justify-between mt-6">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("basic")}
-                  className="flex items-center gap-2 px-6 py-2.5 text-gray-400 hover:text-white border border-[#202934] hover:border-emerald-500 rounded-lg transition"
-                >
-                  <ArrowLeft size={16} />
-                  Quay lại thông tin cơ bản
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-black font-medium rounded-lg transition"
-                >
-                  <Save size={20} />
-                  {isSubmitting ? "Đang tạo..." : "Tạo khóa học"}
-                </button>
-              </div>
+            {/* Submit Button */}
+            <div className="flex justify-end mt-6">
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="flex items-center gap-2 px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-black font-medium rounded-lg transition"
+              >
+                <Save size={20} />
+                {isSubmitting ? "Đang tạo khóa học..." : "Tạo khóa học"}
+              </button>
             </div>
-          )}
+          </div>
         </form>
       </div>
     </div>

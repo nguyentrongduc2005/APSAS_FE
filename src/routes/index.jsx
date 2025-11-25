@@ -22,6 +22,7 @@ import LecturerAssignments from "../pages/lecturer/Assignments.jsx";
 import LecturerAssignmentDetail from "../pages/lecturer/AssignmentDetail.jsx";
 import CourseAssignments from "../pages/lecturer/CourseAssignments.jsx";
 import CourseOverview from "../pages/lecturer/CourseOverview.jsx";
+import UploadCourseAvatar from "../pages/lecturer/UploadCourseAvatar.jsx";
 import Profile from "../pages/Profile.jsx";
 import Support from "../pages/Support.jsx";
 
@@ -104,6 +105,7 @@ export default function AppRoutes() {
           <Route path="resources" element={<TeacherTutorialLibrary />} />
           <Route path="resources/:id/apply" element={<ApplyResourceToCourse />} />
           <Route path="courses/create" element={<CreateCourse />} />
+          <Route path="courses/:courseId/upload-avatar" element={<UploadCourseAvatar />} />
         </Route>
 
         <Route element={<AuthGuard allow={["provider"]} />}>
