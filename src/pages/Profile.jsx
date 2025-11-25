@@ -7,7 +7,6 @@ import {
   uploadAvatar,
 } from "../services/userService";
 
-
 const InfoRow = (props) => {
   const {
     isEditing,
@@ -27,7 +26,9 @@ const InfoRow = (props) => {
 
   return (
     <div className="group">
-      <label className="block text-sm font-medium text-gray-400 mb-2">{label}</label>
+      <label className="block text-sm font-medium text-gray-400 mb-2">
+        {label}
+      </label>
       {isEditing && editable ? (
         type === "select" ? (
           <select
@@ -70,11 +71,13 @@ const InfoRow = (props) => {
 export default function Profile() {
   const navigate = useNavigate();
   const { user, token, updateUser } = useAuth();
+
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState(null);
+
   const [formData, setFormData] = useState({
     avatar: "",
     name: "",
@@ -86,10 +89,10 @@ export default function Profile() {
     email: "",
   });
 
- 
   // Load user profile khi component mount
   useEffect(() => {
     loadUserProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadUserProfile = async () => {
@@ -99,7 +102,9 @@ export default function Profile() {
       try {
         const profileData = await getUserProfile(token);
         setFormData({
-          avatar: profileData.avatar || "",
+          avatar:
+            profileData.avatar ||
+            "https://ui-avatars.com/api/?name=User&background=10b981&color=fff",
           name: profileData.name || "",
           bio: profileData.bio || "",
           dateOfBirth: profileData.dateOfBirth || "",
@@ -109,7 +114,6 @@ export default function Profile() {
           email: profileData.email || "",
         });
       } catch (apiError) {
-        // Fallback: dùng data từ user context
         console.log("API not available, using local data");
         setFormData({
           avatar:
@@ -154,11 +158,18 @@ export default function Profile() {
       try {
         setLoading(true);
         const result = await uploadAvatar(file);
-        setFormData((prev) => ({ ...prev, avatar: result.avatarUrl }));
-        // Update global auth user so header/avatar updates immediately
+
+        const newAvatar =
+          result.avatarUrl || result.avatar || formData.avatar ||
+          "https://ui-avatars.com/api/?name=User&background=10b981&color=fff";
+
+        setFormData((prev) => ({ ...prev, avatar: newAvatar }));
+
+        // Cập nhật global auth user => header/avatar update ngay lập tức
         if (typeof updateUser === "function") {
-          updateUser({ avatar: result.avatarUrl });
+          updateUser({ avatar: newAvatar });
         }
+
         setSuccess(true);
         setTimeout(() => setSuccess(false), 3000);
       } catch (err) {
@@ -193,13 +204,15 @@ export default function Profile() {
       setIsEditing(false);
       setAvatarPreview(null);
 
-      // Update auth context with new profile info if available
+      // Update auth context với info mới
       if (typeof updateUser === "function") {
-        // Prefer updatedData.user or updatedData, else formData
         const newUserInfo =
           updatedData?.user ||
-          updatedData ||
-          ({ name: formData.name, email: formData.email, avatar: formData.avatar });
+          updatedData || {
+            name: formData.name,
+            email: formData.email,
+            avatar: formData.avatar,
+          };
         updateUser({
           name: newUserInfo.name,
           email: newUserInfo.email,
@@ -207,7 +220,6 @@ export default function Profile() {
         });
       }
 
-      // Hiển thị thông báo success
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
       console.error("Update profile error:", err);
@@ -219,9 +231,6 @@ export default function Profile() {
       setLoading(false);
     }
   };
-
-  // InfoRow moved out of component render to avoid remounting on each render
-
 
   return (
     <div className="min-h-screen bg-[#0b0f12] py-8">
@@ -321,7 +330,11 @@ export default function Profile() {
               <div className="relative bg-linear-to-br from-emerald-500/10 to-blue-500/10 p-8 text-center">
                 <div className="relative inline-block">
                   <img
-                    src={avatarPreview || formData.avatar}
+                    src={
+                      avatarPreview ||
+                      formData.avatar ||
+                      "https://ui-avatars.com/api/?name=User&background=10b981&color=fff"
+                    }
                     alt="Avatar"
                     className="w-32 h-32 rounded-full border-4 border-[#0f1419] object-cover shadow-xl"
                   />
@@ -384,6 +397,7 @@ export default function Profile() {
                     value={formData.email}
                     field="email"
                     type="email"
+                    editable={false}
                   />
                   <InfoRow
                     isEditing={isEditing}

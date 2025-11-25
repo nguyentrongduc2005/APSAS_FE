@@ -1,137 +1,78 @@
+// src/services/progressService.js
 import api from "./api";
 
-// Service để lấy dữ liệu tiến độ học sinh
+/**
+ * progressService
+ * Gọi API thật từ backend APSAS:
+ *
+ *   GET /progress/{studentId}
+ *
+ * Trả về ApiResponse<List<StudentCourseProgressResponse>>
+ */
 const progressService = {
-  // Lấy thống kê tổng quan
-  async getStats(studentId) {
+  // Lấy danh sách tiến độ học tập
+  async getProgress(studentId) {
     try {
-      // TODO: Gọi API thực tế
-      // const response = await api.get(`/api/students/${studentId}/stats`);
-      // return response.data;
-
-      // Mock data tạm thời
-      return {
-        totalCourses: 109,
-        completed: 87,
-        completionRate: 92.5,
-      };
+      const res = await api.get(`/progress/${studentId}`);
+      return res.data?.data || [];
     } catch (error) {
-      console.error("Error fetching stats:", error);
+      console.error("🔥 Error fetching progress:", error);
       throw error;
     }
   },
 
-  // Lấy dữ liệu điểm số theo khoảng thời gian
-  async getScoreData(studentId, dateRange = "7days") {
-    try {
-      // TODO: Gọi API thực tế
-      // const response = await api.get(`/api/students/${studentId}/scores`, {
-      //   params: { range: dateRange }
-      // });
-      // return response.data;
+  // Tính thống kê tổng quan cho dashboard
+  computeStats(progressList) {
+    const totalCourses = progressList.length;
 
-      // Mock data tạm thời
-      const mockDataMap = {
-        "7days": [
-          { day: "T2", value: 85 },
-          { day: "T3", value: 78 },
-          { day: "T4", value: 92 },
-          { day: "T5", value: 88 },
-          { day: "T6", value: 95 },
-          { day: "T7", value: 90 },
-          { day: "CN", value: 87 },
-        ],
-        "30days": Array.from({ length: 30 }, (_, i) => ({
-          day: `${i + 1}`,
-          value: Math.floor(Math.random() * 30) + 70,
-        })),
-        "90days": Array.from({ length: 90 }, (_, i) => ({
-          day: i % 10 === 0 ? `${i + 1}` : "",
-          value: Math.floor(Math.random() * 30) + 70,
-        })),
-      };
+    const completed = progressList.filter((item) => {
+      const p = Number(item.progressPercent || 0);
+      return p >= 100;
+    }).length;
 
-      return mockDataMap[dateRange] || mockDataMap["7days"];
-    } catch (error) {
-      console.error("Error fetching score data:", error);
-      throw error;
-    }
+    const avgProgress = totalCourses
+      ? progressList.reduce(
+          (sum, item) => sum + Number(item.progressPercent || 0),
+          0
+        ) / totalCourses
+      : 0;
+
+    return {
+      totalCourses,
+      completed,
+      completionRate: Number(avgProgress.toFixed(1)),
+    };
   },
 
-  // Lấy danh sách khóa học đang học
-  async getCurrentCourses(studentId) {
-    try {
-      // TODO: Gọi API thực tế
-      // const response = await api.get(`/api/students/${studentId}/current-courses`);
-      // return response.data;
-
-      // Mock data tạm thời
-      return [
-        {
-          id: 1,
-          name: "Thiết kế Web nâng cao",
-          progress: 75,
-        },
-        {
-          id: 2,
-          name: "Lập trình JavaScript",
-          progress: 60,
-        },
-        {
-          id: 3,
-          name: "React Framework",
-          progress: 45,
-        },
-        {
-          id: 4,
-          name: "Node.js Backend",
-          progress: 30,
-        },
-      ];
-    } catch (error) {
-      console.error("Error fetching current courses:", error);
-      throw error;
-    }
+  // Data dùng cho biểu đồ
+  buildChartData(progressList) {
+    return progressList.map((item, idx) => ({
+      day: item.courseName?.slice(0, 10) || `C${idx + 1}`,
+      value: Number(item.progressPercent || 0),
+    }));
   },
 
-  // Lấy danh sách thành tích
-  async getAchievements(studentId) {
-    try {
-      // TODO: Gọi API thực tế
-      // const response = await api.get(`/api/students/${studentId}/achievements`);
-      // return response.data;
+  // Danh sách khóa học đang học
+  buildCurrentCourses(progressList) {
+    return progressList.map((item) => ({
+      id: item.courseId ?? item.id,
+      name: item.courseName,
+      progress: Number(item.progressPercent || 0),
+    }));
+  },
 
-      // Mock data tạm thời
-      return [
-        {
-          id: 1,
-          name: "First Blood",
-          description: "Hoàn thành khóa học đầu tiên",
-          date: "23-04-21",
-          icon: "Award",
-          color: "purple",
-        },
-        {
-          id: 2,
-          name: "Streak Master",
-          description: "Học liên tục 7 ngày",
-          date: "15-05-21",
-          icon: "Zap",
-          color: "blue",
-        },
-        {
-          id: 3,
-          name: "Perfect Score",
-          description: "Đạt 100% trong bài kiểm tra",
-          date: "28-06-21",
-          icon: "Target",
-          color: "pink",
-        },
-      ];
-    } catch (error) {
-      console.error("Error fetching achievements:", error);
-      throw error;
-    }
+  // Thành tích (tạm thời = các khóa đã hoàn thành)
+  buildAchievements(progressList) {
+    return progressList
+      .filter((item) => Number(item.progressPercent || 0) >= 100)
+      .map((item, idx) => ({
+        id: item.courseId ?? idx,
+        name: item.courseName || "Hoàn thành khóa học",
+        description: "Bạn đã hoàn thành khóa học này.",
+        date: item.completedAt || "—",
+        icon: "Award",
+        color: "purple",
+      }));
   },
 };
 
