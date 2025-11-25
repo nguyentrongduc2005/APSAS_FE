@@ -5,22 +5,31 @@ export default function UserEditModal({ open, onClose, onSave, user }) {
     user ?? {
       name: "",
       email: "",
-      role: "student",
-      status: "active",
-      verified: false,
+      password: "",
+      role: "STUDENT",
+      status: "ACTIVE",
     }
   );
 
   useEffect(() => {
     if (user) {
-      setForm(user);
+      // Normalize incoming user object to form shape
+      // API returns { id, name, email, status, roles: [{ id, name }] }
+      const userRole = user.roles?.[0]?.name || user.role || "STUDENT";
+      setForm({
+        name: user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || "",
+        email: user.email || "",
+        password: "",
+        role: typeof userRole === 'string' ? userRole.toUpperCase() : "STUDENT",
+        status: (user.status && user.status.toUpperCase()) || "ACTIVE",
+      });
     } else {
       setForm({
         name: "",
         email: "",
-        role: "student",
-        status: "active",
-        verified: false,
+        password: "",
+        role: "STUDENT",
+        status: "ACTIVE",
       });
     }
   }, [user, open]);
@@ -35,11 +44,12 @@ export default function UserEditModal({ open, onClose, onSave, user }) {
         </h3>
 
         <div className="grid grid-cols-2 gap-4 mt-4">
-          <div>
-            <label className="text-sm text-slate-400">Họ tên</label>
+          <div className="col-span-2">
+            <label className="text-sm text-slate-400">Họ và tên</label>
             <input
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
+              placeholder="Nhập họ và tên"
               className="w-full px-3 py-2 rounded-md bg-[#0d1117] border border-[#223] text-slate-200"
             />
           </div>
@@ -49,7 +59,9 @@ export default function UserEditModal({ open, onClose, onSave, user }) {
             <input
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="w-full px-3 py-2 rounded-md bg-[#0d1117] border border-[#223] text-slate-200"
+              placeholder="example@email.com"
+              disabled={!!user} // Disable email editing for existing users
+              className="w-full px-3 py-2 rounded-md bg-[#0d1117] border border-[#223] text-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -60,12 +72,30 @@ export default function UserEditModal({ open, onClose, onSave, user }) {
               onChange={(e) => setForm({ ...form, role: e.target.value })}
               className="w-full px-3 py-2 rounded-md bg-[#0d1117] border border-[#223] text-slate-200"
             >
-              <option value="student">Student</option>
-              <option value="lecturer">Lecturer</option>
-              <option value="provider">Provider</option>
-              <option value="admin">Admin</option>
+              <option value="STUDENT">Student</option>
+              <option value="LECTURER">Lecturer</option>
+              <option value="CONTENT_PROVIDER">Content Provider</option>
+              <option value="ADMIN">Admin</option>
             </select>
           </div>
+
+          {!user && (
+            <div>
+              <label className="text-sm text-slate-400">
+                Mật khẩu <span className="text-rose-400">*</span>
+              </label>
+              <input
+                type="password"
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                placeholder="Tối thiểu 8 ký tự"
+                className="w-full px-3 py-2 rounded-md bg-[#0d1117] border border-[#223] text-slate-200"
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                Chứa chữ hoa, chữ thường, số và ký tự đặc biệt
+              </p>
+            </div>
+          )}
 
           <div>
             <label className="text-sm text-slate-400">Trạng thái</label>
@@ -74,21 +104,11 @@ export default function UserEditModal({ open, onClose, onSave, user }) {
               onChange={(e) => setForm({ ...form, status: e.target.value })}
               className="w-full px-3 py-2 rounded-md bg-[#0d1117] border border-[#223] text-slate-200"
             >
-              <option value="active">Active</option>
-              <option value="blocked">Blocked</option>
+              <option value="ACTIVE">Active</option>
+              <option value="INACTIVE">Inactive</option>
+              <option value="BLOCKED">Blocked</option>
+              <option value="BANNED">Banned</option>
             </select>
-          </div>
-
-          <div className="col-span-2 flex items-center gap-2">
-            <input
-              id="verified"
-              type="checkbox"
-              checked={form.verified}
-              onChange={(e) => setForm({ ...form, verified: e.target.checked })}
-            />
-            <label htmlFor="verified" className="text-slate-300 text-sm">
-              Email đã xác thực
-            </label>
           </div>
         </div>
 
