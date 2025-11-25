@@ -39,20 +39,42 @@ export const studentCourseService = {
   },
 
   /**
-   * Tham gia khóa học bằng mã khóa học
+   * Tham gia khóa học bằng mã code hoặc courseId
+   * @param {string|number} identifier - Mã khóa học (string) hoặc courseId (number)
+   * @returns {Promise} API response
+   */
+  async joinCourse(identifier) {
+    let payload = {};
+
+    // Nếu identifier là string thì là code, nếu là number thì là courseId
+    if (typeof identifier === 'string') {
+      payload = { code: identifier.trim() };
+    } else if (typeof identifier === 'number') {
+      payload = { courseId: identifier };
+    } else {
+      throw new Error('Invalid identifier type. Must be string (code) or number (courseId)');
+    }
+
+    const response = await api.post('/courses/join', payload);
+    return response.data;
+  },
+
+  /**
+   * Tham gia khóa học bằng mã code (helper method)
    * @param {string} courseCode - Mã khóa học
    * @returns {Promise} API response
    */
-  async joinCourse(courseCode) {
-    try {
-      const response = await api.post('/courses/student/join', {
-        courseCode: courseCode.trim()
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Error joining course:', error);
-      throw error;
-    }
+  async joinCourseByCode(courseCode) {
+    return this.joinCourse(courseCode);
+  },
+
+  /**
+   * Tham gia khóa học bằng courseId (helper method)
+   * @param {number} courseId - ID khóa học
+   * @returns {Promise} API response
+   */
+  async joinCourseById(courseId) {
+    return this.joinCourse(courseId);
   },
 
   /**
