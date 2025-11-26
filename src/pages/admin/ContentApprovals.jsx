@@ -13,9 +13,15 @@ export default function ContentApprovals() {
   const [loading, setLoading] = useState(false);
   const [modal, setModal] = useState({ open: false, data: null });
   const [error, setError] = useState(null);
+  const [pagination, setPagination] = useState({
+    page: 0,
+    size: 10,
+    totalElements: 0,
+    totalPages: 0,
+  });
 
-  // Fetch contents
-  const fetchContents = async () => {
+  // Fetch contents with pagination
+  const fetchContents = async (page = 0) => {
     try {
       setLoading(true);
       setError(null);
@@ -23,11 +29,35 @@ export default function ContentApprovals() {
         keyword: q,
         type,
         status,
+        page,
+        size: 10,
       });
       
-      if (result.code === "ok" && Array.isArray(result.data)) {
+      // Handle both array response and paginated response
+      if (result.code === "ok") {
+        let contentList = [];
+        
+        // Check if data is paginated (has content property) or array
+        if (result.data?.content) {
+          contentList = result.data.content;
+          setPagination({
+            page: result.data.pageable?.pageNumber || page,
+            size: result.data.pageable?.pageSize || 10,
+            totalElements: result.data.totalElements || 0,
+            totalPages: result.data.totalPages || 0,
+          });
+        } else if (Array.isArray(result.data)) {
+          contentList = result.data;
+          setPagination({
+            page: 0,
+            size: contentList.length,
+            totalElements: contentList.length,
+            totalPages: 1,
+          });
+        }
+        
         // Map API response to expected format
-        const mappedContents = result.data.map(tutorial => ({
+        const mappedContents = contentList.map(tutorial => ({
           id: tutorial.id,
           title: tutorial.title || "Untitled",
           type: tutorial.type || "UNKNOWN",
@@ -50,13 +80,18 @@ export default function ContentApprovals() {
   };
 
   useEffect(() => {
-    fetchContents();
+    fetchContents(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]); // Only refetch when status changes
 
   // Manual search trigger
   const handleSearch = () => {
-    fetchContents();
+    fetchContents(0);
+  };
+
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    fetchContents(newPage);
   };
 
   const openView = (row) => setModal({ open: true, data: row });
@@ -68,8 +103,8 @@ export default function ContentApprovals() {
         const result = await adminContentService.approveContent(modal.data.id, note);
         if (result.code === "ok") {
           alert("Nội dung đã được duyệt thành công!");
-          // Refresh the list
-          fetchContents();
+          // Refresh the list with current pagination
+          fetchContents(pagination.page);
           closeView();
         } else {
           throw new Error(result.message || "Duyệt nội dung thất bại");
@@ -78,8 +113,8 @@ export default function ContentApprovals() {
         const result = await adminContentService.rejectContent(modal.data.id, note);
         if (result.code === "ok") {
           alert("Nội dung đã bị từ chối!");
-          // Refresh the list
-          fetchContents();
+          // Refresh the list with current pagination
+          fetchContents(pagination.page);
           closeView();
         } else {
           throw new Error(result.message || "Từ chối nội dung thất bại");
@@ -128,7 +163,37 @@ export default function ContentApprovals() {
             <p className="text-slate-400 mt-4">Đang tải...</p>
           </div>
         ) : (
-          <ContentTable contents={contents} onView={openView} />
+          <>
+            <ContentTable contents={contents} onView={openView} />
+            
+            {/* Pagination */}
+            {pagination.totalPages > 1 && (
+              <div className="flex items-center justify-between mt-6 pt-4 border-t border-[#202934]">
+                <div className="text-sm text-gray-400">
+                  Hiển thị {contents.length} trong tổng số {pagination.totalElements} nội dung
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handlePageChange(pagination.page - 1)}
+                    disabled={pagination.page === 0}
+                    className="px-3 py-1.5 bg-[#0b0f12] border border-[#202934] rounded text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#202934] transition"
+                  >
+                    Trước
+                  </button>
+                  <span className="text-sm text-gray-400">
+                    Trang {pagination.page + 1} / {pagination.totalPages}
+                  </span>
+                  <button
+                    onClick={() => handlePageChange(pagination.page + 1)}
+                    disabled={pagination.page >= pagination.totalPages - 1}
+                    className="px-3 py-1.5 bg-[#0b0f12] border border-[#202934] rounded text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#202934] transition"
+                  >
+                    Sau
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 

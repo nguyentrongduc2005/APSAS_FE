@@ -2,11 +2,12 @@ import api from "./api";
 
 /**
  * Service for handling role and permission operations
- * Based on APSAS Admin API specification
+ * Based on APSAS Admin API Documentation v2025-11-26
  */
 const rolePermissionService = {
   /**
    * Get all roles with their permissions
+   * GET /admin/roles
    * Required permission: VIEW_ROLES
    */
   getRoles: async () => {
@@ -21,11 +22,13 @@ const rolePermissionService = {
 
   /**
    * Get all permissions
+   * GET /admin/roles/permissions
    * Required permission: VIEW_ROLES
    */
   getPermissions: async () => {
     try {
-      const response = await api.get('/admin/permissions');
+      // Correct endpoint: /admin/roles/permissions (not /admin/permissions)
+      const response = await api.get('/admin/roles/permissions');
       return response.data;
     } catch (error) {
       console.error("Error fetching permissions:", error);
@@ -95,11 +98,21 @@ const rolePermissionService = {
 
   /**
    * Create new role
+   * POST /admin/roles
    * Required permission: CREATE_ROLES
+   * @param {Object} roleData - Role data
+   * @param {string} roleData.name - Role name
+   * @param {string} roleData.description - Role description
+   * @param {number[]} roleData.permissionIds - Array of permission IDs
    */
   createRole: async (roleData) => {
     try {
-      const response = await api.post('/admin/roles', roleData);
+      const payload = {
+        name: roleData.name,
+        description: roleData.description || "",
+        permissionIds: roleData.permissionIds || [],
+      };
+      const response = await api.post('/admin/roles', payload);
       return response.data;
     } catch (error) {
       console.error("Error creating role:", error);
@@ -109,11 +122,22 @@ const rolePermissionService = {
 
   /**
    * Update existing role
+   * PUT /admin/roles/{roleId}
    * Required permission: UPDATE_ROLES
+   * @param {number} roleId - Role ID
+   * @param {Object} roleData - Role data
+   * @param {string} roleData.name - Role name
+   * @param {string} roleData.description - Role description
+   * @param {number[]} roleData.permissionIds - Array of permission IDs
    */
   updateRole: async (roleId, roleData) => {
     try {
-      const response = await api.put(`/admin/roles/${roleId}`, roleData);
+      const payload = {
+        name: roleData.name,
+        description: roleData.description || "",
+        permissionIds: roleData.permissionIds || [],
+      };
+      const response = await api.put(`/admin/roles/${roleId}`, payload);
       return response.data;
     } catch (error) {
       console.error("Error updating role:", error);
