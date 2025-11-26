@@ -149,7 +149,7 @@ export default function AppRoutes() {
                    {" "}
           <Route
             path="provider/resources/:resourceId/view"
-            element={<ResourceDetail />}
+            element={<ResourceDetailReadOnly />}
           />
                       {/* Content & Assignment management routes */}           {" "}
           <Route
@@ -174,6 +174,14 @@ export default function AppRoutes() {
                      {" "}
           <Route
             path="provider/resources/:resourceId/assignment/:assignmentId"
+            element={<AssignmentDetailView />}
+          />
+          <Route
+            path="provider/resources/:resourceId/view/content/:contentId"
+            element={<ContentDetailView />}
+          />
+          <Route
+            path="provider/resources/:resourceId/view/assignment/:assignmentId"
             element={<AssignmentDetailView />}
           />
                      {" "}

@@ -216,8 +216,15 @@ const resourceService = { // Lấy danh sách tài nguyên theo status + search
   // Lấy assignment theo ID (API 27)
   async getAssignmentById(tutorialId, assignmentId) {
     try {
-      const res = await api.get(`/tutorials/assignments/${assignmentId}`);
-      return res.data?.data;
+      const res = await api.get(`/tutorials/assignments/${assignmentId}`);
+      // Debug: sometimes backend returns different shapes (data vs payload)
+      console.debug("getAssignmentById response:", {
+        status: res.status,
+        data: res.data,
+      });
+
+      // Try multiple possible shapes to avoid returning undefined
+      return res.data?.data ?? res.data ?? null;
     } catch (error) {
       console.error("Error fetching assignment detail:", error);
       throw error;
