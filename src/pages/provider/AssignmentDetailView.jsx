@@ -22,6 +22,7 @@ export default function AssignmentDetailView() {
   const location = useLocation();
   const [assignment, setAssignment] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Determine back path based on current URL path
   const isViewMode = location.pathname.includes("/view/");
@@ -35,8 +36,17 @@ export default function AssignmentDetailView() {
         setLoading(true);
         const data = await getAssignmentById(resourceId, assignmentId);
         setAssignment(data);
+        setError(null);
       } catch (error) {
         console.error("Error fetching assignment:", error);
+        // Show clearer message for permission issues
+        if (error?.response?.status === 401) {
+          setError({ code: 401, message: "Bạn không có quyền xem bài tập này." });
+        } else if (error?.response?.status === 404) {
+          setError({ code: 404, message: "Bài tập không tồn tại." });
+        } else {
+          setError({ code: error?.response?.status || 0, message: "Lỗi khi tải bài tập." });
+        }
       } finally {
         setLoading(false);
       }
@@ -56,7 +66,18 @@ export default function AssignmentDetailView() {
   if (!assignment) {
     return (
       <div className="min-h-screen bg-[#0f1419] flex items-center justify-center">
-        <div className="text-white text-lg">Không tìm thấy bài tập</div>
+        <div className="text-white text-lg">
+          {error ? (
+            <>
+              <div className="text-xl font-semibold mb-2">{error.message}</div>
+              {error.code === 401 && (
+                <div className="text-sm text-gray-400">Vui lòng kiểm tra quyền truy cập hoặc đăng nhập lại.</div>
+              )}
+            </>
+          ) : (
+            "Không tìm thấy bài tập"
+          )}
+        </div>
       </div>
     );
   }
