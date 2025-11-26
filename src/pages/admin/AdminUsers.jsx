@@ -130,20 +130,51 @@ export default function AdminUsers() {
     }
   };
 
+  /**
+   * Toggle user lock status (Block/Unblock)
+   * Block: ACTIVE → BLOCKED
+   * Unblock: BLOCKED/INACTIVE/BANNED → ACTIVE
+   */
   const toggleLock = async (id) => {
     try {
       const user = users.find((u) => u.id === id);
-      const newStatus = user.status === "ACTIVE" ? "BLOCKED" : "ACTIVE";
+      if (!user) {
+        alert("Không tìm thấy người dùng");
+        return;
+      }
+
+      const currentStatus = (user.status || "").toUpperCase();
+      let newStatus;
+      let actionText;
+
+      if (currentStatus === "ACTIVE") {
+        // Block user
+        newStatus = "BLOCKED";
+        actionText = "khóa";
+        if (!window.confirm(`Bạn có chắc chắn muốn khóa người dùng "${user.name}"?`)) {
+          return;
+        }
+      } else {
+        // Unblock user (from BLOCKED, INACTIVE, or BANNED)
+        newStatus = "ACTIVE";
+        actionText = "mở khóa";
+        if (!window.confirm(`Bạn có chắc chắn muốn mở khóa người dùng "${user.name}"?`)) {
+          return;
+        }
+      }
 
       const response = await adminUserService.updateUserStatus(id, newStatus);
       
       if (response.code === "ok") {
+        alert(`Đã ${actionText} người dùng thành công!`);
         await fetchUsers(pagination.page);
         await fetchStats();
+      } else {
+        throw new Error(response.message || "Thao tác thất bại");
       }
     } catch (error) {
       console.error("Error toggling user status:", error);
-      const errorMsg = error.response?.data?.message || "Thao tác thất bại";
+      const errorMsg = error.response?.data?.message || error.message || "Thao tác thất bại";
       alert(errorMsg);
     }
   };

@@ -34,7 +34,8 @@ export default function ContentApprovals() {
       });
       
       // Handle both array response and paginated response
-      if (result.code === "ok") {
+      const responseCode = (result.code || "").toUpperCase();
+      if (responseCode === "OK" || responseCode === "200") {
         let contentList = [];
         
         // Check if data is paginated (has content property) or array
@@ -99,9 +100,20 @@ export default function ContentApprovals() {
 
   const decide = async (decision, note) => {
     try {
+      // Validate tutorial status before review
+      if (modal.data && modal.data.status) {
+        const currentStatus = (modal.data.status || "").toUpperCase();
+        if (currentStatus !== "PENDING" && currentStatus !== "pending") {
+          alert(`Không thể review tutorial này. Trạng thái hiện tại: ${modal.data.status}. Chỉ có thể review tutorial ở trạng thái PENDING.`);
+          return;
+        }
+      }
+
       if (decision === "approved") {
         const result = await adminContentService.approveContent(modal.data.id, note);
-        if (result.code === "ok") {
+        // Check response code (handle both "ok" and "OK")
+        const responseCode = (result.code || "").toUpperCase();
+        if (responseCode === "OK" || responseCode === "200") {
           alert("Nội dung đã được duyệt thành công!");
           // Refresh the list with current pagination
           fetchContents(pagination.page);
@@ -109,9 +121,17 @@ export default function ContentApprovals() {
         } else {
           throw new Error(result.message || "Duyệt nội dung thất bại");
         }
-      } else {
+      } else if (decision === "rejected") {
+        // Optional: Validate note for rejection (can be made required)
+        // if (!note || !note.trim()) {
+        //   alert("Vui lòng nhập lý do từ chối.");
+        //   return;
+        // }
+
         const result = await adminContentService.rejectContent(modal.data.id, note);
-        if (result.code === "ok") {
+        // Check response code (handle both "ok" and "OK")
+        const responseCode = (result.code || "").toUpperCase();
+        if (responseCode === "OK" || responseCode === "200") {
           alert("Nội dung đã bị từ chối!");
           // Refresh the list with current pagination
           fetchContents(pagination.page);
@@ -122,7 +142,9 @@ export default function ContentApprovals() {
       }
     } catch (error) {
       console.error("Error deciding content:", error);
-      alert(error.message || "Thao tác thất bại. Vui lòng thử lại.");
+      // Show user-friendly error message
+      const errorMessage = error.message || "Thao tác thất bại. Vui lòng thử lại.";
+      alert(errorMessage);
     }
   };
 

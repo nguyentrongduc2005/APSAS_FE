@@ -70,11 +70,20 @@ export default function UserTable({ users, onEdit, onToggleLock, onDelete }) {
               </td>
 
               <td className="px-3 py-3">
-                {u.status === "active" ? (
-                  <Badge tone="green">Active</Badge>
-                ) : (
-                  <Badge tone="red">Blocked</Badge>
-                )}
+                {(() => {
+                  const status = (u.status || "").toUpperCase();
+                  if (status === "ACTIVE") {
+                    return <Badge tone="green">Active</Badge>;
+                  } else if (status === "BLOCKED") {
+                    return <Badge tone="red">Blocked</Badge>;
+                  } else if (status === "INACTIVE") {
+                    return <Badge tone="gray">Inactive</Badge>;
+                  } else if (status === "BANNED") {
+                    return <Badge tone="red">Banned</Badge>;
+                  } else {
+                    return <Badge tone="gray">{u.status || "Unknown"}</Badge>;
+                  }
+                })()}
                 {!u.verified && (
                   <Badge tone="gray" className="ml-2">
                     Unverified
@@ -97,7 +106,16 @@ export default function UserTable({ users, onEdit, onToggleLock, onDelete }) {
                     className="px-2 py-1 rounded bg-[#101826] border border-[#223]"
                     onClick={() => onToggleLock(u.id)}
                   >
-                    {u.status === "active" ? "Khóa" : "Mở khóa"}
+                    {(() => {
+                      const status = (u.status || "").toUpperCase();
+                      if (status === "ACTIVE") {
+                        return "Khóa";
+                      } else if (status === "BLOCKED" || status === "INACTIVE" || status === "BANNED") {
+                        return "Mở khóa";
+                      } else {
+                        return "Khóa";
+                      }
+                    })()}
                   </button>
                   <button
                     className="px-2 py-1 rounded bg-[#2a0e12] border border-rose-900 text-rose-300"
