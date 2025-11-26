@@ -90,6 +90,52 @@ export const studentCourseService = {
       console.error('Error leaving course:', error);
       throw error;
     }
+  },
+
+  /**
+   * Lấy chi tiết khóa học cho student
+   * @param {number} courseId - ID khóa học
+   * @returns {Promise} API response
+   */
+  async getCourseDetail(courseId) {
+    try {
+      const response = await api.get(`/courses/${courseId}/detail-student`);
+      return response.data;
+    } catch (error) {
+      console.error('Error getting course detail:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Lấy chi tiết content cho student
+   * @param {number} contentId - ID của content
+   * @returns {Promise} API response
+   */
+  async getContentDetail(contentId) {
+    try {
+      const response = await api.get(`/tutorials/contents/${contentId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error getting content detail:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Lấy chi tiết assignment cho student
+   * @param {number} courseId - ID khóa học
+   * @param {number} assignmentId - ID assignment
+   * @returns {Promise} API response
+   */
+  async getAssignmentDetail(courseId, assignmentId) {
+    try {
+      const response = await api.get(`/assignment/${courseId}/assignments/${assignmentId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error getting assignment detail:', error);
+      throw error;
+    }
   }
 };
 

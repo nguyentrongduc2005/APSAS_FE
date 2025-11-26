@@ -1,4 +1,4 @@
-import React, { useState, lazy, Suspense } from "react";
+import React, { useState, useEffect, lazy, Suspense } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 const Editor = lazy(() => import("@monaco-editor/react"));
 import {
@@ -8,11 +8,26 @@ import {
   FileText,
   CheckCircle2,
   Clock,
+  Calendar,
+  Timer,
 } from "lucide-react";
+import studentCourseService from "../../services/studentCourseService";
+import { marked } from "marked";
+
+// Configure marked options
+marked.setOptions({
+  breaks: true,
+  gfm: true,
+});
 
 export default function StudentAssignmentDetail() {
   const navigate = useNavigate();
-  const { assignmentId } = useParams();
+  const { assignmentId, courseId } = useParams();
+
+  // API state
+  const [assignment, setAssignment] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const [activeTab, setActiveTab] = useState("practice"); // practice | submissions
 
@@ -35,31 +50,31 @@ export default function StudentAssignmentDetail() {
     setCode(defaultCode[newLanguage]);
   };
 
-  // Mock data - TODO: Fetch from API
-  const assignment = {
-    id: assignmentId,
-    title: "Implement Singly Linked List",
-    descriptionHtml: `
-      <h3>Yêu cầu:</h3>
-      <p>Viết chương trình tạo một Singly Linked List với các thao tác cơ bản:</p>
-      <ul>
-        <li>Thêm node vào đầu danh sách</li>
-        <li>Thêm node vào cuối danh sách</li>
-        <li>Xóa node theo giá trị</li>
-        <li>Tìm kiếm node</li>
-        <li>In toàn bộ danh sách</li>
-      </ul>
-      <h3>Input:</h3>
-      <p>Một mảng các số nguyên</p>
-      <h3>Output:</h3>
-      <p>Danh sách liên kết đã được tạo và in ra theo format: <code>1 -> 2 -> 3 -> null</code></p>
-    `,
-    testCases: [
-      { input: "[1, 2, 3, 4, 5]", output: "1 -> 2 -> 3 -> 4 -> 5 -> null" },
-      { input: "[10, 20, 30]", output: "10 -> 20 -> 30 -> null" },
-      { input: "[]", output: "null" },
-    ],
-  };
+  // Load assignment data from API
+  useEffect(() => {
+    const loadAssignmentData = async () => {
+      try {
+        setLoading(true);
+        // Use the student course service method
+        const response = await studentCourseService.getAssignmentDetail(courseId, assignmentId);
+        
+        if (response && (response.code === "ok" || response.code === "0")) {
+          setAssignment(response.data);
+        } else {
+          throw new Error(response?.message || "Failed to load assignment");
+        }
+      } catch (err) {
+        console.error('Error loading assignment:', err);
+        setError(err.message || "Có lỗi xảy ra khi tải bài tập");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (assignmentId && courseId) {
+      loadAssignmentData();
+    }
+  }, [assignmentId, courseId]);
 
   const languages = [
     { value: "javascript", label: "JavaScript" },
@@ -126,6 +141,52 @@ export default function StudentAssignmentDetail() {
     },
   ];
 
+  // Loading state
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-[#0f1419] border border-[#202934] rounded-xl p-6 animate-pulse">
+          <div className="h-4 bg-gray-700 rounded mb-4 w-1/3"></div>
+          <div className="h-8 bg-gray-700 rounded mb-4 w-2/3"></div>
+          <div className="h-4 bg-gray-700 rounded mb-4"></div>
+          <div className="h-64 bg-gray-700 rounded"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-[#0f1419] border border-red-500/50 rounded-xl p-6 text-center">
+          <div className="text-red-400 text-lg mb-2">Có lỗi xảy ra</div>
+          <div className="text-gray-400 mb-4">{error}</div>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition"
+          >
+            Thử lại
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // No assignment data
+  if (!assignment) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-[#0f1419] border border-[#202934] rounded-xl p-6 text-center">
+          <div className="text-gray-400">Không tìm thấy bài tập</div>
+        </div>
+      </div>
+    );
+  }
+
+  const isOverdue = assignment.dueAt && new Date(assignment.dueAt) < new Date();
+  const isOpen = assignment.openAt && new Date(assignment.openAt) <= new Date();
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -138,10 +199,42 @@ export default function StudentAssignmentDetail() {
           Quay lại
         </button>
 
-        <div>
-          <h1 className="text-2xl font-bold text-white mb-4">
-            {assignment.title}
-          </h1>
+        <div className="space-y-4">
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-white mb-2">
+                {assignment.title}
+              </h1>
+              {assignment.summary && (
+                <p className="text-gray-400 leading-relaxed">{assignment.summary}</p>
+              )}
+            </div>
+            <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+              isOverdue 
+                ? 'bg-red-500/10 text-red-400 border border-red-500/20'
+                : isOpen
+                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+            }`}>
+              {isOverdue ? 'Hết hạn' : isOpen ? 'Đang mở' : 'Chưa mở'}
+            </div>
+          </div>
+
+          {/* Assignment time info */}
+          <div className="flex items-center gap-6 text-sm text-gray-400">
+            {assignment.openAt && (
+              <div className="flex items-center gap-2">
+                <Timer size={16} />
+                <span>Mở: {new Date(assignment.openAt).toLocaleString('vi-VN')}</span>
+              </div>
+            )}
+            {assignment.dueAt && (
+              <div className="flex items-center gap-2">
+                <Calendar size={16} />
+                <span>Hạn: {new Date(assignment.dueAt).toLocaleString('vi-VN')}</span>
+              </div>
+            )}
+          </div>
 
           {/* Tabs */}
           <div className="flex gap-2 border-b border-[#202934]">
@@ -173,15 +266,26 @@ export default function StudentAssignmentDetail() {
         <>
           {/* Description */}
           <section className="bg-[#0f1419] border border-[#202934] rounded-xl p-6">
-            <div
-              className="prose prose-invert max-w-none text-gray-300"
-              dangerouslySetInnerHTML={{ __html: assignment.descriptionHtml }}
-              style={{
-                "--tw-prose-headings": "#fff",
-                "--tw-prose-links": "#10b981",
-                "--tw-prose-code": "#10b981",
-              }}
-            />
+            <div className="flex items-center gap-2 mb-4">
+              <FileText size={20} className="text-blue-400" />
+              <h2 className="text-xl font-semibold text-white">Đề bài</h2>
+            </div>
+            
+            <div className="prose prose-invert max-w-none">
+              {assignment.statementMd ? (
+                <div
+                  className="text-gray-300 leading-relaxed"
+                  dangerouslySetInnerHTML={{
+                    __html: marked(assignment.statementMd),
+                  }}
+                />
+              ) : (
+                <div className="text-center py-8">
+                  <FileText size={48} className="mx-auto mb-3 text-gray-600" />
+                  <p className="text-gray-400">Đề bài đang được cập nhật</p>
+                </div>
+              )}
+            </div>
           </section>
 
           {/* Code Editor Section */}
@@ -243,7 +347,8 @@ export default function StudentAssignmentDetail() {
 
               <button
                 onClick={handleSubmit}
-                className="inline-flex items-center gap-2 px-6 py-2.5 bg-emerald-500 text-black rounded-lg hover:bg-emerald-600 transition font-medium"
+                disabled={!code.trim() || !isOpen || isOverdue}
+                className="inline-flex items-center gap-2 px-6 py-2.5 bg-emerald-500 text-black rounded-lg hover:bg-emerald-600 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Send size={18} />
                 Nộp bài
@@ -264,44 +369,46 @@ export default function StudentAssignmentDetail() {
           </section>
 
           {/* Test Cases Section */}
-          <section className="bg-[#0f1419] border border-[#202934] rounded-xl p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-white">Test Cases</h2>
+          {assignment.testCases && assignment.testCases.length > 0 && (
+            <section className="bg-[#0f1419] border border-[#202934] rounded-xl p-6 space-y-4">
+              <h2 className="text-lg font-semibold text-white">Test Cases</h2>
 
-            <div className="space-y-3">
-              {assignment.testCases.map((testCase, index) => (
-                <div
-                  key={index}
-                  className="bg-[#0b0f12] border border-[#202934] rounded-lg p-4 space-y-3"
-                >
-                  <div className="text-sm font-semibold text-emerald-400">
-                    Test Case {index + 1}
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <div className="text-xs text-gray-500 mb-2">Input:</div>
-                      <div className="p-3 bg-[#0f1419] border border-[#202934] rounded-lg">
-                        <code className="text-sm text-white font-mono">
-                          {testCase.input}
-                        </code>
-                      </div>
+              <div className="space-y-3">
+                {assignment.testCases.map((testCase, index) => (
+                  <div
+                    key={index}
+                    className="bg-[#0b0f12] border border-[#202934] rounded-lg p-4 space-y-3"
+                  >
+                    <div className="text-sm font-semibold text-emerald-400">
+                      Test Case {index + 1}
                     </div>
 
-                    <div>
-                      <div className="text-xs text-gray-500 mb-2">
-                        Expected Output:
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <div className="text-xs text-gray-500 mb-2">Input:</div>
+                        <div className="p-3 bg-[#0f1419] border border-[#202934] rounded-lg">
+                          <code className="text-sm text-white font-mono">
+                            {testCase.input}
+                          </code>
+                        </div>
                       </div>
-                      <div className="p-3 bg-[#0f1419] border border-[#202934] rounded-lg">
-                        <code className="text-sm text-white font-mono">
-                          {testCase.output}
-                        </code>
+
+                      <div>
+                        <div className="text-xs text-gray-500 mb-2">
+                          Expected Output:
+                        </div>
+                        <div className="p-3 bg-[#0f1419] border border-[#202934] rounded-lg">
+                          <code className="text-sm text-white font-mono">
+                            {testCase.output}
+                          </code>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </section>
+                ))}
+              </div>
+            </section>
+          )}
         </>
       ) : (
         /* Submissions Tab */
