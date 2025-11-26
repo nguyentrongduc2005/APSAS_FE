@@ -3,118 +3,39 @@ import api from "./api";
 /**
  * Service for Admin User Management
  * All endpoints require appropriate admin permissions
+ * Based on APSAS Admin API Documentation v2025-11-26
  */
 const adminUserService = {
   /**
    * Get paginated list of users
+   * GET /admin/users?page=0&size=10&keyword=&status=&roleId=
    * Required permission: VIEW_USERS
+   * @param {Object} params - Query parameters
+   * @param {number} params.page - Page number (0-based)
+   * @param {number} params.size - Items per page
+   * @param {string} params.keyword - Search by name/email
+   * @param {string} params.status - Filter: ACTIVE, INACTIVE, BANNED, BLOCKED
+   * @param {number} params.roleId - Filter by role ID
    */
   async getUsers(params = {}) {
     try {
       const queryParams = {
         page: params.page !== undefined ? params.page : 0,
         size: params.size || 10,
-        sort: params.sort || "createdAt,desc",
       };
 
-      if (params.search) queryParams.search = params.search;
+      // API uses 'keyword' for search (not 'search')
+      if (params.keyword) queryParams.keyword = params.keyword;
+      if (params.search) queryParams.keyword = params.search; // backward compatibility
+      
       if (params.status) queryParams.status = params.status;
-      if (params.role) queryParams.role = params.role;
+      
+      // API uses 'roleId' (not 'role')
+      if (params.roleId) queryParams.roleId = params.roleId;
+      if (params.role) queryParams.roleId = params.role; // backward compatibility
 
       const response = await api.get("/admin/users", { params: queryParams });
       return response.data;
-
-      const allUsers = [
-        {
-          id: "U001",
-          name: "Nguyễn Văn A",
-          email: "nguyenvana@example.com",
-          role: "student",
-          status: "active",
-          verified: true,
-          createdAt: "2024-01-15",
-          lastLogin: "2024-11-10",
-        },
-        {
-          id: "U002",
-          name: "Trần Thị B",
-          email: "tranthib@example.com",
-          role: "lecturer",
-          status: "active",
-          verified: true,
-          createdAt: "2024-02-20",
-          lastLogin: "2024-11-12",
-        },
-        {
-          id: "U003",
-          name: "Lê Minh C",
-          email: "leminhc@example.com",
-          role: "provider",
-          status: "active",
-          verified: true,
-          createdAt: "2024-03-10",
-          lastLogin: "2024-11-11",
-        },
-        {
-          id: "U004",
-          name: "Phạm Thị D",
-          email: "phamthid@example.com",
-          role: "student",
-          status: "blocked",
-          verified: false,
-          createdAt: "2024-04-05",
-          lastLogin: "2024-10-20",
-        },
-        {
-          id: "U005",
-          name: "Hoàng Văn E",
-          email: "hoangvane@example.com",
-          role: "admin",
-          status: "active",
-          verified: true,
-          createdAt: "2024-05-12",
-          lastLogin: "2024-11-14",
-        },
-      ];
-
-      // Lọc theo role
-      let filteredUsers = allUsers;
-      if (role) {
-        filteredUsers = filteredUsers.filter((u) => u.role === role);
-      }
-
-      // Lọc theo status
-      if (status) {
-        filteredUsers = filteredUsers.filter((u) => u.status === status);
-      }
-
-      // Lọc theo keyword
-      if (keyword) {
-        const lowerKeyword = keyword.toLowerCase();
-        filteredUsers = filteredUsers.filter(
-          (u) =>
-            u.name.toLowerCase().includes(lowerKeyword) ||
-            u.email.toLowerCase().includes(lowerKeyword) ||
-            u.id.toLowerCase().includes(lowerKeyword)
-        );
-      }
-
-      // Tính toán pagination
-      const total = filteredUsers.length;
-      const totalPages = Math.ceil(total / limit);
-      const start = (page - 1) * limit;
-      const end = start + limit;
-      const data = filteredUsers.slice(start, end);
-
-      return {
-        data,
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages,
-        },
-      };
     } catch (error) {
       console.error("Error fetching users:", error);
       throw error;
@@ -137,11 +58,27 @@ const adminUserService = {
 
   /**
    * Create new user
+   * POST /admin/users
    * Required permission: CREATE_USERS
+   * @param {Object} userData - User data
+   * @param {string} userData.name - Full name
+   * @param {string} userData.email - Email address
+   * @param {string} userData.password - Password (min 8 chars with uppercase, lowercase, number, special char)
+   * @param {number[]} userData.roleIds - Array of role IDs
+   * @param {string} userData.status - Status: ACTIVE, INACTIVE, BANNED, BLOCKED
    */
   async createUser(userData) {
     try {
-      const response = await api.post("/admin/users", userData);
+      // Transform payload to match API spec
+      const payload = {
+        name: userData.name || `${userData.firstName || ''} ${userData.lastName || ''}`.trim(),
+        email: userData.email,
+        password: userData.password,
+        roleIds: userData.roleIds || (userData.roles ? userData.roles.map(r => typeof r === 'number' ? r : r.id) : [2]), // Default to STUDENT (id: 2)
+        status: userData.status || "ACTIVE",
+      };
+      
+      const response = await api.post("/admin/users", payload);
       return response.data;
     } catch (error) {
       console.error("Error creating user:", error);
@@ -167,16 +104,21 @@ const adminUserService = {
 
   /**
    * Update user roles
+   * PUT /admin/users/{userId}/roles
    * Required permission: UPDATE_USERS
+   * @param {number} userId - User ID
+   * @param {number[]} roleIds - Array of role IDs
    */
   async updateUserRoles(userId, roleIds) {
     try {
-      const response = await api.put(`/admin/users/${userId}/roles`, {
-        roleIds,
-      });
+      // API expects { roleIds: [1, 2] }
+      const payload = { 
+        roleIds: Array.isArray(roleIds) ? roleIds : [roleIds] 
+      };
+      const response = await api.put(`/admin/users/${userId}/roles`, payload);
       return response.data;
     } catch (error) {
-      console.error("Error updating user:", error);
+      console.error("Error updating user roles:", error);
       throw error;
     }
   },

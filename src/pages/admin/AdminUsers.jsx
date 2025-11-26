@@ -28,18 +28,17 @@ export default function AdminUsers() {
       const result = await adminUserService.getUsers({
         page,
         size: 10,
-        search,
-        role,
-        status,
-        sort: "createdAt,desc",
+        keyword: search, // API uses 'keyword' for search
+        roleId: role ? getRoleIdByName(role) : undefined, // API uses 'roleId' (number)
+        status: status ? status.toUpperCase() : undefined,
       });
 
-      // API returns: { code, message, data: { content, pageable, totalElements, totalPages } }
+      // API returns: { code, message, data: { content, totalElements, totalPages, size, number } }
       if (result.code === "ok" && result.data) {
         setUsers(result.data.content || []);
         setPagination({
-          page: result.data.pageable?.pageNumber || 0,
-          size: result.data.pageable?.pageSize || 10,
+          page: result.data.number || 0,
+          size: result.data.size || 10,
           totalElements: result.data.totalElements || 0,
           totalPages: result.data.totalPages || 0,
         });
@@ -50,6 +49,19 @@ export default function AdminUsers() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper to convert role name to role ID
+  const getRoleIdByName = (roleName) => {
+    const roleMap = {
+      ADMIN: 1,
+      STUDENT: 2,
+      LECTURER: 3,
+      CONTENT_PROVIDER: 4,
+      PROVIDER: 4,
+      GUEST: 5,
+    };
+    return roleMap[roleName.toUpperCase()] || undefined;
   };
 
   // Fetch user statistics
@@ -82,16 +94,32 @@ export default function AdminUsers() {
     try {
       if (modal.data) {
         // Update user roles or status
-        if (data.roleIds) {
-          await adminUserService.updateUserRoles(modal.data.id, data.roleIds);
+        if (data.role) {
+          // Convert role name to roleId and send as array
+          const roleId = getRoleIdByName(data.role);
+          if (roleId) {
+            await adminUserService.updateUserRoles(modal.data.id, [roleId]);
+          }
         }
         if (data.status) {
           await adminUserService.updateUserStatus(modal.data.id, data.status);
         }
         await fetchUsers(pagination.page);
       } else {
-        // Create new user - requires: name, email, password, roleIds, status
-        const response = await adminUserService.createUser(data);
+        // Create new user - build payload expected by backend
+        // API expects: { name, email, password, roleIds, status }
+        const roleId = getRoleIdByName(data.role);
+        const payload = {
+          name:
+            data.name ||
+            `${data.firstName || ""} ${data.lastName || ""}`.trim(),
+          email: data.email,
+          password: data.password,
+          roleIds: roleId ? [roleId] : [2], // Default to STUDENT (id: 2)
+          status: data.status || "ACTIVE",
+        };
+
+        const response = await adminUserService.createUser(payload);
         if (response.code === "ok") {
           await fetchUsers(0); // Refresh to first page
         }
@@ -172,13 +200,13 @@ export default function AdminUsers() {
           <div className="bg-[#0f1419] border border-[#202934] rounded-lg p-5">
             <div className="text-sm text-gray-400">Sinh viên</div>
             <div className="text-2xl font-bold text-blue-400 mt-1">
-              {stats.studentsCount}
+              {stats.usersByRole?.STUDENT || stats.studentsCount || 0}
             </div>
           </div>
           <div className="bg-[#0f1419] border border-[#202934] rounded-lg p-5">
             <div className="text-sm text-gray-400">Giảng viên</div>
             <div className="text-2xl font-bold text-purple-400 mt-1">
-              {stats.lecturersCount}
+              {stats.usersByRole?.LECTURER || stats.lecturersCount || 0}
             </div>
           </div>
         </div>
