@@ -169,6 +169,49 @@ const lecturerService = {
       throw error;
     }
   },
+
+  // Get content detail
+  async getContentDetail(contentId) {
+    try {
+      const response = await api.get(`/tutorials/contents/${contentId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error getting content detail:', error);
+      throw error;
+    }
+  },
+
+  // Get assignment detail
+  async getAssignmentDetail(courseId, assignmentId) {
+    try {
+      const response = await api.get(`/assignment/${courseId}/assignments/${assignmentId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error getting assignment detail:', error);
+      throw error;
+    }
+  },
+
+  // Set assignment time (openAt and dueAt)
+  async setAssignmentTime(assignmentId, courseId, timeData) {
+    try {
+      const { openAt, dueAt } = timeData;
+      const params = new URLSearchParams();
+
+      if (openAt) {
+        params.append('openAt', openAt);
+      }
+      if (dueAt) {
+        params.append('dueAt', dueAt);
+      }
+
+      const response = await api.post(`/assignment/${assignmentId}/course/${courseId}/set-time?${params.toString()}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error setting assignment time:', error);
+      throw error;
+    }
+  },
 };
 
 export default lecturerService;

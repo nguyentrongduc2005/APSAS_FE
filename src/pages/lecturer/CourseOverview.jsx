@@ -371,9 +371,9 @@ export default function CourseOverview() {
                   key={item.id}
                   onClick={() => {
                     if (item.type === "assignment") {
-                      navigate(`/lecturer/assignments/${item.id}`);
+                      navigate(`/lecturer/courses/${courseId}/assignments/${item.id}`);
                     } else if (item.type === "content") {
-                      navigate(`/contents/${item.id}`);
+                      navigate(`/lecturer/contents/${item.id}`);
                     }
                   }}
                   className={`flex items-center gap-4 p-4 bg-[#0b0f12] border border-[#202934] rounded-xl hover:border-emerald-500/50 transition cursor-pointer`}
@@ -440,7 +440,13 @@ export default function CourseOverview() {
                 .map((item) => (
                   <div
                     key={item.id}
-                    onClick={() => navigate(`/lecturer/assignments/${item.id}`)}
+                    onClick={() => {
+                      if (item.type === 'assignment') {
+                        navigate(`/lecturer/courses/${courseId}/assignments/${item.id}`);
+                      } else {
+                        navigate(`/lecturer/contents/${item.id}`);
+                      }
+                    }}
                     className="flex items-center gap-4 p-4 bg-[#0b0f12] border border-[#202934] rounded-xl hover:border-emerald-500/50 transition cursor-pointer"
                   >
                     <div className="shrink-0">

@@ -9,75 +9,182 @@ import {
   ExternalLink,
   PenSquare,
   X,
+  Clock,
+  Trophy,
+  Star,
+  Target,
 } from "lucide-react";
-import {
-  lecturerAssignments,
-  lecturerCourseSummary,
-} from "../../constants/lecturerAssignments";
+import { marked } from "marked";
+import  lecturerService  from "../../services/lecturerService";
+  import { useToast } from '../../hooks/useToast';
 
-const studentStatus = {
-  graded: { label: "Đã chấm", classes: "text-emerald-300 bg-emerald-500/10" },
-  pending: { label: "Chờ duyệt", classes: "text-amber-300 bg-amber-500/10" },
-  missing: { label: "Chưa nộp", classes: "text-gray-400 bg-white/5" },
-};
+// Configure marked options for better code highlighting
+marked.setOptions({
+  breaks: true,
+  gfm: true,
+});
+
+
 
 export default function LecturerAssignmentDetail() {
-  const { assignmentId } = useParams();
+  const { assignmentId, courseId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const backDestination = location.state?.from ?? "/lecturer/assignments";
+  const { showToast } = useToast();
 
-  const assignment = useMemo(
-    () => lecturerAssignments.find((item) => item.id === assignmentId),
-    [assignmentId]
-  );
+  const [assignment, setAssignment] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const [selectedStudentId, setSelectedStudentId] = useState(
-    assignment?.students[0]?.id ?? null
-  );
-
-  const [viewMode, setViewMode] = useState("list"); // "list" or "submissions"
-  const [selectedStudentForSubmissions, setSelectedStudentForSubmissions] =
-    useState(null);
-
-  const selectedStudent = useMemo(
-    () =>
-      assignment?.students.find((student) => student.id === selectedStudentId),
-    [assignment, selectedStudentId]
-  );
-
+  const [viewMode, setViewMode] = useState("detail"); // "detail" or "students"
+  
   const [deadlineModal, setDeadlineModal] = useState({
     open: false,
-    date: assignment?.deadline ?? "",
-    time: "23:59",
+    openDate: "",
+    openTime: "00:00",
+    dueDate: "",
+    dueTime: "23:59",
+    saving: false,
   });
 
   useEffect(() => {
-    if (!assignment) return;
-    setSelectedStudentId(assignment.students[0]?.id ?? null);
-    setDeadlineModal((prev) => ({
-      ...prev,
-      date: assignment.deadline ?? "",
-    }));
-  }, [assignment]);
+    const fetchAssignment = async () => {
+      try {
+        setLoading(true);
+        const response = await lecturerService.getAssignmentDetail(courseId, assignmentId);
+        
+        // Check if API response is successful
+        if (response.code === "ok" || response.code === "0") {
+          setAssignment(response.data);
+          
+          // Set deadline modal data from response
+          if (response.data.openAt || response.data.dueAt) {
+            setDeadlineModal(prev => ({
+              ...prev,
+              openDate: response.data.openAt ? response.data.openAt.split('T')[0] : '',
+              openTime: response.data.openAt ? response.data.openAt.split('T')[1]?.substring(0, 5) || '00:00' : '00:00',
+              dueDate: response.data.dueAt ? response.data.dueAt.split('T')[0] : '',
+              dueTime: response.data.dueAt ? response.data.dueAt.split('T')[1]?.substring(0, 5) || '23:59' : '23:59',
+            }));
+          }
+        } else {
+          throw new Error(response.message || "Failed to load assignment");
+        }
+      } catch (error) {
+        console.error("Error fetching assignment:", error);
+        setError(error.message || "Không thể tải chi tiết bài tập");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (assignmentId && courseId) {
+      fetchAssignment();
+    }
+  }, [assignmentId, courseId]);
 
   const openDeadlineModal = () =>
-    setDeadlineModal({
+    setDeadlineModal(prev => ({
+      ...prev,
       open: true,
-      date: assignment?.deadline ?? "",
-      time: "23:59",
-    });
+    }));
 
   const closeDeadlineModal = () =>
-    setDeadlineModal({
+    setDeadlineModal(prev => ({
+      ...prev,
       open: false,
-      date: assignment?.deadline ?? "",
-      time: "23:59",
-    });
+      saving: false,
+    }));
 
-  if (!assignment) {
-    navigate("/lecturer/assignments", { replace: true });
-    return null;
+  const handleSaveDeadline = async () => {
+    try {
+      setDeadlineModal(prev => ({ ...prev, saving: true }));
+      
+      const timeData = {};
+      
+      // Validation: Check if at least one time is provided
+      if (!deadlineModal.openDate && !deadlineModal.dueDate) {
+        showToast('Vui lòng nhập ít nhất một thời gian (mở hoặc hết hạn)', 'warning');
+        return;
+      }
+      
+      // Format openAt if provided
+      if (deadlineModal.openDate && deadlineModal.openTime) {
+        timeData.openAt = `${deadlineModal.openDate} ${deadlineModal.openTime}:00`;
+      }
+      
+      // Format dueAt if provided  
+      if (deadlineModal.dueDate && deadlineModal.dueTime) {
+        timeData.dueAt = `${deadlineModal.dueDate} ${deadlineModal.dueTime}:00`;
+      }
+      
+      // Validation: If both dates are provided, check that openAt is before dueAt
+      if (timeData.openAt && timeData.dueAt) {
+        const openTime = new Date(timeData.openAt);
+        const dueTime = new Date(timeData.dueAt);
+        
+        if (openTime >= dueTime) {
+          showToast('Thời gian mở phải trước thời gian hết hạn', 'error');
+          return;
+        }
+      }
+      
+      // Validation: Check if dueAt is in the future
+      if (timeData.dueAt) {
+        const dueTime = new Date(timeData.dueAt);
+        const now = new Date();
+        
+        if (dueTime <= now) {
+          showToast('Thời gian hết hạn phải ở tương lai', 'error');
+          return;
+        }
+      }
+      
+      const response = await lecturerService.setAssignmentTime(assignmentId, courseId, timeData);
+      
+      if (response.code === "ok" || response.code === "0") {
+        // Refresh assignment data
+        const updatedResponse = await lecturerService.getAssignmentDetail(courseId, assignmentId);
+        if (updatedResponse.code === "ok" || updatedResponse.code === "0") {
+          setAssignment(updatedResponse.data);
+        }
+        
+        showToast('Cập nhật thời gian thành công!', 'success');
+        closeDeadlineModal();
+      } else {
+        throw new Error(response.message || 'Không thể cập nhật thời gian');
+      }
+    } catch (error) {
+      console.error('Error saving deadline:', error);
+      showToast(error.message || 'Có lỗi xảy ra khi cập nhật thời gian', 'error');
+    } finally {
+      setDeadlineModal(prev => ({ ...prev, saving: false }));
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto flex items-center justify-center py-12">
+        <div className="text-white text-lg">Đang tải...</div>
+      </div>
+    );
+  }
+
+  if (error || !assignment) {
+    return (
+      <div className="max-w-7xl mx-auto flex items-center justify-center py-12">
+        <div className="text-center space-y-4">
+          <div className="text-red-400 text-lg">{error || "Không tìm thấy bài tập"}</div>
+          <button
+            onClick={() => navigate(backDestination)}
+            className="px-4 py-2 bg-emerald-500 text-black rounded-lg hover:bg-emerald-600 transition"
+          >
+            Quay lại
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -96,292 +203,177 @@ export default function LecturerAssignmentDetail() {
             </button>
             <span className="text-gray-700">/</span>
             <span className="text-sm text-emerald-400 font-medium">
-              {lecturerCourseSummary.title}
+              Chi tiết bài tập
             </span>
-          </div>
-          <div className="text-sm text-blue-400 font-semibold">
-            Tiến độ khóa học: {lecturerCourseSummary.progress}%
           </div>
         </div>
 
         <div className="space-y-3">
           <p className="text-xs uppercase tracking-[0.35em] text-emerald-400 font-semibold">
-            Bài tập
+            Assignment #{assignment.id}
           </p>
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-white leading-tight">
             {assignment.title}
           </h1>
-          <p className="text-base text-gray-400">
-            {lecturerCourseSummary.instructor}
-          </p>
+          {assignment.skillName && (
+            <div className="flex items-center gap-2 text-sm">
+              <Target size={16} className="text-blue-400" />
+              <span className="text-gray-400">Skill:</span>
+              <span className="text-blue-400 font-medium">{assignment.skillName}</span>
+            </div>
+          )}
+          {assignment.tutorialTitle && (
+            <div className="flex items-center gap-2 text-sm mt-1">
+              <span className="text-gray-400">Từ khóa học:</span>
+              <span className="text-emerald-400 font-medium">{assignment.tutorialTitle}</span>
+            </div>
+          )}
         </div>
       </section>
 
+      {/* Tab Navigation */}
+      <div className="border-b border-[#202934]">
+        <div className="flex gap-6">
+          <button
+            onClick={() => setViewMode("detail")}
+            className={`flex items-center gap-2 px-4 py-3 font-medium transition relative ${
+              viewMode === "detail"
+                ? "text-emerald-400"
+                : "text-gray-400 hover:text-white"
+            }`}
+          >
+            <FileText size={18} />
+            Chi tiết bài tập
+            {viewMode === "detail" && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-400"></div>
+            )}
+          </button>
+          
+          <button
+            onClick={() => setViewMode("students")}
+            className={`flex items-center gap-2 px-4 py-3 font-medium transition relative ${
+              viewMode === "students"
+                ? "text-emerald-400"
+                : "text-gray-400 hover:text-white"
+            }`}
+          >
+            <CheckCircle2 size={18} />
+            Sinh viên
+            {viewMode === "students" && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-400"></div>
+            )}
+          </button>
+        </div>
+      </div>
+
       {/* Main Content */}
       <div className="space-y-6">
-        <section className="bg-[#0f1419] border border-[#202934] rounded-2xl p-6 space-y-6">
-          <div className="flex items-center gap-3 text-white font-semibold text-xl">
-            <FileText size={18} className="text-emerald-400" />
-            Thông tin bài tập
-          </div>
+        {viewMode === "detail" && (
+          <section className="bg-[#0f1419] border border-[#202934] rounded-2xl p-6 space-y-6">
+            <div className="space-y-6">
+              {/* Assignment Info Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-[#0b0f12] border border-[#202934] rounded-xl p-4">
+                  <div className="flex items-center gap-3 mb-2">
+                    <CalendarDays size={18} className="text-blue-400" />
+                    <span className="text-sm text-gray-400">Thời gian</span>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-gray-400">Mở:</p>
+                    <p className="text-sm font-medium text-white">
+                      {assignment.openAt ? new Date(assignment.openAt).toLocaleDateString('vi-VN') : 'Chưa đặt'}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-2">Hạn nộp:</p>
+                    <p className="text-sm font-medium text-white">
+                      {assignment.dueAt ? new Date(assignment.dueAt).toLocaleDateString('vi-VN') : 'Chưa đặt'}
+                    </p>
+                  </div>
+                </div>
 
-          <div className="flex flex-wrap gap-4 text-sm text-gray-400">
-            <span className="flex items-center gap-2">
-              <CalendarDays size={16} className="text-emerald-400" />
-              Hạn cuối:{" "}
-              <span className="text-white font-medium">
-                {assignment.deadline}
-              </span>
-            </span>
-            <span className="flex items-center gap-2">
-              <Timer size={16} className="text-emerald-400" />
-              Tình trạng:{" "}
-              <span className="text-white font-medium">
-                {assignment.statusLabel}
-              </span>
-            </span>
-            <span className="flex items-center gap-2">
-              <CheckCircle2 size={16} className="text-emerald-400" />
-              Đã nộp:{" "}
-              <span className="text-white font-medium">
-                {assignment.submitted}/{assignment.total}
-              </span>
-            </span>
-          </div>
+                <div className="bg-[#0b0f12] border border-[#202934] rounded-xl p-4">
+                  <div className="flex items-center gap-3 mb-2">
+                    <Trophy size={18} className="text-yellow-400" />
+                    <span className="text-sm text-gray-400">Điểm số</span>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-gray-400">Tổng điểm:</p>
+                    <p className="text-2xl font-bold text-emerald-400">
+                      {assignment.maxScore || 100}
+                    </p>
+                    <p className="text-xs text-gray-400">điểm</p>
+                  </div>
+                </div>
 
-          <div
-            className="prose prose-invert max-w-none text-gray-300 leading-relaxed [&>ul]:list-disc [&>ol]:list-decimal [&>ul]:pl-6 [&>ol]:pl-6 [&>code]:bg-[#0b0f12] [&>code]:px-2 [&>code]:py-1 [&>code]:rounded [&>code]:text-emerald-400"
-            dangerouslySetInnerHTML={{ __html: assignment.description }}
-          />
+                <div className="bg-[#0b0f12] border border-[#202934] rounded-xl p-4">
+                  <div className="flex items-center gap-3 mb-2">
+                    <Clock size={18} className="text-purple-400" />
+                    <span className="text-sm text-gray-400">Giới hạn nộp bài</span>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-2xl font-bold text-purple-400">
+                      {assignment.attemptsLimit || '--'}
+                    </p>
+                    <p className="text-xs text-gray-400">lần</p>
+                  </div>
+                </div>
+              </div>
 
-          <div className="space-y-4">
-            <button
-              type="button"
-              onClick={openDeadlineModal}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-[#202934] text-white hover:border-emerald-500 hover:text-emerald-400 transition"
-            >
-              <PenSquare size={16} />
-              Đặt deadline
-            </button>
-          </div>
-        </section>
-
-        <section className="bg-card border border-border rounded-2xl p-6 space-y-4">
-          {viewMode === "list" ? (
-            <>
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-foreground">
-                  Danh sách sinh viên
+              {/* Assignment Statement */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <FileText size={20} className="text-emerald-400" />
+                  Đề bài
                 </h3>
-                <span className="text-sm text-muted-foreground">
-                  {assignment.students.length} sinh viên
-                </span>
+                
+                <div className="bg-[#0b0f12] border border-[#202934] rounded-xl p-6">
+                  <div
+                    className="prose prose-invert max-w-none text-gray-300 leading-relaxed
+                      prose-headings:text-white 
+                      prose-h1:text-2xl prose-h1:font-bold prose-h1:mb-4
+                      prose-h2:text-xl prose-h2:font-bold prose-h2:mb-3 prose-h2:mt-6
+                      prose-h3:text-lg prose-h3:font-semibold prose-h3:mb-2 prose-h3:mt-4
+                      prose-p:text-gray-300 prose-p:leading-relaxed prose-p:mb-4
+                      prose-a:text-emerald-400 prose-a:no-underline hover:prose-a:underline
+                      prose-strong:text-white prose-strong:font-semibold
+                      prose-code:text-emerald-400 prose-code:bg-emerald-500/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
+                      prose-pre:bg-[#0f1419] prose-pre:border prose-pre:border-[#202934] prose-pre:rounded-lg prose-pre:p-4
+                      prose-ul:text-gray-300 prose-ul:list-disc prose-ul:ml-6
+                      prose-ol:text-gray-300 prose-ol:list-decimal prose-ol:ml-6
+                      prose-li:mb-2
+                      prose-blockquote:border-l-4 prose-blockquote:border-emerald-500 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-gray-400
+                    "
+                    dangerouslySetInnerHTML={{ __html: marked(assignment.statementMd || '') }}
+                  />
+                </div>
               </div>
 
-              {assignment.students.length ? (
-                <div className="space-y-2">
-                  {assignment.students.map((student) => {
-                    const badge =
-                      studentStatus[student.status] ?? studentStatus.missing;
-
-                    return (
-                      <div
-                        key={student.id}
-                        className="flex items-center justify-between px-4 py-3 border-b border-[#202934] hover:bg-[#0b0f12] transition"
-                      >
-                        <div className="flex items-center gap-3 flex-1">
-                          <img
-                            src={student.avatar}
-                            alt={student.name}
-                            className="w-10 h-10 rounded-full object-cover bg-[#0b0f12]"
-                          />
-                          <div className="flex-1">
-                            <p className="text-sm font-semibold text-white">
-                              {student.name}
-                            </p>
-                            <p className="text-xs text-gray-400">
-                              {student.class}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-4">
-                          <span
-                            className={`px-2 py-1 rounded-full text-xs font-medium ${badge.classes}`}
-                          >
-                            {badge.label}
-                          </span>
-                          <p className="text-sm text-white font-semibold min-w-[60px] text-right">
-                            {student.score != null ? `${student.score}%` : "--"}
-                          </p>
-
-                          {student.status !== "missing" && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedStudentForSubmissions(student);
-                                setViewMode("submissions");
-                              }}
-                              className="px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-medium transition whitespace-nowrap"
-                            >
-                              Xem bài nộp ({student.submissionsCount})
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="rounded-xl border border-dashed border-[#202934] p-5 text-center text-gray-500">
-                  Bài tập chưa có sinh viên nộp bài.
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              {/* Submissions Detail View */}
-              <div className="space-y-6">
-                {/* Back Button */}
+              {/* Actions */}
+              <div className="flex gap-3">
                 <button
-                  onClick={() => {
-                    setViewMode("list");
-                    setSelectedStudentForSubmissions(null);
-                  }}
-                  className="flex items-center gap-2 text-emerald-400 hover:text-emerald-300 transition"
+                  type="button"
+                  onClick={openDeadlineModal}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-[#202934] text-white hover:border-emerald-500 hover:text-emerald-400 transition"
                 >
-                  <ArrowLeft className="w-4 h-4" />
-                  <span className="text-sm font-medium">
-                    Quay lại danh sách
-                  </span>
+                  <PenSquare size={20} />
+                  Đặt deadline
                 </button>
-
-                {/* Student Header */}
-                {selectedStudentForSubmissions && (
-                  <>
-                    <div className="flex items-center gap-4 pb-4 border-b border-[#202934]">
-                      <img
-                        src={selectedStudentForSubmissions.avatar}
-                        alt={selectedStudentForSubmissions.name}
-                        className="w-16 h-16 rounded-full object-cover bg-[#0b0f12]"
-                      />
-                      <div className="flex-1">
-                        <h3 className="text-xl font-bold text-white">
-                          {selectedStudentForSubmissions.name}
-                        </h3>
-                        <p className="text-sm text-gray-400">
-                          {selectedStudentForSubmissions.class}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Stats Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="bg-[#0b0f12] border border-[#202934] rounded-xl p-4">
-                        <p className="text-xs text-gray-400 mb-1">
-                          Điểm tốt nhất
-                        </p>
-                        <p className="text-2xl font-bold text-emerald-400">
-                          {selectedStudentForSubmissions.bestScore}%
-                        </p>
-                      </div>
-                      <div className="bg-[#0b0f12] border border-[#202934] rounded-xl p-4">
-                        <p className="text-xs text-gray-400 mb-1">
-                          Runtime tốt nhất
-                        </p>
-                        <p className="text-2xl font-bold text-white">
-                          {selectedStudentForSubmissions.bestRuntime}
-                        </p>
-                      </div>
-                      <div className="bg-[#0b0f12] border border-[#202934] rounded-xl p-4">
-                        <p className="text-xs text-gray-400 mb-1">
-                          Lần nộp cuối
-                        </p>
-                        <p className="text-sm font-semibold text-white mt-2">
-                          {selectedStudentForSubmissions.lastSubmitted}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Notes */}
-                    {selectedStudentForSubmissions.notes && (
-                      <div className="bg-[#0b0f12] border border-[#202934] rounded-xl p-4">
-                        <h4 className="text-sm font-semibold text-white mb-2">
-                          Ghi chú
-                        </h4>
-                        <p className="text-sm text-gray-400">
-                          {selectedStudentForSubmissions.notes}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Submission Timeline */}
-                    <div>
-                      <h4 className="text-sm font-semibold text-white mb-3">
-                        Lịch sử nộp bài (
-                        {selectedStudentForSubmissions.timeline.length})
-                      </h4>
-                      <div className="space-y-3">
-                        {selectedStudentForSubmissions.timeline.map(
-                          (entry, idx) => (
-                            <div
-                              key={idx}
-                              onClick={() =>
-                                navigate(
-                                  `/lecturer/submissions/${
-                                    entry.submissionId || `sub-${idx}`
-                                  }`
-                                )
-                              }
-                              className="flex items-start gap-4 p-4 bg-[#0b0f12] border border-[#202934] rounded-xl hover:border-emerald-500/50 transition cursor-pointer"
-                            >
-                              <div className="flex-shrink-0 w-2 h-2 rounded-full bg-emerald-400 mt-2"></div>
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <p className="text-sm font-semibold text-white">
-                                    Lần nộp #
-                                    {selectedStudentForSubmissions.timeline
-                                      .length - idx}
-                                  </p>
-                                  <span className="text-xs text-gray-400">
-                                    {entry.time}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-4 text-xs text-gray-400">
-                                  <span>
-                                    Điểm:{" "}
-                                    <span className="text-emerald-400 font-semibold">
-                                      {entry.score}%
-                                    </span>
-                                  </span>
-                                  <span>Runtime: {entry.runtime}</span>
-                                  <span>Ngôn ngữ: {entry.language}</span>
-                                </div>
-                              </div>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigate(
-                                    `/lecturer/submissions/${
-                                      entry.submissionId || `sub-${idx}`
-                                    }`
-                                  );
-                                }}
-                                className="px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-medium transition"
-                              >
-                                Xem code
-                              </button>
-                            </div>
-                          )
-                        )}
-                      </div>
-                    </div>
-                  </>
-                )}
               </div>
-            </>
-          )}
-        </section>
+            </div>
+          </section>
+        )}
+        
+        {viewMode === "students" && (
+          <section className="bg-[#0f1419] border border-[#202934] rounded-2xl p-6">
+            <div className="text-center py-12">
+              <CheckCircle2 size={48} className="mx-auto mb-4 text-gray-600" />
+              <p className="text-gray-400">
+                Tính năng quản lý sinh viên đang được phát triển
+              </p>
+            </div>
+          </section>
+        )}
+
+
       </div>
 
       {/* Deadline Modal */}
@@ -407,41 +399,86 @@ export default function LecturerAssignmentDetail() {
               </button>
             </div>
 
-            <div className="space-y-3">
-              <label className="text-sm text-gray-400">Ngày deadline</label>
-              <input
-                type="date"
-                value={deadlineModal.date}
-                onChange={(e) =>
-                  setDeadlineModal((prev) => ({
-                    ...prev,
-                    date: e.target.value,
-                  }))
-                }
-                className="w-full rounded-xl border border-[#202934] bg-[#0b0f12] px-4 py-2 text-white focus:border-emerald-500 outline-none"
-              />
+            {/* Thời gian mở bài tập */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-3">
+                <label className="text-sm text-gray-400">Ngày mở</label>
+                <input
+                  type="date"
+                  value={deadlineModal.openDate}
+                  onChange={(e) =>
+                    setDeadlineModal((prev) => ({
+                      ...prev,
+                      openDate: e.target.value,
+                    }))
+                  }
+                  className="w-full rounded-xl border border-[#202934] bg-[#0b0f12] px-4 py-2 text-white focus:border-emerald-500 outline-none"
+                />
+              </div>
+              <div className="space-y-3">
+                <label className="text-sm text-gray-400">Giờ mở</label>
+                <input
+                  type="time"
+                  value={deadlineModal.openTime}
+                  onChange={(e) =>
+                    setDeadlineModal((prev) => ({
+                      ...prev,
+                      openTime: e.target.value,
+                    }))
+                  }
+                  className="w-full rounded-xl border border-[#202934] bg-[#0b0f12] px-4 py-2 text-white focus:border-emerald-500 outline-none"
+                />
+              </div>
             </div>
-            <div className="space-y-3">
-              <label className="text-sm text-gray-400">Giờ deadline</label>
-              <input
-                type="time"
-                value={deadlineModal.time}
-                onChange={(e) =>
-                  setDeadlineModal((prev) => ({
-                    ...prev,
-                    time: e.target.value,
-                  }))
-                }
-                className="w-full rounded-xl border border-[#202934] bg-[#0b0f12] px-4 py-2 text-white focus:border-emerald-500 outline-none"
-              />
+            
+            {/* Thời gian deadline */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-3">
+                <label className="text-sm text-gray-400">Ngày hết hạn</label>
+                <input
+                  type="date"
+                  value={deadlineModal.dueDate}
+                  onChange={(e) =>
+                    setDeadlineModal((prev) => ({
+                      ...prev,
+                      dueDate: e.target.value,
+                    }))
+                  }
+                  className="w-full rounded-xl border border-[#202934] bg-[#0b0f12] px-4 py-2 text-white focus:border-emerald-500 outline-none"
+                />
+              </div>
+              <div className="space-y-3">
+                <label className="text-sm text-gray-400">Giờ hết hạn</label>
+                <input
+                  type="time"
+                  value={deadlineModal.dueTime}
+                  onChange={(e) =>
+                    setDeadlineModal((prev) => ({
+                      ...prev,
+                      dueTime: e.target.value,
+                    }))
+                  }
+                  className="w-full rounded-xl border border-[#202934] bg-[#0b0f12] px-4 py-2 text-white focus:border-emerald-500 outline-none"
+                />
+              </div>
             </div>
 
-            <button
-              className="w-full py-3 rounded-xl bg-emerald-500 text-black font-semibold hover:bg-emerald-600 transition"
-              onClick={closeDeadlineModal}
-            >
-              Xác nhận
-            </button>
+            <div className="flex gap-3">
+              <button
+                className="flex-1 py-3 rounded-xl border border-[#202934] text-white hover:border-gray-500 transition"
+                onClick={closeDeadlineModal}
+                disabled={deadlineModal.saving}
+              >
+                Hủy
+              </button>
+              <button
+                className="flex-1 py-3 rounded-xl bg-emerald-500 text-black font-semibold hover:bg-emerald-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleSaveDeadline}
+                disabled={deadlineModal.saving}
+              >
+                {deadlineModal.saving ? 'Lưu...' : 'Xác nhận'}
+              </button>
+            </div>
           </div>
         </div>
       )}

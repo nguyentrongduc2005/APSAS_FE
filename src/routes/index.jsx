@@ -20,9 +20,11 @@ import StudentAssignmentDetail from "../pages/student/AssignmentDetail.jsx";
 import LecturerMyCourses from "../pages/lecturer/MyCourses.jsx";
 import LecturerAssignments from "../pages/lecturer/Assignments.jsx";
 import LecturerAssignmentDetail from "../pages/lecturer/AssignmentDetail.jsx";
+import LecturerContentDetail from "../pages/lecturer/ContentDetail.jsx";
 import CourseAssignments from "../pages/lecturer/CourseAssignments.jsx";
 import CourseOverview from "../pages/lecturer/CourseOverview.jsx";
 import UploadCourseAvatar from "../pages/lecturer/UploadCourseAvatar.jsx";
+import ContentDetail from "../pages/ContentDetail.jsx";
 import Profile from "../pages/Profile.jsx";
 import Support from "../pages/Support.jsx";
 
@@ -61,6 +63,7 @@ export default function AppRoutes() {
         <Route index element={<Landing />} />
         <Route path="courses" element={<PublicCourses />} />
         <Route path="course/:courseId" element={<CourseDetail />} />
+        <Route path="content/:contentId" element={<ContentDetail />} />
 
         {/* === Các trang Private (Bọc trong "Gác cổng") === */}
         <Route element={<AuthGuard />}>
@@ -91,8 +94,12 @@ export default function AppRoutes() {
             element={<LecturerAssignments />}
           />
           <Route
-            path="lecturer/assignments/:assignmentId"
+            path="lecturer/courses/:courseId/assignments/:assignmentId"
             element={<LecturerAssignmentDetail />}
+          />
+          <Route
+            path="lecturer/contents/:contentId"
+            element={<LecturerContentDetail />}
           />
           <Route
             path="lecturer/courses/:courseId"
