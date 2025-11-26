@@ -66,8 +66,8 @@ export default function Login() {
         result.role === "admin"
           ? "/admin/users"
           : result.role === "lecturer"
-          ? "/lecturer/dashboard"
-          : "/dashboard";
+          ? "/lecturer/my-courses"
+          : "/student/my-courses";
 
       navigate(targetPath, { replace: true });
     } catch (error) {
@@ -93,8 +93,8 @@ export default function Login() {
         result.user.role === "admin"
           ? "/admin/users"
           : result.user.role === "lecturer"
-          ? "/lecturer/dashboard"
-          : "/dashboard";
+          ? "/lecturer/my-courses"
+          : "/student/my-courses";
 
       navigate(targetPath, { replace: true });
     } catch (error) {
@@ -198,6 +198,10 @@ export default function Login() {
                 type="button"
                 variant="outline"
                 className="text-white hover:text-emerald-400"
+                onClick={() => {
+                  // Chuyển hướng đến OAuth2 endpoint của backend
+                  window.location.href = "http://localhost:8080/api/oauth2/authorization/google";
+                }}
               >
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
                   <path
