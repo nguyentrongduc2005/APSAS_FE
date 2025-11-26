@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import adminContentService from "../../services/adminContentService";
 
 function ResourceModeration() {
+  const navigate = useNavigate();
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
-  const [selectedResource, setSelectedResource] = useState(null);
-  const [showDetailModal, setShowDetailModal] = useState(false);
   const [pagination, setPagination] = useState({
     page: 0,
     size: 10,
@@ -206,10 +206,7 @@ function ResourceModeration() {
                   <td className="px-5 py-3 align-top">
                     <div className="flex items-center justify-end gap-2">
                       <button
-                        onClick={() => {
-                          setSelectedResource(r);
-                          setShowDetailModal(true);
-                        }}
+                        onClick={() => navigate(`/admin/resources/${r.id}`)}
                         className="rounded-lg border border-slate-600 px-3 py-1.5 text-[11px] text-slate-200 hover:border-slate-400 transition"
                         title="Xem chi tiết"
                       >
@@ -252,169 +249,6 @@ function ResourceModeration() {
         </div>
       )}
 
-      {/* Detail Modal */}
-      {showDetailModal && selectedResource && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              {/* Header */}
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-slate-100">
-                  Chi tiết Tutorial
-                </h2>
-                <button
-                  onClick={() => {
-                    setShowDetailModal(false);
-                    setSelectedResource(null);
-                  }}
-                  className="text-slate-400 hover:text-slate-200 transition"
-                >
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Content */}
-              <div className="space-y-4">
-                <div>
-                  <label className="text-xs text-slate-400 uppercase tracking-wide">
-                    ID
-                  </label>
-                  <p className="text-slate-200 mt-1">{selectedResource.id}</p>
-                </div>
-
-                <div>
-                  <label className="text-xs text-slate-400 uppercase tracking-wide">
-                    Tiêu đề
-                  </label>
-                  <p className="text-slate-100 mt-1 font-medium">
-                    {selectedResource.title}
-                  </p>
-                </div>
-
-                <div>
-                  <label className="text-xs text-slate-400 uppercase tracking-wide">
-                    Mô tả
-                  </label>
-                  <p className="text-slate-300 mt-1">
-                    {selectedResource.description || "—"}
-                  </p>
-                </div>
-
-                <div>
-                  <label className="text-xs text-slate-400 uppercase tracking-wide">
-                    Người tạo
-                  </label>
-                  <p className="text-slate-200 mt-1">
-                    {selectedResource.providerName || "—"}
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs text-slate-400 uppercase tracking-wide">
-                      Trạng thái
-                    </label>
-                    <div className="mt-1">
-                      <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-300">
-                        {selectedResource.status}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-xs text-slate-400 uppercase tracking-wide">
-                      Loại
-                    </label>
-                    <div className="mt-1">
-                      <span className="inline-flex items-center rounded-full bg-sky-500/10 px-2 py-1 text-xs font-medium text-sky-300">
-                        {selectedResource.type || "UNKNOWN"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs text-slate-400 uppercase tracking-wide">
-                      Bài học
-                    </label>
-                    <p className="text-slate-200 mt-1 text-lg font-semibold">
-                      {selectedResource.lessonCount || 0}
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="text-xs text-slate-400 uppercase tracking-wide">
-                      Bài tập
-                    </label>
-                    <p className="text-slate-200 mt-1 text-lg font-semibold">
-                      {selectedResource.assignmentCount || 0}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs text-slate-400 uppercase tracking-wide">
-                      Media
-                    </label>
-                    <p className="text-slate-200 mt-1 text-lg font-semibold">
-                      {selectedResource.mediaCount || 0}
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="text-xs text-slate-400 uppercase tracking-wide">
-                      Khóa học
-                    </label>
-                    <p className="text-slate-200 mt-1 text-lg font-semibold">
-                      {selectedResource.courseCount || 0}
-                    </p>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-xs text-slate-400 uppercase tracking-wide">
-                    Ngày tạo
-                  </label>
-                  <p className="text-slate-200 mt-1">
-                    {selectedResource.createdAt
-                      ? new Date(selectedResource.createdAt).toLocaleString(
-                          "vi-VN"
-                        )
-                      : "—"}
-                  </p>
-                </div>
-              </div>
-
-              {/* Footer */}
-              <div className="mt-6 flex justify-end">
-                <button
-                  onClick={() => {
-                    setShowDetailModal(false);
-                    setSelectedResource(null);
-                  }}
-                  className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition"
-                >
-                  Đóng
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

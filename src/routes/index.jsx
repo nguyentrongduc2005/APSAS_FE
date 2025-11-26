@@ -31,6 +31,7 @@ import Support from "../pages/Support.jsx";
 import ContentApprovals from "../pages/admin/ContentApprovals.jsx";
 import AdminUsers from "../pages/admin/AdminUsers.jsx";
 import RolePermissions from "../pages/admin/RolePermissions.jsx";
+import AdminTutorialDetail from "../pages/admin/AdminTutorialDetail.jsx";
 // error page imp
 import ErrorPage from "@/pages/error/ErrorPage";
 
@@ -194,7 +195,8 @@ export default function AppRoutes() {
            <Route path="admin/users" element={<AdminUsers />} />       
            <Route path="admin/content" element={<ContentApprovals />} />       
            <Route path="admin/permissions" element={<RolePermissions />} />
-           <Route path="admin/resources" element={<ResourceModeration />} />   
+           <Route path="admin/resources" element={<ResourceModeration />} />
+           <Route path="admin/resources/:tutorialId" element={<AdminTutorialDetail />} />
            {" "}
         </Route>
              {" "}
