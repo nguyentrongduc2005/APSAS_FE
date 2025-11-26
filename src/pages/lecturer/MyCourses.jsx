@@ -104,10 +104,6 @@ export default function LecturerMyCourses() {
   };
 
 
-
-  // Mock data - thay bằng API call
-
-
   return (
     <div className="space-y-6">
       {/* Header */}
