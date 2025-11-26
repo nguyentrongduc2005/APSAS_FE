@@ -16,6 +16,7 @@ export default function AdminUsers() {
     totalElements: 0,
     totalPages: 0,
   });
+
   const [loading, setLoading] = useState(false);
   const [modal, setModal] = useState({ open: false, data: null });
   const [stats, setStats] = useState(null);
@@ -53,12 +54,12 @@ export default function AdminUsers() {
   // Helper to convert role name to role ID
   const getRoleIdByName = (roleName) => {
     const roleMap = {
-      'ADMIN': 1,
-      'STUDENT': 2,
-      'LECTURER': 3,
-      'CONTENT_PROVIDER': 4,
-      'PROVIDER': 4,
-      'GUEST': 5,
+      ADMIN: 1,
+      STUDENT: 2,
+      LECTURER: 3,
+      CONTENT_PROVIDER: 4,
+      PROVIDER: 4,
+      GUEST: 5,
     };
     return roleMap[roleName.toUpperCase()] || undefined;
   };
@@ -109,7 +110,9 @@ export default function AdminUsers() {
         // API expects: { name, email, password, roleIds, status }
         const roleId = getRoleIdByName(data.role);
         const payload = {
-          name: data.name || `${data.firstName || ''} ${data.lastName || ''}`.trim(),
+          name:
+            data.name ||
+            `${data.firstName || ""} ${data.lastName || ""}`.trim(),
           email: data.email,
           password: data.password,
           roleIds: roleId ? [roleId] : [2], // Default to STUDENT (id: 2)
@@ -125,7 +128,8 @@ export default function AdminUsers() {
       await fetchStats(); // Refresh statistics
     } catch (error) {
       console.error("Error saving user:", error);
-      const errorMsg = error.response?.data?.message || error.message || "Lưu thất bại";
+      const errorMsg =
+        error.response?.data?.message || error.message || "Lưu thất bại";
       alert(errorMsg);
     }
   };
@@ -164,7 +168,7 @@ export default function AdminUsers() {
       }
 
       const response = await adminUserService.updateUserStatus(id, newStatus);
-      
+
       if (response.code === "ok") {
         alert(`Đã ${actionText} người dùng thành công!`);
         await fetchUsers(pagination.page);
@@ -180,7 +184,10 @@ export default function AdminUsers() {
   };
 
   const removeUser = async (id) => {
-    if (!window.confirm("Xóa người dùng này? Hành động này không thể hoàn tác.")) return;
+    if (
+      !window.confirm("Xóa người dùng này? Hành động này không thể hoàn tác.")
+    )
+      return;
 
     try {
       const response = await adminUserService.deleteUser(id);
@@ -211,11 +218,15 @@ export default function AdminUsers() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-[#0f1419] border border-[#202934] rounded-lg p-5">
             <div className="text-sm text-gray-400">Tổng người dùng</div>
-            <div className="text-2xl font-bold text-white mt-1">{stats.totalUsers}</div>
+            <div className="text-2xl font-bold text-white mt-1">
+              {stats.totalUsers}
+            </div>
           </div>
           <div className="bg-[#0f1419] border border-[#202934] rounded-lg p-5">
             <div className="text-sm text-gray-400">Đang hoạt động</div>
-            <div className="text-2xl font-bold text-emerald-400 mt-1">{stats.activeUsers}</div>
+            <div className="text-2xl font-bold text-emerald-400 mt-1">
+              {stats.activeUsers}
+            </div>
           </div>
           <div className="bg-[#0f1419] border border-[#202934] rounded-lg p-5">
             <div className="text-sm text-gray-400">Sinh viên</div>
@@ -257,12 +268,13 @@ export default function AdminUsers() {
               onToggleLock={toggleLock}
               onDelete={removeUser}
             />
-            
+
             {/* Pagination */}
             {pagination.totalPages > 1 && (
               <div className="flex items-center justify-between mt-6 pt-4 border-t border-[#202934]">
                 <div className="text-sm text-gray-400">
-                  Hiển thị {users.length} trong tổng số {pagination.totalElements} người dùng
+                  Hiển thị {users.length} trong tổng số{" "}
+                  {pagination.totalElements} người dùng
                 </div>
                 <div className="flex items-center gap-2">
                   <button

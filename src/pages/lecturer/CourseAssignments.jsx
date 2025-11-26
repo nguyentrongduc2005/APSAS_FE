@@ -12,10 +12,8 @@ import {
   Plus,
   FileText,
 } from "lucide-react";
-import {
-  lecturerAssignments,
-} from "../../constants/lecturerAssignments";
-import lecturerService from "../../services/lecturerService";
+import  lecturerService  from "../../services/lecturerService";
+import { useToast } from '../../hooks/useToast';
 
 const statusBadge = {
   completed: "text-emerald-400 bg-emerald-500/10",
@@ -26,6 +24,7 @@ const statusBadge = {
 export default function CourseAssignments() {
   const { courseId } = useParams();
   const navigate = useNavigate();
+  const { showToast } = useToast();
   
   // State for course and assignments data
   const [course, setCourse] = useState(null);
@@ -60,10 +59,11 @@ export default function CourseAssignments() {
             title: assignment.title,
             deadline: assignment.dueAt ? new Date(assignment.dueAt).toLocaleDateString('vi-VN') : "Chưa có hạn",
             dueAt: assignment.dueAt,
+            openAt: assignment.openAt,
             status: "in-progress", // Default status, can be enhanced based on API
             statusLabel: "Đang diễn ra",
             submitted: 0, // Will need additional API call for submission stats
-            total: course?.totalStudents || 0,
+            total: courseResponse.data?.totalStudents || 0,
             progress: 0, // Will be calculated from submissions
             avgScore: null, // Will need additional API call for scores
           }));
@@ -90,21 +90,118 @@ export default function CourseAssignments() {
   const [deadlineModal, setDeadlineModal] = useState({
     open: false,
     assignment: null,
-    date: "",
-    time: "23:59",
+    openDate: "",
+    openTime: "00:00",
+    dueDate: "",
+    dueTime: "23:59",
+    saving: false,
   });
 
   const openDeadlineModal = (assignment) => {
+    // Extract current openAt and dueAt from assignment
+    const openDate = assignment.openAt ? assignment.openAt.split('T')[0] : '';
+    const openTime = assignment.openAt ? assignment.openAt.split('T')[1]?.substring(0, 5) || '00:00' : '00:00';
+    const dueDate = assignment.dueAt ? assignment.dueAt.split('T')[0] : '';
+    const dueTime = assignment.dueAt ? assignment.dueAt.split('T')[1]?.substring(0, 5) || '23:59' : '23:59';
+    
     setDeadlineModal({
       open: true,
       assignment,
-      date: assignment.deadline,
-      time: "23:59",
+      openDate,
+      openTime,
+      dueDate,
+      dueTime,
+      saving: false,
     });
   };
 
   const closeDeadlineModal = () =>
-    setDeadlineModal({ open: false, assignment: null, date: "", time: "23:59" });
+    setDeadlineModal({ 
+      open: false, 
+      assignment: null, 
+      openDate: "", 
+      openTime: "00:00",
+      dueDate: "", 
+      dueTime: "23:59",
+      saving: false,
+    });
+
+  const handleSaveDeadline = async () => {
+    try {
+      setDeadlineModal(prev => ({ ...prev, saving: true }));
+      
+      const timeData = {};
+      
+      // Validation: Check if at least one time is provided
+      if (!deadlineModal.openDate && !deadlineModal.dueDate) {
+        showToast('Vui lòng nhập ít nhất một thời gian (mở hoặc hết hạn)', 'warning');
+        return;
+      }
+      
+      // Format openAt if provided
+      if (deadlineModal.openDate && deadlineModal.openTime) {
+        timeData.openAt = `${deadlineModal.openDate} ${deadlineModal.openTime}:00`;
+      }
+      
+      // Format dueAt if provided  
+      if (deadlineModal.dueDate && deadlineModal.dueTime) {
+        timeData.dueAt = `${deadlineModal.dueDate} ${deadlineModal.dueTime}:00`;
+      }
+      
+      // Validation: If both dates are provided, check that openAt is before dueAt
+      if (timeData.openAt && timeData.dueAt) {
+        const openTime = new Date(timeData.openAt);
+        const dueTime = new Date(timeData.dueAt);
+        
+        if (openTime >= dueTime) {
+          showToast('Thời gian mở phải trước thời gian hết hạn', 'error');
+          return;
+        }
+      }
+      
+      // Validation: Check if dueAt is in the future
+      if (timeData.dueAt) {
+        const dueTime = new Date(timeData.dueAt);
+        const now = new Date();
+        
+        if (dueTime <= now) {
+          showToast('Thời gian hết hạn phải ở tương lai', 'error');
+          return;
+        }
+      }
+      
+      const response = await lecturerService.setAssignmentTime(
+        deadlineModal.assignment.id, 
+        courseId, 
+        timeData
+      );
+      
+      if (response.code === "ok" || response.code === "0") {
+        // Update the assignment in the list
+        setAssignments(prev => prev.map(assignment => {
+          if (assignment.id === deadlineModal.assignment.id) {
+            return {
+              ...assignment,
+              dueAt: timeData.dueAt || assignment.dueAt,
+              openAt: timeData.openAt || assignment.openAt,
+              deadline: timeData.dueAt ? new Date(timeData.dueAt).toLocaleDateString('vi-VN') : assignment.deadline
+            };
+          }
+          return assignment;
+        }));
+        
+        showToast('Cập nhật thời gian thành công!', 'success');
+        closeDeadlineModal();
+      } else {
+        throw new Error(response.message || 'Không thể cập nhật thời gian');
+      }
+    } catch (error) {
+      console.error('Error saving deadline:', error);
+      showToast(error.message || 'Có lỗi xảy ra khi cập nhật thời gian', 'error');
+    } finally {
+      setDeadlineModal(prev => ({ ...prev, saving: false }));
+    }
+  };
 
   // Loading state
   if (loading) {
@@ -239,10 +336,10 @@ export default function CourseAssignments() {
             <span className="text-sm text-gray-400">
               Tổng {assignments.length} bài tập
             </span>
-            <button className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-black font-medium rounded-lg transition">
+            {/* <button className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-black font-medium rounded-lg transition">
               <Plus size={16} />
               Tạo bài tập
-            </button>
+            </button> */}
           </div>
         </div>
 
@@ -300,7 +397,7 @@ export default function CourseAssignments() {
                     <button
                       type="button"
                       onClick={() =>
-                        navigate(`/lecturer/assignments/${assignment.id}`, {
+                        navigate(`/lecturer/courses/${courseId}/assignments/${assignment.id}`, {
                           state: { from: `/lecturer/courses/${courseId}/assignments` },
                         })
                       }
@@ -356,35 +453,74 @@ export default function CourseAssignments() {
               </button>
             </div>
 
-            <div className="space-y-3">
-              <label className="text-sm text-gray-400">Ngày deadline</label>
-              <input
-                type="date"
-                value={deadlineModal.date}
-                onChange={(e) =>
-                  setDeadlineModal((prev) => ({ ...prev, date: e.target.value }))
-                }
-                className="w-full rounded-xl border border-[#202934] bg-transparent px-4 py-2 text-white focus:border-emerald-500 outline-none"
-              />
+            {/* Thời gian mở bài tập */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-3">
+                <label className="text-sm text-gray-400">Ngày mở</label>
+                <input
+                  type="date"
+                  value={deadlineModal.openDate}
+                  onChange={(e) =>
+                    setDeadlineModal((prev) => ({ ...prev, openDate: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-[#202934] bg-transparent px-4 py-2 text-white focus:border-emerald-500 outline-none"
+                />
+              </div>
+              <div className="space-y-3">
+                <label className="text-sm text-gray-400">Giờ mở</label>
+                <input
+                  type="time"
+                  value={deadlineModal.openTime}
+                  onChange={(e) =>
+                    setDeadlineModal((prev) => ({ ...prev, openTime: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-[#202934] bg-transparent px-4 py-2 text-white focus:border-emerald-500 outline-none"
+                />
+              </div>
             </div>
-            <div className="space-y-3">
-              <label className="text-sm text-gray-400">Giờ deadline</label>
-              <input
-                type="time"
-                value={deadlineModal.time}
-                onChange={(e) =>
-                  setDeadlineModal((prev) => ({ ...prev, time: e.target.value }))
-                }
-                className="w-full rounded-xl border border-[#202934] bg-transparent px-4 py-2 text-white focus:border-emerald-500 outline-none"
-              />
+            
+            {/* Thời gian deadline */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-3">
+                <label className="text-sm text-gray-400">Ngày hết hạn</label>
+                <input
+                  type="date"
+                  value={deadlineModal.dueDate}
+                  onChange={(e) =>
+                    setDeadlineModal((prev) => ({ ...prev, dueDate: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-[#202934] bg-transparent px-4 py-2 text-white focus:border-emerald-500 outline-none"
+                />
+              </div>
+              <div className="space-y-3">
+                <label className="text-sm text-gray-400">Giờ hết hạn</label>
+                <input
+                  type="time"
+                  value={deadlineModal.dueTime}
+                  onChange={(e) =>
+                    setDeadlineModal((prev) => ({ ...prev, dueTime: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-[#202934] bg-transparent px-4 py-2 text-white focus:border-emerald-500 outline-none"
+                />
+              </div>
             </div>
 
-            <button
-              className="w-full py-3 rounded-xl bg-cyan-400 text-black font-semibold hover:bg-cyan-300 transition"
-              onClick={closeDeadlineModal}
-            >
-              Xác nhận
-            </button>
+            <div className="flex gap-3">
+              <button
+                className="flex-1 py-3 rounded-xl border border-[#202934] text-white hover:border-gray-500 transition"
+                onClick={closeDeadlineModal}
+                disabled={deadlineModal.saving}
+              >
+                Hủy
+              </button>
+              <button
+                className="flex-1 py-3 rounded-xl bg-cyan-400 text-black font-semibold hover:bg-cyan-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleSaveDeadline}
+                disabled={deadlineModal.saving}
+              >
+                {deadlineModal.saving ? 'Lưu...' : 'Xác nhận'}
+              </button>
+            </div>
           </div>
         </div>
       )}
