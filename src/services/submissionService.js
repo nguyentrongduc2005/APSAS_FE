@@ -1,6 +1,102 @@
 import api from "./api";
 
 /**
+ * Create a new submission (Student)
+ * @param {Object} submissionData - Submission data including languageId, assignmentId, courseId, code
+ * @returns {Promise<Object>} Response with submissionId
+ */
+export const createSubmission = async (submissionData) => {
+  try {
+    const response = await api.post("/submissions/create", submissionData);
+    return response.data;
+  } catch (error) {
+    console.error("Error creating submission:", error);
+    throw error;
+  }
+};
+
+/**
+ * Get submission by ID
+ * @param {number} submissionId - The ID of the submission
+ * @returns {Promise<Object>} Submission details
+ */
+export const getSubmissionById = async (submissionId) => {
+  try {
+    const response = await api.get(`/submissions/${submissionId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching submission:", error);
+    throw error;
+  }
+};
+
+/**
+ * Poll submission result until completion
+ * @param {number} submissionId - The submission ID to poll
+ * @param {Object} options - Polling options (maxAttempts, interval, onProgress)
+ * @returns {Promise<Object>} Final submission result
+ */
+export const pollSubmissionResult = async (submissionId, options = {}) => {
+  const {
+    maxAttempts = 30,
+    interval = 2000,
+    onProgress = null
+  } = options;
+
+  let attempts = 0;
+
+  const poll = async () => {
+    try {
+      attempts++;
+      const response = await getSubmissionById(submissionId);
+
+      if (onProgress) {
+        onProgress(response, attempts);
+      }
+
+      // Check if submission is complete
+      if (response?.data?.status === "COMPLETE") {
+        return response;
+      }
+
+      // If not complete and still have attempts, continue polling
+      if (attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, interval));
+        return poll();
+      } else {
+        throw new Error("Polling timeout - submission taking too long");
+      }
+    } catch (error) {
+      if (attempts >= maxAttempts) {
+        throw new Error("Max polling attempts reached");
+      }
+
+      // Retry on error (network issues, etc.)
+      await new Promise(resolve => setTimeout(resolve, interval));
+      return poll();
+    }
+  };
+
+  return poll();
+};
+
+/**
+ * Get submission history for an assignment (Student)
+ * @param {number} courseId - The ID of the course
+ * @param {number} assignmentId - The ID of the assignment
+ * @returns {Promise<Array>} List of submission history
+ */
+export const getSubmissionHistory = async (courseId, assignmentId) => {
+  try {
+    const response = await api.get(`/submissions/history?courseId=${courseId}&assignmentId=${assignmentId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching submission history:", error);
+    throw error;
+  }
+};
+
+/**
  * Get detailed information about a specific submission for lecturer view
  * @param {string} submissionId - The ID of the submission
  * @returns {Promise<Object>} Submission details including code, test cases, and feedback
