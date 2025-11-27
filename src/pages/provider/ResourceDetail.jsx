@@ -22,6 +22,7 @@ export default function ResourceDetail() {
       try {
         setLoading(true);
         const data = await getResourceDetail(resourceId);
+        console.log("📦 Resource detail:", data);
         setResource(data);
       } catch (error) {
         console.error("Error fetching resource:", error);
@@ -103,7 +104,8 @@ export default function ResourceDetail() {
               <div>
                 <p className="text-xs text-gray-400">Bài học</p>
                 <p className="text-xl font-bold text-white">
-                  {resource.totalContents || 0}
+                  {resource.items?.filter((item) => item.itemType === "CONTENT")
+                    .length || 0}
                 </p>
               </div>
             </div>
@@ -117,7 +119,9 @@ export default function ResourceDetail() {
               <div>
                 <p className="text-xs text-gray-400">Bài tập</p>
                 <p className="text-xl font-bold text-white">
-                  {resource.totalAssignments || 0}
+                  {resource.items?.filter(
+                    (item) => item.itemType === "ASSIGNMENT"
+                  ).length || 0}
                 </p>
               </div>
             </div>
@@ -173,64 +177,71 @@ export default function ResourceDetail() {
 
           {resource.items && resource.items.length > 0 ? (
             <div className="space-y-3">
-              {resource.items.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between p-4 bg-[#0f1419] border border-[#202934] rounded-lg hover:border-emerald-500/30 transition"
-                >
+              {resource.items.map((item) => {
+                const isContent = item.itemType === "CONTENT";
+                return (
                   <div
-                    onClick={() => {
-                      if (item.type === "content") {
-                        navigate(
-                          `/provider/resources/${resourceId}/content/${item.id}`
-                        );
-                      } else {
-                        navigate(
-                          `/provider/resources/${resourceId}/assignment/${item.id}`
-                        );
-                      }
-                    }}
-                    className="flex items-center gap-3 flex-1 cursor-pointer"
+                    key={`${item.itemType}-${item.id}`}
+                    className="flex items-center justify-between p-4 bg-[#0f1419] border border-[#202934] rounded-lg hover:border-emerald-500/30 transition"
                   >
                     <div
-                      className={`p-2 rounded-lg ${
-                        item.type === "content"
-                          ? "bg-blue-500/10"
-                          : "bg-purple-500/10"
-                      }`}
+                      onClick={() => {
+                        if (isContent) {
+                          navigate(
+                            `/provider/resources/${resourceId}/content/${item.id}`
+                          );
+                        } else {
+                          navigate(
+                            `/provider/resources/${resourceId}/assignment/${item.id}`
+                          );
+                        }
+                      }}
+                      className="flex items-center gap-3 flex-1 cursor-pointer"
                     >
-                      {item.type === "content" ? (
-                        <FileText size={18} className="text-blue-400" />
-                      ) : (
-                        <ListChecks size={18} className="text-purple-400" />
-                      )}
+                      <div
+                        className={`p-2 rounded-lg ${
+                          isContent ? "bg-blue-500/10" : "bg-purple-500/10"
+                        }`}
+                      >
+                        {isContent ? (
+                          <FileText size={18} className="text-blue-400" />
+                        ) : (
+                          <ListChecks size={18} className="text-purple-400" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-white font-medium">{item.title}</p>
+                        <p className="text-xs text-gray-500">
+                          Order: {item.orderNo} •{" "}
+                          {isContent ? "Bài học" : "Bài tập"}
+                          {!isContent &&
+                            item.maxScore &&
+                            ` • ${item.maxScore} điểm`}
+                          {!isContent &&
+                            item.skillName &&
+                            ` • ${item.skillName}`}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-white font-medium">{item.title}</p>
-                      <p className="text-xs text-gray-500">
-                        Order: {item.orderNo} •{" "}
-                        {item.type === "content" ? "Bài học" : "Bài tập"}
-                      </p>
-                    </div>
+                    <button
+                      onClick={() => {
+                        if (isContent) {
+                          navigate(
+                            `/provider/resources/${resourceId}/content/${item.id}/edit`
+                          );
+                        } else {
+                          navigate(
+                            `/provider/resources/${resourceId}/assignment/${item.id}/edit`
+                          );
+                        }
+                      }}
+                      className="px-3 py-1.5 rounded-lg border border-[#202934] text-gray-400 hover:text-white hover:border-emerald-500/50 transition text-sm"
+                    >
+                      Chỉnh sửa
+                    </button>
                   </div>
-                  <button
-                    onClick={() => {
-                      if (item.type === "content") {
-                        navigate(
-                          `/provider/resources/${resourceId}/content/${item.id}/edit`
-                        );
-                      } else {
-                        navigate(
-                          `/provider/resources/${resourceId}/assignment/${item.id}/edit`
-                        );
-                      }
-                    }}
-                    className="px-3 py-1.5 rounded-lg border border-[#202934] text-gray-400 hover:text-white hover:border-emerald-500/50 transition text-sm"
-                  >
-                    Chỉnh sửa
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-12 text-gray-400">

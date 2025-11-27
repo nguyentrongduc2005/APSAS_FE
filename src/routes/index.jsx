@@ -38,6 +38,7 @@ import ErrorPage from "@/pages/error/ErrorPage";
 
 import ProviderResources from "../pages/provider/ProviderResources";
 import ResourceDetail from "../pages/provider/ResourceDetail";
+import ResourceDetailReadOnly from "../pages/provider/ResourceDetailReadOnly";
 import CreateContent from "../pages/provider/CreateContent";
 import CreateAssignment from "../pages/provider/CreateAssignment";
 import ContentDetailView from "../pages/provider/ContentDetailView";
@@ -47,6 +48,7 @@ import TeacherTutorialLibrary from "../pages/lecturer/ResourceLibrary";
 import ResourceModeration from "../pages/admin/ResourceModeration";
 import ApplyResourceToCourse from "../pages/lecturer/ApplyResourceToCourse";
 import CreateCourse from "../pages/lecturer/CreateCourse";
+import ResourceDetailReadOnly from "../pages/provider/ResourceDetailReadOnly.jsx";
 
 const Dashboard = () => <div>Dashboardssss</div>;
 
@@ -56,10 +58,10 @@ export default function AppRoutes() {
             {/* ===== 1. AUTH (Login, Register...) ===== */}     {" "}
       {/* Dùng layout riêng không có nav/footer */}     {" "}
       <Route element={<AuthLayout />}>
-                <Route path="auth/login" element={<Login />} />
-                <Route path="auth/register" element={<Register />} />
-                <Route path="auth/verify" element={<VerifyOtp />} />
-                <Route path="auth/callback" element={<OAuthCallback />} />     {" "}
+        <Route path="auth/login" element={<Login />} />
+        <Route path="auth/register" element={<Register />} />
+        <Route path="auth/verify" element={<VerifyOtp />} />
+        <Route path="auth/callback" element={<OAuthCallback />} />{" "}
       </Route>
             {/* ===== LOGOUT (Không dùng layout) ===== */}
             <Route path="logout" element={<Logout />} />     {" "}
@@ -70,7 +72,6 @@ export default function AppRoutes() {
         <Route index element={<Landing />} />
         <Route path="courses" element={<PublicCourses />} />
         <Route path="course/:courseId" element={<CourseDetail />} />
-
         {/* === Các trang Private (Bọc trong "Gác cổng") === */}
         <Route element={<AuthGuard />}>
                     <Route path="dashboard" element={<Dashboard />} />
@@ -90,8 +91,7 @@ export default function AppRoutes() {
           <Route
             path="student/courses/:courseId/content/:contentId"
             element={<StudentContentDetail />}
-          />
-                   {" "}
+          />{" "}
           <Route
             path="student/courses/:courseId/assignments/:assignmentId"
             element={<StudentAssignmentDetail />}
@@ -149,7 +149,7 @@ export default function AppRoutes() {
                    {" "}
           <Route
             path="provider/resources/:resourceId/view"
-            element={<ResourceDetail />}
+            element={<ResourceDetailReadOnly />}
           />
                       {/* Content & Assignment management routes */}           {" "}
           <Route
@@ -176,6 +176,14 @@ export default function AppRoutes() {
             path="provider/resources/:resourceId/assignment/:assignmentId"
             element={<AssignmentDetailView />}
           />
+          <Route
+            path="provider/resources/:resourceId/view/content/:contentId"
+            element={<ContentDetailView />}
+          />
+          <Route
+            path="provider/resources/:resourceId/view/assignment/:assignmentId"
+            element={<AssignmentDetailView />}
+          />
                      {" "}
           <Route
             path="provider/resources/:resourceId/assignment/:assignmentId/edit"
@@ -198,11 +206,10 @@ export default function AppRoutes() {
                 {/* === Các trang Admin (Bọc trong "Gác cổng" + role) === */}   
            {" "}
         <Route element={<AuthGuard allow={["admin"]} />}>
-           <Route path="admin/users" element={<AdminUsers />} />       
-           <Route path="admin/content" element={<ContentApprovals />} />       
-           <Route path="admin/permissions" element={<RolePermissions />} />
-           <Route path="admin/resources" element={<ResourceModeration />} />   
-           {" "}
+          <Route path="admin/users" element={<AdminUsers />} />
+          <Route path="admin/content" element={<ContentApprovals />} />
+          <Route path="admin/permissions" element={<RolePermissions />} />
+          <Route path="admin/resources" element={<ResourceModeration />} />{" "}
         </Route>
              {" "}
       </Route>

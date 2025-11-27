@@ -19,6 +19,7 @@ export default function ResourceDetailReadOnly() {
       try {
         setLoading(true);
         const data = await getResourceDetail(resourceId);
+        console.log("📦 Resource detail (readonly):", data);
         setResource(data);
       } catch (error) {
         console.error("Error fetching resource:", error);
@@ -81,7 +82,7 @@ export default function ResourceDetailReadOnly() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-[#0b0f12] border border-[#202934] rounded-xl p-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
@@ -90,7 +91,8 @@ export default function ResourceDetailReadOnly() {
               <div>
                 <p className="text-xs text-gray-400">Bài học</p>
                 <p className="text-xl font-bold text-white">
-                  {resource.totalContents || 0}
+                  {resource.items?.filter((item) => item.itemType === "CONTENT")
+                    .length || 0}
                 </p>
               </div>
             </div>
@@ -104,21 +106,9 @@ export default function ResourceDetailReadOnly() {
               <div>
                 <p className="text-xs text-gray-400">Bài tập</p>
                 <p className="text-xl font-bold text-white">
-                  {resource.totalAssignments || 0}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-[#0b0f12] border border-[#202934] rounded-xl p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                <User size={20} className="text-emerald-400" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-400">Trạng thái</p>
-                <p className="text-sm font-bold text-white">
-                  {resource.status === "published" ? "Đã xuất bản" : "Nháp"}
+                  {resource.items?.filter(
+                    (item) => item.itemType === "ASSIGNMENT"
+                  ).length || 0}
                 </p>
               </div>
             </div>
@@ -133,44 +123,49 @@ export default function ResourceDetailReadOnly() {
 
           {resource.items && resource.items.length > 0 ? (
             <div className="space-y-3">
-              {resource.items.map((item) => (
-                <div
-                  key={item.id}
-                  onClick={() => {
-                    const basePath = isProviderContext
-                      ? `/provider/resources/${resourceId}/view`
-                      : `/resources/${resourceId}`;
-
-                    if (item.type === "content") {
-                      navigate(`${basePath}/content/${item.id}`);
-                    } else {
-                      navigate(`${basePath}/assignment/${item.id}`);
-                    }
-                  }}
-                  className="flex items-center gap-3 p-4 bg-[#0f1419] border border-[#202934] rounded-lg hover:border-emerald-500/30 transition cursor-pointer"
-                >
+              {resource.items.map((item) => {
+                const isContent = item.itemType === "CONTENT";
+                return (
                   <div
-                    className={`p-2 rounded-lg ${
-                      item.type === "content"
-                        ? "bg-blue-500/10"
-                        : "bg-purple-500/10"
-                    }`}
+                    key={`${item.itemType}-${item.id}`}
+                    onClick={() => {
+                      const basePath = isProviderContext
+                        ? `/provider/resources/${resourceId}/view`
+                        : `/resources/${resourceId}`;
+
+                      if (isContent) {
+                        navigate(`${basePath}/content/${item.id}`);
+                      } else {
+                        navigate(`${basePath}/assignment/${item.id}`);
+                      }
+                    }}
+                    className="flex items-center gap-3 p-4 bg-[#0f1419] border border-[#202934] rounded-lg hover:border-emerald-500/30 transition cursor-pointer"
                   >
-                    {item.type === "content" ? (
-                      <FileText size={18} className="text-blue-400" />
-                    ) : (
-                      <ListChecks size={18} className="text-purple-400" />
-                    )}
+                    <div
+                      className={`p-2 rounded-lg ${
+                        isContent ? "bg-blue-500/10" : "bg-purple-500/10"
+                      }`}
+                    >
+                      {isContent ? (
+                        <FileText size={18} className="text-blue-400" />
+                      ) : (
+                        <ListChecks size={18} className="text-purple-400" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-white font-medium">{item.title}</p>
+                      <p className="text-xs text-gray-500">
+                        Order: {item.orderNo} •{" "}
+                        {isContent ? "Bài học" : "Bài tập"}
+                        {!isContent &&
+                          item.maxScore &&
+                          ` • ${item.maxScore} điểm`}
+                        {!isContent && item.skillName && ` • ${item.skillName}`}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-white font-medium">{item.title}</p>
-                    <p className="text-xs text-gray-500">
-                      Order: {item.orderNo} •{" "}
-                      {item.type === "content" ? "Bài học" : "Bài tập"}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-12 text-gray-400">

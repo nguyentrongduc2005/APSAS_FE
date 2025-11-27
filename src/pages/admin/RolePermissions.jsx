@@ -10,7 +10,7 @@ function RolePermissions() {
   const [loading, setLoading] = useState(false);
   const [roleSearch, setRoleSearch] = useState("");
   const [permSearch, setPermSearch] = useState("");
-  
+
   // Modal states
   const [editModal, setEditModal] = useState({ open: false, role: null });
   const [detailModal, setDetailModal] = useState({ open: false, role: null });
@@ -61,15 +61,17 @@ function RolePermissions() {
   }, [activeTab]);
 
   // Filter roles by search
-  const filteredRoles = roles.filter((role) =>
-    role.name?.toLowerCase().includes(roleSearch.toLowerCase()) ||
-    role.description?.toLowerCase().includes(roleSearch.toLowerCase())
+  const filteredRoles = roles.filter(
+    (role) =>
+      role.name?.toLowerCase().includes(roleSearch.toLowerCase()) ||
+      role.description?.toLowerCase().includes(roleSearch.toLowerCase())
   );
 
   // Filter permissions by search
-  const filteredPermissions = permissions.filter((perm) =>
-    perm.name?.toLowerCase().includes(permSearch.toLowerCase()) ||
-    perm.description?.toLowerCase().includes(permSearch.toLowerCase())
+  const filteredPermissions = permissions.filter(
+    (perm) =>
+      perm.name?.toLowerCase().includes(permSearch.toLowerCase()) ||
+      perm.description?.toLowerCase().includes(permSearch.toLowerCase())
   );
 
   // Open create modal
@@ -113,7 +115,10 @@ function RolePermissions() {
     try {
       if (editModal.role) {
         // Update existing role
-        const response = await rolePermissionService.updateRole(editModal.role.id, formData);
+        const response = await rolePermissionService.updateRole(
+          editModal.role.id,
+          formData
+        );
         if (response.code === "ok") {
           alert("Cập nhật vai trò thành công!");
           closeEditModal();
@@ -134,7 +139,8 @@ function RolePermissions() {
       }
     } catch (error) {
       console.error("Error saving role:", error);
-      const errorMsg = error.response?.data?.message || error.message || "Lưu thất bại";
+      const errorMsg =
+        error.response?.data?.message || error.message || "Lưu thất bại";
       alert(errorMsg);
       throw error;
     }
@@ -143,7 +149,9 @@ function RolePermissions() {
   // Delete role
   const handleDeleteRole = async (role) => {
     if (role.userCount > 0) {
-      alert(`Không thể xóa vai trò "${role.name}" vì đang có ${role.userCount} người dùng sử dụng.`);
+      alert(
+        `Không thể xóa vai trò "${role.name}" vì đang có ${role.userCount} người dùng sử dụng.`
+      );
       return;
     }
 
@@ -161,7 +169,8 @@ function RolePermissions() {
       }
     } catch (error) {
       console.error("Error deleting role:", error);
-      const errorMsg = error.response?.data?.message || error.message || "Xóa thất bại";
+      const errorMsg =
+        error.response?.data?.message || error.message || "Xóa thất bại";
       alert(errorMsg);
     }
   };
@@ -175,7 +184,10 @@ function RolePermissions() {
       CONTENT_PROVIDER: "bg-amber-500/20 text-amber-400 border-amber-500/30",
       GUEST: "bg-gray-500/20 text-gray-400 border-gray-500/30",
     };
-    return colors[roleName] || "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
+    return (
+      colors[roleName] ||
+      "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+    );
   };
 
   return (
@@ -209,7 +221,9 @@ function RolePermissions() {
               </div>
               <div>
                 <div className="text-sm text-gray-400">Tổng vai trò</div>
-                <div className="text-2xl font-bold text-white">{roles.length}</div>
+                <div className="text-2xl font-bold text-white">
+                  {roles.length}
+                </div>
               </div>
             </div>
           </div>
@@ -220,7 +234,9 @@ function RolePermissions() {
               </div>
               <div>
                 <div className="text-sm text-gray-400">Tổng quyền</div>
-                <div className="text-2xl font-bold text-white">{permissions.length}</div>
+                <div className="text-2xl font-bold text-white">
+                  {permissions.length}
+                </div>
               </div>
             </div>
           </div>
@@ -243,7 +259,9 @@ function RolePermissions() {
                 <Shield className="w-5 h-5 text-amber-400" />
               </div>
               <div>
-                <div className="text-sm text-gray-400">Vai trò có người dùng</div>
+                <div className="text-sm text-gray-400">
+                  Vai trò có người dùng
+                </div>
                 <div className="text-2xl font-bold text-white">
                   {roles.filter((r) => r.userCount > 0).length}
                 </div>
@@ -342,7 +360,10 @@ function RolePermissions() {
                     <tbody className="divide-y divide-[#202934]">
                       {filteredRoles.length === 0 ? (
                         <tr>
-                          <td colSpan="6" className="px-6 py-8 text-center text-gray-400">
+                          <td
+                            colSpan="6"
+                            className="px-6 py-8 text-center text-gray-400"
+                          >
                             Không tìm thấy vai trò nào
                           </td>
                         </tr>
@@ -380,7 +401,9 @@ function RolePermissions() {
                             <td className="px-6 py-4">
                               <span className="text-sm text-gray-500">
                                 {role.createdAt
-                                  ? new Date(role.createdAt).toLocaleDateString("vi-VN")
+                                  ? new Date(role.createdAt).toLocaleDateString(
+                                      "vi-VN"
+                                    )
                                   : "-"}
                               </span>
                             </td>
@@ -482,7 +505,10 @@ function RolePermissions() {
                     <tbody className="divide-y divide-[#202934]">
                       {filteredPermissions.length === 0 ? (
                         <tr>
-                          <td colSpan="3" className="px-6 py-8 text-center text-gray-400">
+                          <td
+                            colSpan="3"
+                            className="px-6 py-8 text-center text-gray-400"
+                          >
                             Không tìm thấy quyền nào
                           </td>
                         </tr>
@@ -551,8 +577,18 @@ function RolePermissions() {
                 onClick={closeDetailModal}
                 className="p-1 hover:bg-[#202934] rounded-lg transition"
               >
-                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <svg
+                  className="w-5 h-5 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </div>
@@ -574,7 +610,9 @@ function RolePermissions() {
               <div className="flex items-center gap-2 text-sm text-gray-500">
                 Ngày tạo:{" "}
                 {detailModal.role.createdAt
-                  ? new Date(detailModal.role.createdAt).toLocaleDateString("vi-VN")
+                  ? new Date(detailModal.role.createdAt).toLocaleDateString(
+                      "vi-VN"
+                    )
                   : "-"}
               </div>
             </div>
@@ -601,7 +639,8 @@ function RolePermissions() {
                     </div>
                   </div>
                 ))}
-                {(!detailModal.role.permissions || detailModal.role.permissions.length === 0) && (
+                {(!detailModal.role.permissions ||
+                  detailModal.role.permissions.length === 0) && (
                   <div className="col-span-2 text-center py-8 text-gray-500">
                     Vai trò này chưa có quyền nào
                   </div>
