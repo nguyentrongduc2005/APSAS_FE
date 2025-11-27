@@ -1,6 +1,7 @@
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
+import { fetchMe } from "../../services/authService.js";
 
 export default function AuthGuard({ allow }) {
   const nav = useNavigate();
@@ -26,9 +27,16 @@ export default function AuthGuard({ allow }) {
           return;
         }
 
-        // ✅ KHÔNG kiểm tra token với server nữa!
-        // 🔄 API interceptor sẽ tự động handle 401 và refresh token
-        console.log("✅ AuthGuard: Token exists, trusting API interceptor");
+        // Kiểm tra token còn valid không
+        const result = await fetchMe(token);
+        if (!cancelled && !result?.valid) {
+          logout();
+          nav("/auth/login", {
+            replace: true,
+            state: { from: location },
+          });
+          return;
+        }
 
         // Nếu có danh sách role allow, check luôn
         if (!cancelled && allow && allow.length > 0 && user) {
@@ -46,11 +54,11 @@ export default function AuthGuard({ allow }) {
       } catch (err) {
         console.error("AuthGuard error:", err);
         if (!cancelled) {
-          // logout();
-          // nav("/auth/login", {
-          //   replace: true,
-          //   state: { from: location },
-          // });
+          logout();
+          nav("/auth/login", {
+            replace: true,
+            state: { from: location },
+          });
         }
       }
     })();

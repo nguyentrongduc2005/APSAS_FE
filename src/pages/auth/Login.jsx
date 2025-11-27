@@ -4,6 +4,7 @@ import Button from "../../components/common/Button.jsx";
 import Logo from "../../components/common/Logo.jsx";
 import AuthTabs from "../../components/auth/AuthTabs.jsx";
 import { useState } from "react";
+import api from "@/services/api.js";
 // import { login } from "../../services/authService.js";
 // import { useNavigate, useLocation } from "react-router-dom";
 
@@ -200,7 +201,8 @@ export default function Login() {
                 className="text-white hover:text-emerald-400"
                 onClick={() => {
                   // Chuyển hướng đến OAuth2 endpoint của backend
-                  window.location.href = "http://localhost:8080/api/oauth2/authorization/google";
+                  window.location.href =
+                    api.baseURL + "/oauth2/authorization/google";
                 }}
               >
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
