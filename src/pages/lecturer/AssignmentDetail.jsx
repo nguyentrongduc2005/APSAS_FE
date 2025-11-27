@@ -184,10 +184,10 @@ export default function LecturerAssignmentDetail() {
         // API trả về pagination format: { content: [...], empty: false, ... }
         const submissions = response.data?.content || response.content || [];
         
-        // Add submission ID to each submission (use attemptNo as ID if no id field exists)
+        // Use studentId as submissionId for API call
         const processedSubmissions = submissions.map(submission => ({
           ...submission,
-          submissionId: submission.id || submission.attemptNo // Use id field or fallback to attemptNo
+          submissionId: submission.studentId // API expects studentId
         }));
         
         setStudentsSubmissions(processedSubmissions);
@@ -448,8 +448,8 @@ export default function LecturerAssignmentDetail() {
                       key={student.studentId || index}
                       className="bg-[#0b0f12] border border-[#202934] rounded-lg p-4 hover:border-emerald-500/50 transition cursor-pointer"
                       onClick={() => {
-                        // Load submission detail using submission ID
-                        console.log('Loading submission:', student.submissionId, 'for student:', student.studentName);
+                        // Load submission detail using studentId
+                        console.log('Loading submission for studentId:', student.submissionId, 'student:', student.studentName);
                         loadSubmissionDetail(student.submissionId);
                       }}
                     >
