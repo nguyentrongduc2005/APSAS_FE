@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { FileText, ListChecks, Eye } from "lucide-react";
 import adminContentService from "../../services/adminContentService";
 
 export default function ContentViewModal({ open, onClose, data, onDecision }) {
+  const navigate = useNavigate();
   const [note, setNote] = useState("");
   const [tutorialDetail, setTutorialDetail] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -15,6 +17,14 @@ export default function ContentViewModal({ open, onClose, data, onDecision }) {
       setShowDetail(false);
     }
   }, [open, data]);
+
+  const handleViewTutorialDetail = () => {
+    if (!data?.id) return;
+    // Navigate to provider resources view page
+    navigate(`/provider/resources/${data.id}/view`);
+    // Close modal after navigation
+    onClose();
+  };
 
   const fetchTutorialDetail = async () => {
     if (!data?.id) return;
@@ -88,18 +98,18 @@ export default function ContentViewModal({ open, onClose, data, onDecision }) {
         </div>
 
         {/* Tutorial Detail Section */}
-        {!showDetail ? (
-          <div className="mt-4">
-            <button
-              onClick={fetchTutorialDetail}
-              disabled={loadingDetail}
-              className="flex items-center gap-2 px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Eye size={16} />
-              {loadingDetail ? "Đang tải..." : "Xem chi tiết tutorial"}
-            </button>
-          </div>
-        ) : tutorialDetail && (
+        <div className="mt-4">
+          <button
+            onClick={handleViewTutorialDetail}
+            className="flex items-center gap-2 px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition"
+          >
+            <Eye size={16} />
+            Xem chi tiết tutorial
+          </button>
+        </div>
+
+        {/* Optional: Show inline detail if needed */}
+        {showDetail && tutorialDetail && (
           <div className="mt-4 p-4 bg-[#0d1117] border border-[#223] rounded-md">
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-sm font-semibold text-slate-200">Chi tiết tutorial</h4>

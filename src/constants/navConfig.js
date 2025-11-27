@@ -36,7 +36,7 @@ export const NAV_BY_ROLE = {
     { to: "/admin/users", label: "Quản lí người dùng", icon: "👥" },
     { to: "/admin/content", label: "Xác nhận nội dung", icon: "✅" },
     { to: "/admin/permissions", label: "Quản lý quyền truy cập", icon: "🔐" },
-    { to: "/admin/resources", label: "Tài nguyên", icon: "📁" },
+    { to: "/provider/resources", label: "Tài nguyên", icon: "📁" },
     { to: "/profile", label: "Trang cá nhân", icon: "👤" },
     { to: "/support", label: "Hỗ trợ", icon: "💬" },
   ],
