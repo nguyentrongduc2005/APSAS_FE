@@ -18,6 +18,8 @@ import {
   X,
 } from "lucide-react";
 import studentCourseService from "../../services/studentCourseService";
+import courseService from "../../services/courseService";
+import { toast } from "sonner";
 
 export default function StudentCourseDetail() {
   const { courseId } = useParams();
@@ -526,6 +528,19 @@ export default function StudentCourseDetail() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Tiêu đề <span className="text-gray-500">(Tùy chọn)</span>
+                </label>
+                <input
+                  type="text"
+                  value={helpTitle}
+                  onChange={(e) => setHelpTitle(e.target.value)}
+                  placeholder="Ví dụ: Cần giúp đỡ về bài tập Java"
+                  className="w-full bg-[#0b0f12] border border-[#202934] rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 mb-4"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                   Nội dung yêu cầu <span className="text-red-400">*</span>
                 </label>
                 <textarea
@@ -554,20 +569,34 @@ export default function StudentCourseDetail() {
               <button
                 onClick={async () => {
                   if (!helpContent.trim()) {
-                    alert("Vui lòng nhập nội dung yêu cầu");
+                    toast.error("Vui lòng nhập nội dung yêu cầu");
                     return;
                   }
 
                   setIsSubmittingHelp(true);
                   try {
-                    // TODO: Call API to submit help request
-                    await new Promise((resolve) => setTimeout(resolve, 1000));
-                    alert("Yêu cầu hỗ trợ đã được gửi thành công!");
-                    setShowHelpModal(false);
-                    setHelpContent("");
+                    // Call API to submit help request
+                    // API: POST /api/help-requests/course/{courseId}
+                    // Request body: { title, body }
+                    const requestData = {
+                      title: helpTitle.trim() || `Yêu cầu hỗ trợ - ${course.title}`,
+                      body: helpContent.trim()
+                    };
+
+                    const response = await courseService.submitHelpRequest(courseId, requestData);
+                    
+                    if (response.success) {
+                      toast.success(response.message || "Yêu cầu hỗ trợ đã được gửi thành công!");
+                      setShowHelpModal(false);
+                      setHelpTitle("");
+                      setHelpContent("");
+                    } else {
+                      toast.error(response.message || "Có lỗi xảy ra. Vui lòng thử lại!");
+                    }
                   } catch (err) {
                     console.error('Help request error:', err);
-                    alert("Có lỗi xảy ra. Vui lòng thử lại!");
+                    const errorMessage = err.message || "Có lỗi xảy ra. Vui lòng thử lại!";
+                    toast.error(errorMessage);
                   } finally {
                     setIsSubmittingHelp(false);
                   }
