@@ -481,9 +481,15 @@ export default function CourseOverview() {
               </div>
             </div>
 
-            <div className="space-y-3">
-              {helpRequests.length > 0 ? (
-                helpRequests.map((request) => (
+            {helpRequestsLoading ? (
+              <div className="text-center py-12">
+                <div className="inline-block w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                <p className="text-gray-400 mt-4">Đang tải...</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {helpRequests.length > 0 ? (
+                  helpRequests.map((request) => (
                   <div
                     key={request.id}
                     className="p-5 bg-[#0b0f12] border border-[#202934] rounded-xl hover:border-emerald-500/50 transition"
@@ -513,11 +519,16 @@ export default function CourseOverview() {
                             </span>
                           </div>
                           <span className="text-xs text-gray-400">
-                            {request.createdAt}
+                            {request.createdAt || "N/A"}
                           </span>
                         </div>
+                        {request.title && (
+                          <h4 className="text-white font-medium mb-2">
+                            {request.title}
+                          </h4>
+                        )}
                         <p className="text-gray-300 text-sm mb-3 leading-relaxed">
-                          {request.content}
+                          {request.content || "Không có nội dung"}
                         </p>
                         <div className="flex gap-2">
                           {request.status === "pending" && (
@@ -541,14 +552,16 @@ export default function CourseOverview() {
                       </div>
                     </div>
                   </div>
-                ))
-              ) : (
-                <div className="text-center py-12 text-gray-400">
-                  <HelpCircle size={48} className="mx-auto mb-3 opacity-50" />
-                  <p>Chưa có yêu cầu hỗ trợ nào</p>
-                </div>
-              )}
-            </div>
+                  ))
+                ) : (
+                  <div className="text-center py-12 text-gray-400">
+                    <HelpCircle size={48} className="mx-auto mb-3 opacity-50" />
+                    <p>Chưa có yêu cầu hỗ trợ nào</p>
+                  </div>
+                )}
+              </div>
+            )}
+            )}
           </section>
         )}
       </div>

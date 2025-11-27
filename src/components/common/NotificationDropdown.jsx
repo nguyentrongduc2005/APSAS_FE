@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Bell, Check, CheckCheck, Trash2, X } from "lucide-react";
+import { Bell, Check, CheckCheck, Trash2, X, Eye, Clock, User, BookOpen, FileText, HelpCircle } from "lucide-react";
 import notificationService from "../../services/notificationService";
 
 export default function NotificationDropdown() {
@@ -8,39 +8,42 @@ export default function NotificationDropdown() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState("all"); // all, unread, read
+  const [selectedNotification, setSelectedNotification] = useState(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const dropdownRef = useRef(null);
 
   // Fetch notifications
   const fetchNotifications = async () => {
     try {
       setLoading(true);
+      
+      // Map filter to isRead parameter
+      let isReadParam = undefined;
+      if (filter === "unread") {
+        isReadParam = false;
+      } else if (filter === "read") {
+        isReadParam = true;
+      }
+      
       const params = {
-        page: 0,
-        size: 20,
+        page: 1,
+        limit: 20,
+        isRead: isReadParam,
       };
       
       const result = await notificationService.getNotifications(params);
       
-      // Handle response format
+      // Handle response format: { code, message, data: { data: [...], pagination: {...} } }
       let notificationList = [];
-      if (result.data) {
+      if (result && result.code === "ok" && result.data) {
         if (Array.isArray(result.data)) {
           notificationList = result.data;
+        } else if (result.data.data && Array.isArray(result.data.data)) {
+          notificationList = result.data.data;
         } else if (result.data.content && Array.isArray(result.data.content)) {
           notificationList = result.data.content;
         }
       }
-      
-      // Filter based on selected filter
-      if (filter === "unread") {
-        notificationList = notificationList.filter(n => !n.isRead);
-      } else if (filter === "read") {
-        notificationList = notificationList.filter(n => n.isRead);
-      }
-      
-      // Backend đã parse payload và trả về field `message`
-      // Giữ payload (JSON string) nếu cần thông tin chi tiết
-      // Ưu tiên sử dụng field `message` từ backend
       
       setNotifications(notificationList);
     } catch (error) {
@@ -96,15 +99,90 @@ export default function NotificationDropdown() {
   };
 
   // Delete notification
-  const handleDelete = async (notificationId) => {
+  const handleDelete = async (notificationId, e) => {
+    e?.stopPropagation(); // Prevent opening detail modal
     try {
       await notificationService.deleteNotification(notificationId);
       // Remove from local state
       setNotifications(prev => prev.filter(notif => notif.id !== notificationId));
       // Refresh unread count
       fetchUnreadCount();
+      // Close detail modal if deleted notification is currently selected
+      if (selectedNotification?.id === notificationId) {
+        setShowDetailModal(false);
+        setSelectedNotification(null);
+      }
     } catch (error) {
       console.error("Error deleting notification:", error);
+    }
+  };
+
+  // View notification detail
+  const handleViewDetail = async (notification) => {
+    setSelectedNotification(notification);
+    setShowDetailModal(true);
+    
+    // Auto mark as read when viewing detail
+    if (!notification.isRead) {
+      try {
+        await notificationService.markAsRead(notification.id);
+        // Update local state
+        setNotifications(prev =>
+          prev.map(notif =>
+            notif.id === notification.id ? { ...notif, isRead: true } : notif
+          )
+        );
+        // Refresh unread count
+        fetchUnreadCount();
+      } catch (error) {
+        console.error("Error marking notification as read:", error);
+      }
+    }
+  };
+
+  // Parse payload to get detailed information
+  const parsePayload = (notification) => {
+    if (!notification.payload) return null;
+    
+    try {
+      if (typeof notification.payload === 'string') {
+        return JSON.parse(notification.payload);
+      }
+      return notification.payload;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  // Get notification type icon
+  const getNotificationIcon = (type) => {
+    switch (type) {
+      case "HELP_REQUEST":
+        return <HelpCircle size={20} className="text-amber-400" />;
+      case "ASSIGNMENT":
+        return <FileText size={20} className="text-blue-400" />;
+      case "SUBMISSION":
+        return <BookOpen size={20} className="text-emerald-400" />;
+      case "SYSTEM":
+        return <Bell size={20} className="text-purple-400" />;
+      default:
+        return <Bell size={20} className="text-gray-400" />;
+    }
+  };
+
+  // Get notification type label
+  const getNotificationTypeLabel = (type) => {
+    switch (type) {
+      case "HELP_REQUEST":
+        return "Yêu cầu hỗ trợ";
+      case "ASSIGNMENT":
+        return "Bài tập mới";
+      case "SUBMISSION":
+        return "Nộp bài tập";
+      case "SYSTEM":
+        return "Thông báo hệ thống";
+      default:
+        return type || "Thông báo";
     }
   };
 
@@ -271,25 +349,33 @@ export default function NotificationDropdown() {
                 {notifications.map((notification) => (
                   <div
                     key={notification.id}
-                    className={`p-4 hover:bg-[#131a22] transition ${
+                    onClick={() => handleViewDetail(notification)}
+                    className={`p-4 hover:bg-[#131a22] transition cursor-pointer ${
                       !notification.isRead ? "bg-[#0f1419]" : ""
                     }`}
                   >
                     <div className="flex items-start gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
-                          <p className="text-sm text-slate-200">
+                          <p className="text-sm text-slate-200 line-clamp-2">
                             {getNotificationMessage(notification)}
                           </p>
                           {!notification.isRead && (
                             <div className="h-2 w-2 rounded-full bg-emerald-500 flex-shrink-0 mt-1" />
                           )}
                         </div>
-                        <p className="text-xs text-slate-400 mt-1">
-                          {formatDate(notification.createdAt)}
-                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <p className="text-xs text-slate-400">
+                            {formatDate(notification.createdAt)}
+                          </p>
+                          {notification.type && (
+                            <span className="text-xs text-slate-500">
+                              • {getNotificationTypeLabel(notification.type)}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                         {!notification.isRead && (
                           <button
                             onClick={() => handleMarkAsRead(notification.id)}
@@ -300,7 +386,7 @@ export default function NotificationDropdown() {
                           </button>
                         )}
                         <button
-                          onClick={() => handleDelete(notification.id)}
+                          onClick={(e) => handleDelete(notification.id, e)}
                           className="p-1 text-slate-400 hover:text-red-400 transition"
                           title="Xóa"
                         >
@@ -312,6 +398,178 @@ export default function NotificationDropdown() {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Notification Detail Modal */}
+      {showDetailModal && selectedNotification && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/70"
+            onClick={() => {
+              setShowDetailModal(false);
+              setSelectedNotification(null);
+            }}
+          ></div>
+          <div className="relative bg-[#0b0f12] border border-[#202934] rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="sticky top-0 bg-[#0b0f12] border-b border-[#202934] p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {getNotificationIcon(selectedNotification.type)}
+                <h3 className="text-lg font-semibold text-white">
+                  Chi tiết thông báo
+                </h3>
+              </div>
+              <button
+                onClick={() => {
+                  setShowDetailModal(false);
+                  setSelectedNotification(null);
+                }}
+                className="text-slate-400 hover:text-white transition"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-4">
+              {/* Type */}
+              <div>
+                <label className="text-xs text-slate-400 uppercase tracking-wide">Loại thông báo</label>
+                <div className="mt-1 flex items-center gap-2">
+                  {getNotificationIcon(selectedNotification.type)}
+                  <span className="text-sm text-white font-medium">
+                    {getNotificationTypeLabel(selectedNotification.type)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Message */}
+              <div>
+                <label className="text-xs text-slate-400 uppercase tracking-wide">Nội dung</label>
+                <p className="mt-1 text-sm text-slate-200 leading-relaxed">
+                  {getNotificationMessage(selectedNotification)}
+                </p>
+              </div>
+
+              {/* Parsed Payload Details */}
+              {(() => {
+                const parsedPayload = parsePayload(selectedNotification);
+                if (parsedPayload) {
+                  return (
+                    <div>
+                      <label className="text-xs text-slate-400 uppercase tracking-wide mb-2 block">
+                        Thông tin chi tiết
+                      </label>
+                      <div className="bg-[#0f1419] border border-[#202934] rounded-lg p-4 space-y-2">
+                        {parsedPayload.studentName && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <User size={16} className="text-slate-400" />
+                            <span className="text-slate-300">
+                              <span className="text-slate-400">Học sinh: </span>
+                              {parsedPayload.studentName}
+                            </span>
+                          </div>
+                        )}
+                        {parsedPayload.helpRequestTitle && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <HelpCircle size={16} className="text-slate-400" />
+                            <span className="text-slate-300">
+                              <span className="text-slate-400">Tiêu đề: </span>
+                              {parsedPayload.helpRequestTitle}
+                            </span>
+                          </div>
+                        )}
+                        {parsedPayload.assignmentTitle && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <FileText size={16} className="text-slate-400" />
+                            <span className="text-slate-300">
+                              <span className="text-slate-400">Bài tập: </span>
+                              {parsedPayload.assignmentTitle}
+                            </span>
+                          </div>
+                        )}
+                        {parsedPayload.courseId && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <BookOpen size={16} className="text-slate-400" />
+                            <span className="text-slate-300">
+                              <span className="text-slate-400">Khóa học ID: </span>
+                              {parsedPayload.courseId}
+                            </span>
+                          </div>
+                        )}
+                        {parsedPayload.assignmentId && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <FileText size={16} className="text-slate-400" />
+                            <span className="text-slate-300">
+                              <span className="text-slate-400">Bài tập ID: </span>
+                              {parsedPayload.assignmentId}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+
+              {/* Timestamp */}
+              <div>
+                <label className="text-xs text-slate-400 uppercase tracking-wide">Thời gian</label>
+                <div className="mt-1 flex items-center gap-2 text-sm text-slate-300">
+                  <Clock size={16} className="text-slate-400" />
+                  <span>{formatDate(selectedNotification.createdAt)}</span>
+                  {selectedNotification.createdAt && (
+                    <span className="text-slate-500">
+                      ({new Date(selectedNotification.createdAt).toLocaleString('vi-VN')})
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Status */}
+              <div>
+                <label className="text-xs text-slate-400 uppercase tracking-wide">Trạng thái</label>
+                <div className="mt-1">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    selectedNotification.isRead
+                      ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                      : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                  }`}>
+                    {selectedNotification.isRead ? "Đã đọc" : "Chưa đọc"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Raw Payload (for debugging) */}
+              {selectedNotification.payload && (
+                <details className="mt-4">
+                  <summary className="text-xs text-slate-400 cursor-pointer hover:text-slate-300">
+                    Xem payload (JSON)
+                  </summary>
+                  <pre className="mt-2 p-3 bg-[#0f1419] border border-[#202934] rounded-lg text-xs text-slate-400 overflow-x-auto">
+                    {typeof selectedNotification.payload === 'string'
+                      ? selectedNotification.payload
+                      : JSON.stringify(selectedNotification.payload, null, 2)}
+                  </pre>
+                </details>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="sticky bottom-0 bg-[#0b0f12] border-t border-[#202934] p-4 flex items-center justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowDetailModal(false);
+                  setSelectedNotification(null);
+                }}
+                className="px-4 py-2 rounded-lg border border-[#202934] text-slate-300 hover:text-white hover:border-gray-600 transition font-medium"
+              >
+                Đóng
+              </button>
+            </div>
           </div>
         </div>
       )}
