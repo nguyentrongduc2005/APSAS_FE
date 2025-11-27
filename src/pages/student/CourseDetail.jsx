@@ -218,6 +218,8 @@ export default function StudentCourseDetail() {
                   src={course.lecturer.avatarUrl} 
                   alt={course.lecturer.name}
                   className="w-8 h-8 rounded-full object-cover"
+                  referrerPolicy="no-referrer"
+                  crossOrigin="anonymous"
                 />
               )}
               <p className="text-gray-400">
@@ -236,6 +238,8 @@ export default function StudentCourseDetail() {
               src={course.avatarUrl || "https://images.unsplash.com/photo-1515879218367-8466d910aaa4?w=800&h=450&fit=crop"}
               alt={course.title}
               className="w-full h-full object-cover"
+              referrerPolicy="no-referrer"
+              crossOrigin="anonymous"
             />
           </div>
         </div>

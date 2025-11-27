@@ -371,6 +371,8 @@ export default function StudentMyCourses() {
                     src={successData.avatarUrl} 
                     alt={successData.name}
                     className="w-16 h-16 rounded-lg object-cover"
+                    referrerPolicy="no-referrer"
+                    crossOrigin="anonymous"
                   />
                 ) : (
                   <div className="w-16 h-16 bg-emerald-500/10 rounded-lg flex items-center justify-center">

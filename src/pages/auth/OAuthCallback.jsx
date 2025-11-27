@@ -13,26 +13,36 @@ export default function OAuthCallback() {
   useEffect(() => {
     const handleOAuthCallback = async () => {
       try {
-        // 1. Lấy token từ URL params
+        // 1. Lấy token và thông tin user từ URL params
         const accessToken = searchParams.get("accessToken");
         const refreshToken = searchParams.get("refreshToken");
+        const userId = searchParams.get("userId");
+        const userName = searchParams.get("userName");
+        const userEmail = searchParams.get("userEmail");
+        const userRoles = searchParams.get("userRoles");
+        const userAvatar = searchParams.get("userAvatar");
 
         if (!accessToken || !refreshToken) {
           throw new Error("Không tìm thấy thông tin đăng nhập");
         }
 
-        // 2. Giải mã thông tin user từ accessToken (JWT)
+        // 2. Tạo userData từ thông tin trả về và JWT
         const tokenPayload = JSON.parse(atob(accessToken.split('.')[1]));
         
         const userData = {
-          id: tokenPayload.sub,
-          email: tokenPayload.email,
-          name: tokenPayload.name,
-          role: tokenPayload.scope.includes("ROLE_STUDENT") ? "student" 
-                : tokenPayload.scope.includes("ROLE_LECTURER") ? "lecturer"
-                : tokenPayload.scope.includes("ROLE_ADMIN") ? "admin"
+          id: userId ? parseInt(userId) : tokenPayload.sub,
+          email: userEmail || tokenPayload.email,
+          name: decodeURIComponent(userName || tokenPayload.name || ""),
+          avatar: userAvatar ? decodeURIComponent(userAvatar) : null,
+          role: userRoles?.includes("STUDENT") ? "student" 
+                : userRoles?.includes("LECTURER") ? "lecturer"
+                : userRoles?.includes("ADMIN") ? "admin"
+                : tokenPayload.scope?.includes("ROLE_STUDENT") ? "student" 
+                : tokenPayload.scope?.includes("ROLE_LECTURER") ? "lecturer"
+                : tokenPayload.scope?.includes("ROLE_ADMIN") ? "admin"
                 : "student", // mặc định là student
-          permissions: tokenPayload.scope.split(' ').filter(scope => !scope.startsWith('ROLE_'))
+          roles: userRoles ? [userRoles.toLowerCase()] : ["student"],
+          permissions: tokenPayload.scope ? tokenPayload.scope.split(' ').filter(scope => !scope.startsWith('ROLE_')) : []
         };
 
         // 3. Lưu vào localStorage và cập nhật AuthContext

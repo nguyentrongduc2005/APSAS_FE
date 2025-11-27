@@ -337,6 +337,8 @@ export default function Profile() {
                     }
                     alt="Avatar"
                     className="w-32 h-32 rounded-full border-4 border-[#0f1419] object-cover shadow-xl"
+                    referrerPolicy="no-referrer"
+                    crossOrigin="anonymous"
                   />
                   {isEditing && (
                     <label className="absolute bottom-0 right-0 bg-emerald-500 hover:bg-emerald-600 text-black p-2.5 rounded-full cursor-pointer shadow-lg transition">
