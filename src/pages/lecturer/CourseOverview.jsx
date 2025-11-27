@@ -561,7 +561,6 @@ export default function CourseOverview() {
                 )}
               </div>
             )}
-            )}
           </section>
         )}
       </div>
