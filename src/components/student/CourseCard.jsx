@@ -72,7 +72,7 @@ export default function StudentCourseCard({ course }) {
           </div>
           <div className="h-2 bg-[#0f1621] rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-300"
+              className="h-full bg-linear-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-300"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -84,6 +84,8 @@ export default function StudentCourseCard({ course }) {
             src={instructorAvatar}
             alt={instructor}
             className="h-8 w-8 rounded-full bg-white/10 object-cover"
+            referrerPolicy="no-referrer"
+            crossOrigin="anonymous"
           />
           <div className="flex-1 min-w-0">
             <div className="text-sm text-slate-300 truncate">{instructor}</div>

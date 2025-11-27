@@ -12,10 +12,12 @@ import AchievementCard from "../../components/student/AchievementCard";
 export default function StudentProgress() {
   const navigate = useNavigate();
   const { user } = useAuth();
+
   const [activeTab, setActiveTab] = useState("hoat-dong");
   const [loading, setLoading] = useState(true);
 
-  // State for data
+  
+
   const [stats, setStats] = useState({
     totalCourses: 0,
     completed: 0,
@@ -25,26 +27,62 @@ export default function StudentProgress() {
   const [currentCourses, setCurrentCourses] = useState([]);
   const [achievements, setAchievements] = useState([]);
 
-  // Fetch initial data
+  // ==== FETCH DATA TỪ API ====
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const studentId = user?.id || "mock-student-id";
 
-        // Gọi các service song song
-        const [statsData, scoreData, coursesData, achievementsData] =
-          await Promise.all([
-            progressService.getStats(studentId),
-            progressService.getScoreData(studentId, "7days"),
-            progressService.getCurrentCourses(studentId),
-            progressService.getAchievements(studentId),
-          ]);
+        // Chưa có user (chưa login) thì không call
+        if (!user?.id) {
+          setLoading(false);
+          return;
+        }
 
-        setStats(statsData);
-        setActivityData(scoreData);
-        setCurrentCourses(coursesData);
-        setAchievements(achievementsData);
+        // 1. Gọi API thật: GET /progress/{studentId} hoặc /progress/{studentId}/current
+        const resp = await progressService.getProgress(user.id);
+
+        // `progressService.getProgress` may return either:
+        // - an object with { rawProgress, stats, activityData, currentCourses, achievements }
+        // - or a plain list of progress items (legacy)
+        let raw = [];
+        let newStats = { totalCourses: 0, completed: 0, completionRate: 0 };
+        let chartData = [];
+        let courses = [];
+        let achs = [];
+
+        if (resp && typeof resp === "object" && !Array.isArray(resp) && resp.stats) {
+          raw = Array.isArray(resp.rawProgress) ? resp.rawProgress : [];
+          newStats = resp.stats || newStats;
+          chartData = Array.isArray(resp.activityData) ? resp.activityData : progressService.buildChartData(raw);
+          courses = Array.isArray(resp.currentCourses) ? resp.currentCourses : [];
+          achs = Array.isArray(resp.achievements) ? resp.achievements : [];
+        } else if (Array.isArray(resp)) {
+          raw = resp;
+          newStats = progressService.computeStats(raw);
+          chartData = progressService.buildChartData(raw);
+          courses = progressService.buildCurrentCourses(raw);
+          achs = progressService.buildAchievements(raw);
+        } else {
+          // unknown response (server error returned non-array/non-object) -> keep defaults
+          raw = [];
+          newStats = { totalCourses: 0, completed: 0, completionRate: 0 };
+          chartData = [];
+          courses = [];
+          achs = [];
+        }
+
+        // Ensure chart data values are numeric and filter invalid points
+        const safeChart = (chartData || []).map((d, idx) => ({
+          day: d.day ?? d.date ?? `D${idx + 1}`,
+          value: Number(d.value ?? d.score ?? 0) || 0,
+        }));
+
+        // rawProgress state removed; keep only UI states
+        setStats(newStats);
+        setActivityData(safeChart);
+        setCurrentCourses(courses);
+        setAchievements(achs);
       } catch (error) {
         console.error("Error fetching progress data:", error);
       } finally {
@@ -55,18 +93,49 @@ export default function StudentProgress() {
     fetchData();
   }, [user?.id]);
 
-  // Handle date range change - fetch new data from service
-  const handleDateRangeChange = async (range) => {
+  // Đổi range biểu đồ: gọi API /progress/{id}/scores?from=YYYY-MM-DD&to=YYYY-MM-DD
+  const handleDateRangeChange = async (rangeValue) => {
+    // Determine days to include (inclusive of today)
+    const daysCount = rangeValue === "7days" ? 7 : rangeValue === "30days" ? 30 : 90;
+
+    // to = today, from = today - (daysCount - 1)
+    const toDate = new Date();
+    const fromDate = new Date(toDate);
+    fromDate.setDate(toDate.getDate() - (daysCount - 1));
+
+    const fmt = (d) => d.toISOString().slice(0, 10); // YYYY-MM-DD
+
+    // Fetch daily scores for the selected range
     try {
-      const studentId = user?.id || "mock-student-id";
-      const newData = await progressService.getScoreData(studentId, range);
-      setActivityData(newData);
+      const resp = await progressService.getDailyScores(user.id, fmt(fromDate), fmt(toDate));
+
+      let daily = [];
+      if (!resp) {
+        daily = [];
+      } else if (resp && typeof resp === "object" && Object.prototype.hasOwnProperty.call(resp, "code") && resp.data) {
+        // envelope shape { code, message, data }
+        daily = Array.isArray(resp.data.dailyScoreDTOList) ? resp.data.dailyScoreDTOList : [];
+      } else if (resp && typeof resp === "object" && Array.isArray(resp.dailyScoreDTOList)) {
+        daily = resp.dailyScoreDTOList;
+      } else if (Array.isArray(resp)) {
+        daily = resp;
+      } else {
+        daily = [];
+      }
+
+      // Build chart data ensuring numeric values. Fill missing dates with 0 if needed.
+      const chartData = daily.map((d, idx) => ({
+        day: d.date ?? d.day ?? fmt(new Date(new Date(fromDate).getTime() + idx * 24 * 60 * 60 * 1000)),
+        value: Number(d.score ?? d.value ?? 0) || 0,
+      }));
+
+      setActivityData(chartData);
     } catch (error) {
-      console.error("Error fetching score data:", error);
+      console.error("Error fetching daily scores:", error);
     }
   };
 
-  // Map achievements with icons
+  // Map icon cho achievements
   const achievementsWithIcons = achievements.map((achievement) => ({
     ...achievement,
     icon:
@@ -87,7 +156,7 @@ export default function StudentProgress() {
 
   return (
     <div className="space-y-6">
-      {/* Header with Avatar and Stats */}
+      {/* Header với avatar + stats */}
       <ProfileHeader
         user={user}
         stats={stats}
@@ -97,7 +166,7 @@ export default function StudentProgress() {
       {/* Tabs */}
       <ProgressTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
-      {/* Tab Content */}
+      {/* Tab hoạt động */}
       {activeTab === "hoat-dong" && (
         <ActivityChart
           data={activityData}
@@ -105,25 +174,38 @@ export default function StudentProgress() {
         />
       )}
 
+      {/* Tab đang làm */}
       {activeTab === "dang-lam" && (
         <div className="space-y-4">
-          <h3 className="text-white font-bold text-lg">Bài tập đang làm</h3>
+          <h3 className="text-white font-bold text-lg">
+            Bài tập / khóa học đang học
+          </h3>
           {currentCourses.map((course) => (
             <CourseProgressCard key={course.id} course={course} />
           ))}
         </div>
       )}
 
+      {/* Tab hoàn tất */}
       {activeTab === "hoan-tat" && (
         <div className="space-y-4">
           <h3 className="text-white font-bold text-lg mb-4">
             Thành tích gần đây
           </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {achievementsWithIcons.map((achievement) => (
-              <AchievementCard key={achievement.id} achievement={achievement} />
-            ))}
-          </div>
+          {achievementsWithIcons.length === 0 ? (
+            <p className="text-gray-400 text-sm">
+              Bạn chưa hoàn thành khóa học nào.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {achievementsWithIcons.map((achievement) => (
+                <AchievementCard
+                  key={achievement.id}
+                  achievement={achievement}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

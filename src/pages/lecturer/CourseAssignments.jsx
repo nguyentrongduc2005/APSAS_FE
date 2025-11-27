@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import {
   ArrowLeft,
@@ -12,9 +12,8 @@ import {
   Plus,
   FileText,
 } from "lucide-react";
-import {
-  lecturerAssignments,
-} from "../../constants/lecturerAssignments";
+import  lecturerService  from "../../services/lecturerService";
+import { useToast } from '../../hooks/useToast';
 
 const statusBadge = {
   completed: "text-emerald-400 bg-emerald-500/10",
@@ -25,42 +24,230 @@ const statusBadge = {
 export default function CourseAssignments() {
   const { courseId } = useParams();
   const navigate = useNavigate();
+  const { showToast } = useToast();
   
-  // Mock data - trong thực tế sẽ fetch từ API dựa trên courseId
-  const course = {
-    id: courseId,
-    title: "Java Programming Fundamentals",
-    instructor: "Trần Minh Khôi",
-    totalStudents: 45,
-    totalLessons: 13,
-    progress: 85,
-    avgProgress: 72,
-  };
+  // State for course and assignments data
+  const [course, setCourse] = useState(null);
+  const [assignments, setAssignments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Filter assignments by course - trong thực tế sẽ fetch từ API
-  const assignments = useMemo(() => 
-    lecturerAssignments.filter(() => true), // Mock: hiển thị tất cả assignments
-    []
-  );
+  // Load course and assignments data
+  useEffect(() => {
+    const loadCourseData = async () => {
+      try {
+        setLoading(true);
+        
+        // Load course overview and assignments in parallel
+        const [courseResponse, assignmentsResponse] = await Promise.all([
+          lecturerService.getCourseOverview(courseId),
+          lecturerService.getCourseAssignments(courseId)
+        ]);
+        
+        // Set course data
+        if (courseResponse.code === "ok" || courseResponse.code === "0") {
+          setCourse(courseResponse.data);
+        } else {
+          throw new Error(courseResponse.message || "Failed to load course data");
+        }
+        
+        // Set assignments data
+        if (assignmentsResponse.code === "ok" || assignmentsResponse.code === "0") {
+          // Transform API data to match UI expectations
+          const transformedAssignments = assignmentsResponse.data.map(assignment => ({
+            id: assignment.id,
+            title: assignment.title,
+            deadline: assignment.dueAt ? new Date(assignment.dueAt).toLocaleDateString('vi-VN') : "Chưa có hạn",
+            dueAt: assignment.dueAt,
+            openAt: assignment.openAt,
+            status: "in-progress", // Default status, can be enhanced based on API
+            statusLabel: "Đang diễn ra",
+            submitted: 0, // Will need additional API call for submission stats
+            total: courseResponse.data?.totalStudents || 0,
+            progress: 0, // Will be calculated from submissions
+            avgScore: null, // Will need additional API call for scores
+          }));
+          setAssignments(transformedAssignments);
+        } else {
+          setAssignments([]); // Set empty array if no assignments
+        }
+      } catch (err) {
+        console.error('Error loading course assignments:', err);
+        setError(err.message || "Có lỗi xảy ra khi tải dữ liệu");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (courseId) {
+      loadCourseData();
+    } else {
+      setError("Không tìm thấy ID khóa học");
+      setLoading(false);
+    }
+  }, [courseId]);
 
   const [deadlineModal, setDeadlineModal] = useState({
     open: false,
     assignment: null,
-    date: "",
-    time: "23:59",
+    openDate: "",
+    openTime: "00:00",
+    dueDate: "",
+    dueTime: "23:59",
+    saving: false,
   });
 
   const openDeadlineModal = (assignment) => {
+    // Extract current openAt and dueAt from assignment
+    const openDate = assignment.openAt ? assignment.openAt.split('T')[0] : '';
+    const openTime = assignment.openAt ? assignment.openAt.split('T')[1]?.substring(0, 5) || '00:00' : '00:00';
+    const dueDate = assignment.dueAt ? assignment.dueAt.split('T')[0] : '';
+    const dueTime = assignment.dueAt ? assignment.dueAt.split('T')[1]?.substring(0, 5) || '23:59' : '23:59';
+    
     setDeadlineModal({
       open: true,
       assignment,
-      date: assignment.deadline,
-      time: "23:59",
+      openDate,
+      openTime,
+      dueDate,
+      dueTime,
+      saving: false,
     });
   };
 
   const closeDeadlineModal = () =>
-    setDeadlineModal({ open: false, assignment: null, date: "", time: "23:59" });
+    setDeadlineModal({ 
+      open: false, 
+      assignment: null, 
+      openDate: "", 
+      openTime: "00:00",
+      dueDate: "", 
+      dueTime: "23:59",
+      saving: false,
+    });
+
+  const handleSaveDeadline = async () => {
+    try {
+      setDeadlineModal(prev => ({ ...prev, saving: true }));
+      
+      const timeData = {};
+      
+      // Validation: Check if at least one time is provided
+      if (!deadlineModal.openDate && !deadlineModal.dueDate) {
+        showToast('Vui lòng nhập ít nhất một thời gian (mở hoặc hết hạn)', 'warning');
+        return;
+      }
+      
+      // Format openAt if provided
+      if (deadlineModal.openDate && deadlineModal.openTime) {
+        timeData.openAt = `${deadlineModal.openDate} ${deadlineModal.openTime}:00`;
+      }
+      
+      // Format dueAt if provided  
+      if (deadlineModal.dueDate && deadlineModal.dueTime) {
+        timeData.dueAt = `${deadlineModal.dueDate} ${deadlineModal.dueTime}:00`;
+      }
+      
+      // Validation: If both dates are provided, check that openAt is before dueAt
+      if (timeData.openAt && timeData.dueAt) {
+        const openTime = new Date(timeData.openAt);
+        const dueTime = new Date(timeData.dueAt);
+        
+        if (openTime >= dueTime) {
+          showToast('Thời gian mở phải trước thời gian hết hạn', 'error');
+          return;
+        }
+      }
+      
+      // Validation: Check if dueAt is in the future
+      if (timeData.dueAt) {
+        const dueTime = new Date(timeData.dueAt);
+        const now = new Date();
+        
+        if (dueTime <= now) {
+          showToast('Thời gian hết hạn phải ở tương lai', 'error');
+          return;
+        }
+      }
+      
+      const response = await lecturerService.setAssignmentTime(
+        deadlineModal.assignment.id, 
+        courseId, 
+        timeData
+      );
+      
+      if (response.code === "ok" || response.code === "0") {
+        // Update the assignment in the list
+        setAssignments(prev => prev.map(assignment => {
+          if (assignment.id === deadlineModal.assignment.id) {
+            return {
+              ...assignment,
+              dueAt: timeData.dueAt || assignment.dueAt,
+              openAt: timeData.openAt || assignment.openAt,
+              deadline: timeData.dueAt ? new Date(timeData.dueAt).toLocaleDateString('vi-VN') : assignment.deadline
+            };
+          }
+          return assignment;
+        }));
+        
+        showToast('Cập nhật thời gian thành công!', 'success');
+        closeDeadlineModal();
+      } else {
+        throw new Error(response.message || 'Không thể cập nhật thời gian');
+      }
+    } catch (error) {
+      console.error('Error saving deadline:', error);
+      showToast(error.message || 'Có lỗi xảy ra khi cập nhật thời gian', 'error');
+    } finally {
+      setDeadlineModal(prev => ({ ...prev, saving: false }));
+    }
+  };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-[#0f1419] border border-[#202934] rounded-2xl p-6 animate-pulse">
+          <div className="h-4 bg-gray-700 rounded mb-4 w-1/3"></div>
+          <div className="h-8 bg-gray-700 rounded mb-4 w-2/3"></div>
+          <div className="grid grid-cols-3 gap-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-20 bg-gray-700 rounded"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-[#0f1419] border border-red-500/50 rounded-2xl p-6 text-center">
+          <div className="text-red-400 text-lg mb-2">Có lỗi xảy ra</div>
+          <div className="text-gray-400 mb-4">{error}</div>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition"
+          >
+            Thử lại
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // No course data
+  if (!course) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-[#0f1419] border border-[#202934] rounded-2xl p-6 text-center">
+          <div className="text-gray-400">Không tìm thấy dữ liệu khóa học</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -88,9 +275,9 @@ export default function CourseAssignments() {
             Khóa học
           </p>
           <h1 className="text-3xl font-bold text-white">
-            {course.title}
+            {course.name}
           </h1>
-          <p className="text-gray-400">{course.instructor}</p>
+          <p className="text-gray-400">{course.instructor?.name}</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -112,7 +299,7 @@ export default function CourseAssignments() {
             <div>
               <p className="text-sm text-gray-400">Bài học</p>
               <p className="text-xl font-semibold text-white">
-                {course.totalLessons}
+                {course.contents?.length || 0}
               </p>
             </div>
           </div>
@@ -121,9 +308,9 @@ export default function CourseAssignments() {
               <BarChart3 size={22} className="text-yellow-400" />
             </div>
             <div>
-              <p className="text-sm text-gray-400">Tiến độ TB</p>
+              <p className="text-sm text-gray-400">Bài tập</p>
               <p className="text-xl font-semibold text-white">
-                {course.avgProgress}%
+                {assignments.length}
               </p>
             </div>
           </div>
@@ -149,10 +336,10 @@ export default function CourseAssignments() {
             <span className="text-sm text-gray-400">
               Tổng {assignments.length} bài tập
             </span>
-            <button className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-black font-medium rounded-lg transition">
+            {/* <button className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-black font-medium rounded-lg transition">
               <Plus size={16} />
               Tạo bài tập
-            </button>
+            </button> */}
           </div>
         </div>
 
@@ -210,7 +397,7 @@ export default function CourseAssignments() {
                     <button
                       type="button"
                       onClick={() =>
-                        navigate(`/lecturer/assignments/${assignment.id}`, {
+                        navigate(`/lecturer/courses/${courseId}/assignments/${assignment.id}`, {
                           state: { from: `/lecturer/courses/${courseId}/assignments` },
                         })
                       }
@@ -266,35 +453,74 @@ export default function CourseAssignments() {
               </button>
             </div>
 
-            <div className="space-y-3">
-              <label className="text-sm text-gray-400">Ngày deadline</label>
-              <input
-                type="date"
-                value={deadlineModal.date}
-                onChange={(e) =>
-                  setDeadlineModal((prev) => ({ ...prev, date: e.target.value }))
-                }
-                className="w-full rounded-xl border border-[#202934] bg-transparent px-4 py-2 text-white focus:border-emerald-500 outline-none"
-              />
+            {/* Thời gian mở bài tập */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-3">
+                <label className="text-sm text-gray-400">Ngày mở</label>
+                <input
+                  type="date"
+                  value={deadlineModal.openDate}
+                  onChange={(e) =>
+                    setDeadlineModal((prev) => ({ ...prev, openDate: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-[#202934] bg-transparent px-4 py-2 text-white focus:border-emerald-500 outline-none"
+                />
+              </div>
+              <div className="space-y-3">
+                <label className="text-sm text-gray-400">Giờ mở</label>
+                <input
+                  type="time"
+                  value={deadlineModal.openTime}
+                  onChange={(e) =>
+                    setDeadlineModal((prev) => ({ ...prev, openTime: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-[#202934] bg-transparent px-4 py-2 text-white focus:border-emerald-500 outline-none"
+                />
+              </div>
             </div>
-            <div className="space-y-3">
-              <label className="text-sm text-gray-400">Giờ deadline</label>
-              <input
-                type="time"
-                value={deadlineModal.time}
-                onChange={(e) =>
-                  setDeadlineModal((prev) => ({ ...prev, time: e.target.value }))
-                }
-                className="w-full rounded-xl border border-[#202934] bg-transparent px-4 py-2 text-white focus:border-emerald-500 outline-none"
-              />
+            
+            {/* Thời gian deadline */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-3">
+                <label className="text-sm text-gray-400">Ngày hết hạn</label>
+                <input
+                  type="date"
+                  value={deadlineModal.dueDate}
+                  onChange={(e) =>
+                    setDeadlineModal((prev) => ({ ...prev, dueDate: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-[#202934] bg-transparent px-4 py-2 text-white focus:border-emerald-500 outline-none"
+                />
+              </div>
+              <div className="space-y-3">
+                <label className="text-sm text-gray-400">Giờ hết hạn</label>
+                <input
+                  type="time"
+                  value={deadlineModal.dueTime}
+                  onChange={(e) =>
+                    setDeadlineModal((prev) => ({ ...prev, dueTime: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-[#202934] bg-transparent px-4 py-2 text-white focus:border-emerald-500 outline-none"
+                />
+              </div>
             </div>
 
-            <button
-              className="w-full py-3 rounded-xl bg-cyan-400 text-black font-semibold hover:bg-cyan-300 transition"
-              onClick={closeDeadlineModal}
-            >
-              Xác nhận
-            </button>
+            <div className="flex gap-3">
+              <button
+                className="flex-1 py-3 rounded-xl border border-[#202934] text-white hover:border-gray-500 transition"
+                onClick={closeDeadlineModal}
+                disabled={deadlineModal.saving}
+              >
+                Hủy
+              </button>
+              <button
+                className="flex-1 py-3 rounded-xl bg-cyan-400 text-black font-semibold hover:bg-cyan-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleSaveDeadline}
+                disabled={deadlineModal.saving}
+              >
+                {deadlineModal.saving ? 'Lưu...' : 'Xác nhận'}
+              </button>
+            </div>
           </div>
         </div>
       )}

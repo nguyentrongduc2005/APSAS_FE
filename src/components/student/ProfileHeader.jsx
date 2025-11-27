@@ -2,15 +2,27 @@ import { Edit } from "lucide-react";
 import StatsCard from "./StatsCard";
 
 export default function ProfileHeader({ user, stats, onEditClick }) {
+  const avgRaw = stats?.completionRate ?? stats?.averageScore ?? 0;
+  const avgDisplay = `${Math.round(Number(avgRaw) || 0)}%`;
   return (
     <div className="bg-[#0f1419] border border-[#202934] rounded-xl p-6">
       <div className="flex items-start justify-between mb-6">
         {/* Avatar and Info */}
         <div className="flex items-center gap-4">
           <div className="relative">
-            <div className="w-20 h-20 rounded-full bg-linear-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-2xl font-bold">
-              {user?.name?.charAt(0) || "N"}
-            </div>
+            {user?.avatar ? (
+              <img
+                src={user.avatar}
+                alt={user?.name || "Avatar"}
+                className="w-20 h-20 rounded-full object-cover"
+                referrerPolicy="no-referrer"
+                crossOrigin="anonymous"
+              />
+            ) : (
+              <div className="w-20 h-20 rounded-full bg-linear-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-2xl font-bold">
+                {user?.name?.charAt(0) || "N"}
+              </div>
+            )}
           </div>
           <div>
             <h1 className="text-2xl font-bold text-white mb-1">
@@ -41,7 +53,7 @@ export default function ProfileHeader({ user, stats, onEditClick }) {
         />
         <StatsCard value={stats.completed} label="Hoàn thành" color="emerald" />
         <StatsCard
-          value={`${stats.completionRate}%`}
+          value={avgDisplay}
           label="Điểm trung bình"
           color="blue"
         />

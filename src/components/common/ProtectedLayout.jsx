@@ -2,7 +2,6 @@
 import { Outlet, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext"; // 👈 Đổi sang AuthContext
-import { fetchMe } from "../../services/authService.js";
 import Header from "./Header.jsx";
 import Sidebar from "./Sidebar.jsx";
 import Footer from "./Footer.jsx";
@@ -33,27 +32,11 @@ export default function ProtectedLayout({ allow }) {
       return;
     }
 
-    // Nếu Context CÓ token, ta phải VẪN xác thực nó với server
-    // (để kiểm tra token có bị thu hồi, hết hạn, v.v.)
-    (async () => {
-      const me = await fetchMe();
-
-      if (!me) {
-        // Token không hợp lệ trên server -> logout
-        logout(); // 👈 Dùng hàm logout từ context
-        nav("/auth/login", { replace: true });
-        return;
-      }
-
-      // Nếu có cấu hình allow theo role -> chặn sai quyền
-      if (allow && !allow.includes(me.role)) {
-        nav("/403", { replace: true }); // (Đảm bảo bạn có route /403)
-        return;
-      }
-
-      // Mọi thứ OK, cho phép render
-      setReady(true);
-    })();
+    // ✅ KHÔNG xác thực token với server nữa!
+    // 🔄 API interceptor sẽ tự động handle 401 và refresh token
+    // Nếu có token -> cho phép render luôn
+    console.log("✅ ProtectedLayout: Token exists, trusting API interceptor");
+    setReady(true);
   }, [isContextLoading, token, allow, nav, logout]); // 👈 Dependencies đã cập nhật
 
   // 3) Loader

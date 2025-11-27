@@ -1,10 +1,6 @@
-// src/components/common/AuthGuard.jsx
-// (Đây LÀ logic của ProtectedLayout, nhưng không có UI)
-
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { fetchMe } from "../../services/authService.js";
 
 export default function AuthGuard({ allow }) {
   const nav = useNavigate();
@@ -15,53 +11,58 @@ export default function AuthGuard({ allow }) {
   useEffect(() => {
     if (isContextLoading) return;
 
-    if (!token) {
-      // Nhớ 'state' để quay lại trang này sau khi login
-      nav("/auth/login", { replace: true, state: { from: location } });
-      return;
-    }
+    let cancelled = false;
 
-    // Kiểm tra role nếu có yêu cầu
-    if (allow && user && !allow.includes(user.role)) {
-      nav("/403", { replace: true });
-      return;
-    }
-
-    // Nếu có user, cho phép render ngay
-    if (user) {
-      setIsChecked(true);
-      return;
-    }
-
-    // Nếu chưa có user, thử fetch từ API (chỉ cho token thật)
     (async () => {
       try {
-        const me = await fetchMe(token);
-        if (!me) {
-          logout();
-          nav("/auth/login", { replace: true, state: { from: location } });
+        // Không có token -> đá về login
+        if (!token) {
+          if (!cancelled) {
+            nav("/auth/login", {
+              replace: true,
+              state: { from: location },
+            });
+          }
           return;
         }
 
-        if (allow && !allow.includes(me.role)) {
-          nav("/403", { replace: true });
-          return;
+        // ✅ KHÔNG kiểm tra token với server nữa!
+        // 🔄 API interceptor sẽ tự động handle 401 và refresh token
+        console.log("✅ AuthGuard: Token exists, trusting API interceptor");
+
+        // Nếu có danh sách role allow, check luôn
+        if (!cancelled && allow && allow.length > 0 && user) {
+          const canAccess =
+            allow.some((r) => user.role === r) ||
+            allow.some((r) => user.roles?.includes(r));
+          if (!canAccess) {
+            // Không đủ quyền -> cho về trang chủ
+            nav("/", { replace: true });
+            return;
+          }
         }
 
-        setIsChecked(true); // Đã kiểm tra, cho phép render
-      } catch (error) {
-        console.error("Lỗi khi fetch user:", error);
-        logout();
-        nav("/auth/login", { replace: true, state: { from: location } });
+        if (!cancelled) setIsChecked(true);
+      } catch (err) {
+        console.error("AuthGuard error:", err);
+        if (!cancelled) {
+          // logout();
+          // nav("/auth/login", {
+          //   replace: true,
+          //   state: { from: location },
+          // });
+        }
       }
     })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [isContextLoading, token, user, allow, nav, logout, location]);
 
-  // Loader (trong khi chờ fetchMe)
   if (isContextLoading || !isChecked) {
     return <div>Đang xác thực...</div>;
   }
 
-  // Đã qua kiểm tra -> render trang con (Dashboard, Profile...)
   return <Outlet />;
 }

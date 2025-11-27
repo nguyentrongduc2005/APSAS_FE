@@ -1,187 +1,316 @@
-import { createContext, useContext, useState, useEffect, useMemo } from "react";
-import { jwtDecode } from "jwt-decode"; // Thư viện phổ biến để giải mã JWT
-import * as authService from "../services/authService.js"; // Import authService
+import { createContext, useContext, useState, useEffect } from "react";
+import { jwtDecode } from "jwt-decode";
+import * as authService from "../services/authService.js";
 
-// 1. Tạo Context
 const AuthContext = createContext(null);
 
-/**
- * Component Provider cho AuthContext
- * Quản lý state đăng nhập, user, token và các hàm login/logout
- */
-export default function AuthProvider({ children }) {
-  // State: lấy token từ localStorage nếu có
-  const [token, setToken] = useState(localStorage.getItem("token"));
-  const [user, setUser] = useState(null);
+const TOKEN_KEY = "token";
+const REFRESH_KEY = "refreshToken";
+const USER_KEY = "user";
+const AVATAR_KEY = "user_avatar";
 
-  // isLoading: để xử lý việc kiểm tra token lúc mới tải trang
-  // Rất quan trọng: tránh việc "flash" (nháy) trang login khi đã đăng nhập
-  const [isLoading, setIsLoading] = useState(true);
+// Chuẩn hóa role từ backend (ADMIN, STUDENT, PROVIDER, LECTURER) -> FE (admin, student,...)
+function normalizeRoleName(roleStr) {
+  if (!roleStr) return undefined;
+  const normalized = String(roleStr).toLowerCase();
+  if (normalized.includes("admin")) return "admin";
+  if (normalized.includes("student")) return "student";
+  if (normalized.includes("lecturer")) return "lecturer";
+  if (normalized.includes("provider")) return "provider";
+  if (normalized.includes("teacher")) return "teacher";
+  return normalized;
+}
 
-  // 2. useEffect: Tự động cập nhật 'user' khi 'token' thay đổi
-  useEffect(() => {
-    // Bắt đầu quá trình kiểm tra
-    setIsLoading(true);
+// Tạo user object từ JWT accessToken
+function buildUserFromToken(token) {
+  if (!token) return null;
+  try {
+    const decoded = jwtDecode(token);
+    const scope = decoded.scope || "";
+    const scopeParts = String(scope).split(" ").filter(Boolean);
+    const roleFromScope = scopeParts.find((s) => s.startsWith("ROLE_"));
+    const normalizedRole = roleFromScope
+      ? normalizeRoleName(roleFromScope.replace("ROLE_", ""))
+      : undefined;
 
-    if (token) {
-      try {
-        // Kiểm tra xem có phải mock token không (để test)
-        if (
-          token.startsWith("mock-token-") ||
-          token.startsWith("dummy-token-")
-        ) {
-          // Đối với mock token, không decode
-          // Chỉ cần kiểm tra xem user đã được set chưa
-          // Nếu chưa có user, có thể là reload trang
-          if (!user) {
-            // Thử lấy user từ localStorage (nếu có lưu)
-            const savedUser = localStorage.getItem("user");
-            if (savedUser) {
-              try {
-                const parsedUser = JSON.parse(savedUser);
-                setUser(parsedUser);
-              } catch (e) {
-                console.error("Không thể parse user từ localStorage:", e);
-                // Token mock nhưng không có user data → logout
-                localStorage.removeItem("token");
-                localStorage.removeItem("user");
-                setToken(null);
-                setUser(null);
-              }
-            }
-          }
-          setIsLoading(false);
-          return;
-        }
-
-        // (Khuyến nghị) Thay vì tự giải mã, bạn nên gọi 1 API "/api/me"
-        // để xác thực token ở backend và lấy thông tin user mới nhất.
-        // Ở đây ta giải mã tạm để lấy thông tin:
-
-        const decodedUser = jwtDecode(token);
-
-        // (Tùy chọn) Kiểm tra token hết hạn
-        // const isExpired = decodedUser.exp * 1000 < Date.now();
-        // if (isExpired) {
-        //   throw new Error("Token hết hạn");
-        // }
-
-        // Lưu thông tin user vào state
-        setUser(decodedUser);
-        localStorage.setItem("token", token); // Đảm bảo localStorage được cập nhật
-        localStorage.setItem("user", JSON.stringify(decodedUser)); // Lưu user để restore khi reload
-      } catch (error) {
-        // Nếu token lỗi (hết hạn, không hợp lệ), xóa nó
-        console.error("Token không hợp lệ hoặc đã hết hạn:", error);
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        setToken(null);
-        setUser(null);
-      }
-    } else {
-      // Không có token, xóa user
-      setUser(null);
-      localStorage.removeItem("user");
-    }
-
-    // Hoàn tất quá trình kiểm tra
-    setIsLoading(false);
-  }, [token]); // Chạy lại mỗi khi 'token' thay đổi
-
-  // 3. Hàm Login (dùng để set token và user trực tiếp)
-  const login = (newToken, userData) => {
-    // Khi API login thành công, bạn gọi hàm này
-    // 'userData' là object user trả về từ API (nếu có)
-    // 'newToken' là JWT
-
-    // Nếu API không trả về user, ta tự giải mã
-
-    setToken(newToken);
-    setUser(userData);
-    localStorage.setItem("token", newToken);
-    localStorage.setItem("user", JSON.stringify(userData)); // Lưu user vào localStorage
-  };
-
-  // 3.1. Hàm Login với Service (gọi authService để xử lý logic)
-  const loginWithService = async (credentials) => {
-    try {
-      // Gọi service để xử lý logic login
-      const { token: newToken, user: userData } = await authService.login(
-        credentials
-      );
-
-      // Sau khi service trả về dữ liệu, refresh context
-      setToken(newToken);
-      setUser(userData);
-      localStorage.setItem("token", newToken);
-      localStorage.setItem("user", JSON.stringify(userData)); // Lưu user vào localStorage
-
-      return { success: true, user: userData };
-    } catch (error) {
-      throw error;
-    }
-  };
-
-  // 3.2. Hàm Login Mock (không gọi API, dùng để test)
-  const loginMock = (email) => {
-    const role = email.includes("admin")
-      ? "admin"
-      : email.includes("gv")
-      ? "lecturer"
-      : "student";
-
-    const mockToken = "mock-token-" + Date.now();
-    const mockUser = {
-      id: "mock-" + Date.now(),
-      name: "Mock User",
-      email,
-      role,
+    return {
+      id: decoded.sub ? Number(decoded.sub) : undefined,
+      name: decoded.name,
+      email: decoded.email,
+      role: normalizedRole,
+      roles: normalizedRole ? [normalizedRole] : [],
+      avatar: null,
     };
+  } catch (e) {
+    console.error("Không decode được JWT:", e);
+    return null;
+  }
+}
 
-    // Refresh context với dữ liệu mock
-    setToken(mockToken);
-    setUser(mockUser);
-    localStorage.setItem("token", mockToken);
-    localStorage.setItem("user", JSON.stringify(mockUser)); // Lưu user vào localStorage
+// Chuẩn hóa user nhận từ API LoginResponse.user (AuthUserDto)
+function normalizeUserFromApi(userFromApi, token) {
+  if (!userFromApi && token) {
+    return buildUserFromToken(token);
+  }
+  if (!userFromApi) return null;
 
-    return { success: true, user: mockUser };
+  const rawRoles = Array.isArray(userFromApi.roles) ? userFromApi.roles : [];
+  const normalizedRoles = rawRoles.map(normalizeRoleName).filter(Boolean);
+  const primaryRole = normalizedRoles[0];
+
+  return {
+    id: userFromApi.id,
+    name: userFromApi.name,
+    email: userFromApi.email,
+    avatar: userFromApi.avatar,
+    roles: normalizedRoles,
+    role: primaryRole,
   };
+}
 
-  // 4. Hàm Logout
+export default function AuthProvider({ children }) {
+  const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY));
+  const [user, setUser] = useState(() => {
+    const raw = localStorage.getItem(USER_KEY);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasInitialized, setHasInitialized] = useState(false);
+
+  const isAuthenticated = !!token && !!user;
+
   const logout = () => {
     setToken(null);
     setUser(null);
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    // (Tùy chọn) Redirect về trang chủ hoặc login
-    // window.location.href = '/auth/login';
+    setHasInitialized(false);
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(REFRESH_KEY);
+    // Keep avatar cached across logout/login so user custom avatar persists on this device.
+    // Remove the full user object but keep separate avatar cache.
+    localStorage.removeItem(USER_KEY);
   };
 
-  // 5. Tạo giá trị cho Provider
-  // Dùng useMemo để tối ưu, tránh re-render không cần thiết
-  const contextValue = useMemo(
-    () => ({
-      token,
-      user,
-      isLoading,
-      isAuthenticated: !!user, // Lấy "true" nếu user tồn tại, "false" nếu null
-      login, // Hàm login trực tiếp (set token và user)
-      loginWithService, // Hàm login gọi service
-      loginMock, // Hàm login mock để test
-      logout,
-    }),
-    [token, user, isLoading] // Phụ thuộc
-  );
+  // Khởi tạo / kiểm tra lại token mỗi khi token thay đổi
+  useEffect(() => {
+    let cancelled = false;
 
-  // 6. Trả về Provider
-  return (
-    <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
-  );
+    const init = async () => {
+      try {
+        console.log(
+          "🔄 AuthContext init - token:",
+          token?.substring(0, 20) + "..."
+        );
+        console.log("🔄 AuthContext init - user:", user);
+
+        // Không có token -> clear user
+        if (!token) {
+          console.log("❌ No token found");
+          setUser(null);
+          setIsLoading(false);
+          setHasInitialized(true);
+          return;
+        }
+
+        // Nếu chưa có user, thì thử lấy từ localStorage hoặc decode JWT
+        let currentUser = user;
+        if (!currentUser) {
+          console.log("👤 Building user from token...");
+          const localUserRaw = localStorage.getItem(USER_KEY);
+          if (localUserRaw) {
+            try {
+              const parsed = JSON.parse(localUserRaw);
+              currentUser = parsed;
+              setUser(parsed);
+              console.log("✅ User loaded from localStorage:", parsed);
+            } catch {
+              const decodedUser = buildUserFromToken(token);
+              currentUser = decodedUser;
+              setUser(decodedUser);
+              if (decodedUser) {
+                localStorage.setItem(USER_KEY, JSON.stringify(decodedUser));
+              }
+              console.log("✅ User decoded from token:", decodedUser);
+            }
+          } else {
+            const decodedUser = buildUserFromToken(token);
+            currentUser = decodedUser;
+            setUser(decodedUser);
+            if (decodedUser) {
+              localStorage.setItem(USER_KEY, JSON.stringify(decodedUser));
+            }
+            console.log("✅ User decoded from token:", decodedUser);
+          }
+        }
+
+        // ✨ OPTIMIZATION: Không gọi introspect ở đây nữa!
+        // 🔄 API interceptor trong api.js sẽ tự động:
+        //    - Detect lỗi 401 
+        //    - Thử refresh token
+        //    - Logout nếu refresh fail
+        // 🚀 Kết quả: Ít API calls, performance tốt hơn
+        console.log("✅ Auth initialized - API interceptor will handle validation");
+      } catch (err) {
+        if (!cancelled) {
+          console.error("🔴 Lỗi init auth:", err);
+          // Chỉ log error, không logout ở đây
+          // Để API interceptor handle authentication errors
+        }
+      } finally {
+        if (!cancelled) {
+          console.log("✅ AuthContext init completed, isLoading = false");
+          setIsLoading(false);
+          setHasInitialized(true);
+        }
+      }
+    };
+
+    init();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, hasInitialized]);
+
+  // Hàm login: gọi service + cập nhật context + localStorage
+  const login = async ({ email, password }) => {
+    const res = await authService.login({ email, password });
+    const normalizedUser = normalizeUserFromApi(res.user, res.accessToken);
+
+    // If backend login response does not include avatar, try to preserve a locally cached avatar
+    let finalUser = normalizedUser ? { ...normalizedUser } : {};
+    try {
+      const cachedAvatar = localStorage.getItem(AVATAR_KEY);
+      if ((!finalUser.avatar || finalUser.avatar === null) && cachedAvatar) {
+        finalUser.avatar = cachedAvatar;
+      }
+    } catch (e) {
+      console.warn("Failed to read cached avatar:", e);
+    }
+
+    setToken(res.accessToken);
+    setUser(finalUser);
+
+    localStorage.setItem(TOKEN_KEY, res.accessToken);
+    if (res.refreshToken) {
+      localStorage.setItem(REFRESH_KEY, res.refreshToken);
+    }
+    localStorage.setItem(USER_KEY, JSON.stringify(finalUser));
+
+    return normalizedUser;
+  };
+
+  // (tuỳ chọn) bung hàm register từ context, nếu muốn gọi qua context
+  const register = async (payload) => {
+    return authService.register(payload);
+  };
+
+  // Validate token khi thực sự cần thiết (manual call)
+  const validateToken = async () => {
+    if (!token) return false;
+    
+    try {
+      const result = await authService.fetchMe(token);
+      if (!result?.valid) {
+        logout();
+        return false;
+      }
+      return true;
+    } catch (err) {
+      if (err.response?.status === 401) {
+        logout();
+        return false;
+      }
+      // Network/server errors không logout
+      return true;
+    }
+  };
+
+  // Update tokens and user after refresh
+  const updateTokens = (newAccessToken, newRefreshToken, newUser) => {
+    console.log("🔄 Updating tokens in AuthContext...");
+    
+    if (newAccessToken) {
+      setToken(newAccessToken);
+      localStorage.setItem(TOKEN_KEY, newAccessToken);
+    }
+    
+    if (newRefreshToken) {
+      localStorage.setItem(REFRESH_KEY, newRefreshToken);
+    }
+    
+    if (newUser) {
+      let normalizedUser = normalizeUserFromApi(newUser, newAccessToken);
+      // Merge cached avatar if backend didn't return one
+      try {
+        const cachedAvatar = localStorage.getItem(AVATAR_KEY);
+        if (cachedAvatar && (!normalizedUser.avatar || normalizedUser.avatar === null)) {
+          normalizedUser = { ...(normalizedUser || {}), avatar: cachedAvatar };
+        }
+      } catch {
+        /* ignore */
+      }
+      setUser(normalizedUser);
+      localStorage.setItem(USER_KEY, JSON.stringify(normalizedUser));
+      console.log("✅ User updated in AuthContext:", normalizedUser);
+    }
+  };
+
+  // Listen for token refresh events from API interceptor
+  useEffect(() => {
+    const handleTokenRefresh = (event) => {
+      const { accessToken, refreshToken, user } = event.detail;
+      console.log("🔄 Token refreshed event received in AuthContext");
+      updateTokens(accessToken, refreshToken, user);
+    };
+
+    window.addEventListener('token-refreshed', handleTokenRefresh);
+    return () => {
+      window.removeEventListener('token-refreshed', handleTokenRefresh);
+    };
+  }, []);
+
+  const value = {
+    token,
+    user,
+    isAuthenticated,
+    isLoading,
+    login,
+    logout,
+    register,
+    validateToken, // Manual token validation khi cần
+    updateTokens, // Update tokens after refresh
+    // Update user in context and persist to localStorage
+    updateUser: (patch) => {
+      setUser((prev) => {
+        const next = Object.assign({}, prev || {}, patch || {});
+        try {
+          localStorage.setItem(USER_KEY, JSON.stringify(next));
+          if (patch && patch.avatar) {
+            try {
+              localStorage.setItem(AVATAR_KEY, patch.avatar);
+            } catch {
+              /* ignore */
+            }
+          }
+        } catch (e) {
+          console.error("Không thể lưu user vào localStorage:", e);
+        }
+        return next;
+      });
+    },
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 /**
  * Custom Hook: `useAuth`
- * Giúp các component con truy cập AuthContext dễ dàng
  */
 export const useAuth = () => {
   const context = useContext(AuthContext);

@@ -1,10 +1,12 @@
+// src/pages/auth/Register.jsx
 import AuthCard from "../../components/common/AuthCard.jsx";
 import Input from "../../components/common/Input.jsx";
 import Button from "../../components/common/Button.jsx";
 import Logo from "../../components/common/Logo.jsx";
 import AuthTabs from "../../components/auth/AuthTabs.jsx";
 import { useState } from "react";
-import { register } from "../../services/authService.js";
+import { useNavigate } from "react-router-dom";
+import { register as registerApi } from "../../services/authService.js";
 
 export default function Register() {
   const [form, setForm] = useState({
@@ -12,13 +14,56 @@ export default function Register() {
     email: "",
     password: "",
     confirmPassword: "",
+    role: 1, // 1 - student, 2 - teacher
   });
   const [msg, setMsg] = useState("");
+  const [isError, setIsError] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const submit = async (e) => {
+  const navigate = useNavigate();
+
+  const handleChangeRole = (roleValue) => {
+    setForm((prev) => ({ ...prev, role: roleValue }));
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const res = await register(form);
-    setMsg(res.message);
+    setMsg("");
+    setIsError(false);
+
+    if (form.password !== form.confirmPassword) {
+      setIsError(true);
+      setMsg("Mật khẩu xác nhận không khớp.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const res = await registerApi({
+        name: form.name.trim(),
+        email: form.email.trim().toLowerCase(),
+        password: form.password,
+        role: form.role, // lấy role FE chọn
+      });
+
+      setMsg(
+        res.message ||
+          "Đăng ký thành công. Vui lòng kiểm tra email để lấy mã xác thực."
+      );
+
+      // Chuyển sang màn Verify OTP, kèm email
+      navigate(
+        `/auth/verify?email=${encodeURIComponent(
+          form.email.trim().toLowerCase()
+        )}`
+      );
+    } catch (error) {
+      setIsError(true);
+      setMsg(error.message || "Đăng ký thất bại");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -34,94 +79,103 @@ export default function Register() {
 
           <AuthTabs />
 
-          <form onSubmit={submit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <Input
-              className="text-primary"
               label="Họ và tên"
-              type="text"
               placeholder="Nguyễn Văn A"
               value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              required
-            />
-            <Input
-              className="text-primary"
-              label="Email"
-              type="email"
-              placeholder="example@gmail.com"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              required
-            />
-            <Input
-              className="text-primary"
-              label="Mật khẩu"
-              type="password"
-              placeholder="••••••••"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              required
-            />
-            <Input
-              className="text-primary"
-              label="Xác thực mật khẩu"
-              type="password"
-              placeholder="••••••••"
-              value={form.confirmPassword}
               onChange={(e) =>
-                setForm({ ...form, confirmPassword: e.target.value })
+                setForm({ ...form, name: e.target.value })
               }
               required
             />
 
-            <div className="space-y-3">
-              <Button type="submit">Đăng Ký</Button>
+            <Input
+              label="Email"
+              type="email"
+              placeholder="you@example.com"
+              value={form.email}
+              onChange={(e) =>
+                setForm({ ...form, email: e.target.value })
+              }
+              required
+            />
 
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-border" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card px-2 text-muted-foreground">
-                    Hoặc
-                  </span>
-                </div>
+            <Input
+              label="Mật khẩu"
+              type="password"
+              placeholder="••••••••"
+              value={form.password}
+              onChange={(e) =>
+                setForm({ ...form, password: e.target.value })
+              }
+              required
+            />
+
+            <Input
+              label="Xác nhận mật khẩu"
+              type="password"
+              placeholder="••••••••"
+              value={form.confirmPassword}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  confirmPassword: e.target.value,
+                })
+              }
+              required
+            />
+
+            {/* Chọn role khi đăng ký */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-foreground">
+                Bạn muốn đăng ký làm:
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleChangeRole(1)}
+                  className={`px-3 py-2 rounded-md text-sm border transition ${
+                    form.role === 1
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-muted text-muted-foreground hover:bg-muted/70"
+                  }`}
+                >
+                  1 - Student
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleChangeRole(2)}
+                  className={`px-3 py-2 rounded-md text-sm border transition ${
+                    form.role === 2
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-muted text-muted-foreground hover:bg-muted/70"
+                  }`}
+                >
+                  2 - Teacher
+                </button>
               </div>
-
-              <Button type="button" variant="outline text-primary">
-                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
-                  <path
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    fill="#4285F4"
-                  />
-                  <path
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    fill="#34A853"
-                  />
-                  <path
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                    fill="#FBBC05"
-                  />
-                  <path
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                    fill="#EA4335"
-                  />
-                </svg>
-                Đăng ký với Google
-              </Button>
             </div>
 
-            {msg && (
-              <div
-                className={`text-sm text-center p-3 rounded-md ${
-                  msg.includes("thất bại") || msg.includes("error")
-                    ? "bg-destructive/10 text-destructive border border-destructive/20"
-                    : "bg-green-50 text-green-700 border border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
-                }`}
-              >
-                {msg}
-              </div>
-            )}
+            <div className="space-y-3">
+              <Button type="submit" disabled={isSubmitting} className="w-full">
+                {isSubmitting
+                  ? `Đang đăng ký (${form.role === 1 ? "Student" : "Teacher"})...`
+                  : `Đăng ký (${form.role === 1 ? "Student" : "Teacher"})`}
+              </Button>
+
+              {msg && (
+                <div
+                  className={`text-sm text-center p-3 rounded-md ${
+                    isError
+                      ? "bg-destructive/10 text-destructive border border-destructive/20"
+                      : "bg-green-50 text-green-700 border border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
+                  }`}
+                >
+                  {msg}
+                </div>
+              )}
+            </div>
           </form>
         </div>
       </AuthCard>

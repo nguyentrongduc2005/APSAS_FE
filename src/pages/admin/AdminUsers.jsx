@@ -1,255 +1,253 @@
 // src/pages/admin/AdminUsers.jsx
-import { useMemo, useState } from "react";
-import { MOCK_USERS } from "../../data/mockUsers";
-
-const roleColor = {
-  admin: "bg-purple-500/15 text-purple-300 border border-purple-500/30",
-  lecturer: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30",
-  teacher: "bg-sky-500/15 text-sky-300 border border-sky-500/30",
-  student: "bg-blue-500/15 text-blue-300 border border-blue-500/30",
-  provider: "bg-amber-500/15 text-amber-300 border border-amber-500/30",
-};
-
-function Badge({ children, tone = "blue", className = "" }) {
-  const map = {
-    green:
-      "bg-green-500/15 text-green-300 border border-green-500/30",
-    red: "bg-rose-500/15 text-rose-300 border border-rose-500/30",
-    gray:
-      "bg-slate-500/15 text-slate-300 border border-slate-500/30",
-    blue: "bg-blue-500/15 text-blue-300 border border-blue-500/30",
-  };
-
-  return (
-    <span
-      className={`px-2 py-0.5 rounded-md text-xs ${map[tone]} ${className}`}
-    >
-      {children}
-    </span>
-  );
-}
-
-function Toolbar({ q, setQ, role, setRole, status, setStatus, onCreate }) {
-  return (
-    <div className="flex items-center gap-2 flex-wrap">
-      <input
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        placeholder="Tìm theo tên / email / ID"
-        className="px-3 py-2 rounded-md bg-[#0d1117] border border-[#223] text-slate-200 placeholder:text-slate-500 w-80 outline-none focus:border-sky-600"
-      />
-
-      <select
-        value={role}
-        onChange={(e) => setRole(e.target.value)}
-        className="px-3 py-2 rounded-md bg-[#0d1117] border border-[#223] text-slate-200"
-      >
-        <option value="">Tất cả vai trò</option>
-        <option value="student">Student</option>
-        <option value="lecturer">Lecturer</option>
-        <option value="provider">Provider</option>
-        <option value="admin">Admin</option>
-      </select>
-
-      <select
-        value={status}
-        onChange={(e) => setStatus(e.target.value)}
-        className="px-3 py-2 rounded-md bg-[#0d1117] border border-[#223] text-slate-200"
-      >
-        <option value="">Trạng thái</option>
-        <option value="active">Đang hoạt động</option>
-        <option value="blocked">Bị khóa</option>
-      </select>
-
-      <button
-        onClick={onCreate}
-        className="ml-auto px-3 py-2 rounded-md bg-sky-600 hover:bg-sky-500 text-white"
-      >
-        + Tạo người dùng
-      </button>
-    </div>
-  );
-}
-
-function EditModal({ open, onClose, onSave, user }) {
-  const [form, setForm] = useState(
-    user ?? {
-      name: "",
-      email: "",
-      role: "student",
-      status: "active",
-      verified: false,
-    }
-  );
-
-  if (!open) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center">
-      <div className="w-[720px] rounded-xl bg-[#0b0f14] border border-[#1e2630] p-5">
-        <h3 className="text-slate-100 text-lg font-semibold">
-          {user ? "Sửa người dùng" : "Tạo người dùng mới"}
-        </h3>
-
-        <div className="grid grid-cols-2 gap-4 mt-4">
-          <div>
-            <label className="text-sm text-slate-400">Họ tên</label>
-            <input
-              value={form.name}
-              onChange={(e) =>
-                setForm({ ...form, name: e.target.value })
-              }
-              className="w-full px-3 py-2 rounded-md bg-[#0d1117] border border-[#223] text-slate-200"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm text-slate-400">Email</label>
-            <input
-              value={form.email}
-              onChange={(e) =>
-                setForm({ ...form, email: e.target.value })
-              }
-              className="w-full px-3 py-2 rounded-md bg-[#0d1117] border border-[#223] text-slate-200"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm text-slate-400">Vai trò</label>
-            <select
-              value={form.role}
-              onChange={(e) =>
-                setForm({ ...form, role: e.target.value })
-              }
-              className="w-full px-3 py-2 rounded-md bg-[#0d1117] border border-[#223] text-slate-200"
-            >
-              <option value="student">Student</option>
-              <option value="lecturer">Lecturer</option>
-              <option value="provider">Provider</option>
-              <option value="admin">Admin</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="text-sm text-slate-400">Trạng thái</label>
-            <select
-              value={form.status}
-              onChange={(e) =>
-                setForm({ ...form, status: e.target.value })
-              }
-              className="w-full px-3 py-2 rounded-md bg-[#0d1117] border border-[#223] text-slate-200"
-            >
-              <option value="active">Active</option>
-              <option value="blocked">Blocked</option>
-            </select>
-          </div>
-
-          <div className="col-span-2 flex items-center gap-2">
-            <input
-              id="verified"
-              type="checkbox"
-              checked={form.verified}
-              onChange={(e) =>
-                setForm({ ...form, verified: e.target.checked })
-              }
-            />
-            <label htmlFor="verified" className="text-slate-300 text-sm">
-              Email đã xác thực
-            </label>
-          </div>
-        </div>
-
-        <div className="mt-6 flex justify-end gap-2">
-          <button
-            className="px-3 py-2 rounded-md bg-slate-700/50 text-slate-200"
-            onClick={onClose}
-          >
-            Hủy
-          </button>
-          <button
-            className="px-3 py-2 rounded-md bg-sky-600 hover:bg-sky-500 text-white"
-            onClick={() => onSave(form)}
-          >
-            {user ? "Lưu" : "Tạo"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+import { useState, useEffect } from "react";
+import adminUserService from "../../services/adminUserService";
+import UserToolbar from "../../components/admin/UserToolbar";
+import UserTable from "../../components/admin/UserTable";
+import UserEditModal from "../../components/admin/UserEditModal";
 
 export default function AdminUsers() {
-  const [q, setQ] = useState("");
+  const [search, setSearch] = useState("");
   const [role, setRole] = useState("");
   const [status, setStatus] = useState("");
-  const [items, setItems] = useState(MOCK_USERS);
-  const [modal, setModal] = useState({ open: false, data: null });
+  const [users, setUsers] = useState([]);
+  const [pagination, setPagination] = useState({
+    page: 0,
+    size: 10,
+    totalElements: 0,
+    totalPages: 0,
+  });
 
-  const filtered = useMemo(() => {
-    return items
-      .filter((u) => (role ? u.role === role : true))
-      .filter((u) => (status ? u.status === status : true))
-      .filter((u) => {
-        if (!q.trim()) return true;
-        const s = (u.name + u.email + u.id).toLowerCase();
-        return s.includes(q.toLowerCase());
+  const [loading, setLoading] = useState(false);
+  const [modal, setModal] = useState({ open: false, data: null });
+  const [stats, setStats] = useState(null);
+
+  // Fetch users with pagination
+  const fetchUsers = async (page = 0) => {
+    try {
+      setLoading(true);
+      const result = await adminUserService.getUsers({
+        page,
+        size: 10,
+        keyword: search, // API uses 'keyword' for search
+        roleId: role ? getRoleIdByName(role) : undefined, // API uses 'roleId' (number)
+        status: status ? status.toUpperCase() : undefined,
       });
-  }, [q, role, status, items]);
+
+      // API returns: { code, message, data: { content, totalElements, totalPages, size, number } }
+      if (result.code === "ok" && result.data) {
+        setUsers(result.data.content || []);
+        setPagination({
+          page: result.data.number || 0,
+          size: result.data.size || 10,
+          totalElements: result.data.totalElements || 0,
+          totalPages: result.data.totalPages || 0,
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      setUsers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Helper to convert role name to role ID
+  const getRoleIdByName = (roleName) => {
+    const roleMap = {
+      ADMIN: 1,
+      STUDENT: 2,
+      LECTURER: 3,
+      CONTENT_PROVIDER: 4,
+      PROVIDER: 4,
+      GUEST: 5,
+    };
+    return roleMap[roleName.toUpperCase()] || undefined;
+  };
+
+  // Fetch user statistics
+  const fetchStats = async () => {
+    try {
+      const result = await adminUserService.getUserStatistics();
+      if (result.code === "ok" && result.data) {
+        setStats(result.data);
+      }
+    } catch (error) {
+      console.error("Error fetching statistics:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers(0);
+    fetchStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, role, status]);
+
+  const handlePageChange = (newPage) => {
+    fetchUsers(newPage);
+  };
 
   const openCreate = () => setModal({ open: true, data: null });
   const openEdit = (u) => setModal({ open: true, data: u });
   const closeModal = () => setModal({ open: false, data: null });
 
-  const saveUser = (data) => {
-    if (modal.data) {
-      setItems((prev) =>
-        prev.map((it) =>
-          it.id === modal.data.id ? { ...it, ...data } : it
-        )
-      );
-    } else {
-      const newId = "U" + String(items.length + 1).padStart(3, "0");
-      setItems((prev) => [
-        ...prev,
-        {
-          ...data,
-          id: newId,
-          createdAt: new Date().toISOString().slice(0, 10),
-        },
-      ]);
+  const saveUser = async (data) => {
+    try {
+      if (modal.data) {
+        // Update user roles or status
+        if (data.role) {
+          // Convert role name to roleId and send as array
+          const roleId = getRoleIdByName(data.role);
+          if (roleId) {
+            await adminUserService.updateUserRoles(modal.data.id, [roleId]);
+          }
+        }
+        if (data.status) {
+          await adminUserService.updateUserStatus(modal.data.id, data.status);
+        }
+        await fetchUsers(pagination.page);
+      } else {
+        // Create new user - build payload expected by backend
+        // API expects: { name, email, password, roleIds, status }
+        const roleId = getRoleIdByName(data.role);
+        const payload = {
+          name:
+            data.name ||
+            `${data.firstName || ""} ${data.lastName || ""}`.trim(),
+          email: data.email,
+          password: data.password,
+          roleIds: roleId ? [roleId] : [2], // Default to STUDENT (id: 2)
+          status: data.status || "ACTIVE",
+        };
+
+        const response = await adminUserService.createUser(payload);
+        if (response.code === "ok") {
+          await fetchUsers(0); // Refresh to first page
+        }
+      }
+      closeModal();
+      await fetchStats(); // Refresh statistics
+    } catch (error) {
+      console.error("Error saving user:", error);
+      const errorMsg =
+        error.response?.data?.message || error.message || "Lưu thất bại";
+      alert(errorMsg);
     }
-    closeModal();
   };
 
-  const toggleLock = (id) => {
-    setItems((prev) =>
-      prev.map((it) =>
-        it.id === id
-          ? {
-              ...it,
-              status: it.status === "active" ? "blocked" : "active",
-            }
-          : it
-      )
-    );
+  /**
+   * Toggle user lock status (Block/Unblock)
+   * Block: ACTIVE → BLOCKED
+   * Unblock: BLOCKED/INACTIVE/BANNED → ACTIVE
+   */
+  const toggleLock = async (id) => {
+    try {
+      const user = users.find((u) => u.id === id);
+      if (!user) {
+        alert("Không tìm thấy người dùng");
+        return;
+      }
+
+      const currentStatus = (user.status || "").toUpperCase();
+      let newStatus;
+      let actionText;
+
+      if (currentStatus === "ACTIVE") {
+        // Block user
+        newStatus = "BLOCKED";
+        actionText = "khóa";
+        if (!window.confirm(`Bạn có chắc chắn muốn khóa người dùng "${user.name}"?`)) {
+          return;
+        }
+      } else {
+        // Unblock user (from BLOCKED, INACTIVE, or BANNED)
+        newStatus = "ACTIVE";
+        actionText = "mở khóa";
+        if (!window.confirm(`Bạn có chắc chắn muốn mở khóa người dùng "${user.name}"?`)) {
+          return;
+        }
+      }
+
+      const response = await adminUserService.updateUserStatus(id, newStatus);
+
+      if (response.code === "ok") {
+        alert(`Đã ${actionText} người dùng thành công!`);
+        await fetchUsers(pagination.page);
+        await fetchStats();
+      } else {
+        throw new Error(response.message || "Thao tác thất bại");
+      }
+    } catch (error) {
+      console.error("Error toggling user status:", error);
+      const errorMsg = error.response?.data?.message || error.message || "Thao tác thất bại";
+      alert(errorMsg);
+    }
   };
 
-  const removeUser = (id) => {
-    if (confirm("Xóa người dùng này?")) {
-      setItems((prev) => prev.filter((u) => u.id !== id));
+  const removeUser = async (id) => {
+    if (
+      !window.confirm("Xóa người dùng này? Hành động này không thể hoàn tác.")
+    )
+      return;
+
+    try {
+      const response = await adminUserService.deleteUser(id);
+      if (response.code === "ok") {
+        await fetchUsers(pagination.page);
+        await fetchStats();
+        alert("Xóa người dùng thành công");
+      }
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      const errorMsg = error.response?.data?.message || "Xóa thất bại";
+      alert(errorMsg);
     }
   };
 
   return (
-    <div className="p-5">
-      <h1 className="text-xl font-semibold text-slate-100 mb-4">
-        Quản lý tài khoản người dùng
-      </h1>
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-white">Quản lý người dùng</h1>
+        <p className="text-gray-400 mt-1">
+          Quản lý tài khoản và phân quyền người dùng trong hệ thống
+        </p>
+      </div>
 
-      <div className="rounded-xl border border-[#1e2630] bg-[#0b0f14] p-4">
-        <Toolbar
-          q={q}
-          setQ={setQ}
+      {/* Statistics */}
+      {stats && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-[#0f1419] border border-[#202934] rounded-lg p-5">
+            <div className="text-sm text-gray-400">Tổng người dùng</div>
+            <div className="text-2xl font-bold text-white mt-1">
+              {stats.totalUsers}
+            </div>
+          </div>
+          <div className="bg-[#0f1419] border border-[#202934] rounded-lg p-5">
+            <div className="text-sm text-gray-400">Đang hoạt động</div>
+            <div className="text-2xl font-bold text-emerald-400 mt-1">
+              {stats.activeUsers}
+            </div>
+          </div>
+          <div className="bg-[#0f1419] border border-[#202934] rounded-lg p-5">
+            <div className="text-sm text-gray-400">Sinh viên</div>
+            <div className="text-2xl font-bold text-blue-400 mt-1">
+              {stats.usersByRole?.STUDENT || stats.studentsCount || 0}
+            </div>
+          </div>
+          <div className="bg-[#0f1419] border border-[#202934] rounded-lg p-5">
+            <div className="text-sm text-gray-400">Giảng viên</div>
+            <div className="text-2xl font-bold text-purple-400 mt-1">
+              {stats.usersByRole?.LECTURER || stats.lecturersCount || 0}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main content */}
+      <div className="bg-[#0f1419] border border-[#202934] rounded-xl p-6">
+        <UserToolbar
+          q={search}
+          setQ={setSearch}
           role={role}
           setRole={setRole}
           status={status}
@@ -257,109 +255,53 @@ export default function AdminUsers() {
           onCreate={openCreate}
         />
 
-        <div className="mt-4 overflow-x-auto">
-          <table className="min-w-full text-sm text-slate-300">
-            <thead className="text-xs uppercase bg-[#0f141a] text-slate-400">
-              <tr>
-                <th className="px-3 py-3 text-left">Người dùng</th>
-                <th className="px-3 py-3 text-left">Email</th>
-                <th className="px-3 py-3 text-left">Vai trò</th>
-                <th className="px-3 py-3 text-left">Trạng thái</th>
-                <th className="px-3 py-3 text-left">Ngày tạo</th>
-                <th className="px-3 py-3 text-left">Hoạt động gần</th>
-                <th className="px-3 py-3 text-right">Thao tác</th>
-              </tr>
-            </thead>
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="inline-block w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-gray-400 mt-4">Đang tải...</p>
+          </div>
+        ) : (
+          <>
+            <UserTable
+              users={users}
+              onEdit={openEdit}
+              onToggleLock={toggleLock}
+              onDelete={removeUser}
+            />
 
-            <tbody>
-              {filtered.map((u) => (
-                <tr
-                  key={u.id}
-                  className="border-t border-[#1f2937] hover:bg-white/5"
-                >
-                  <td className="px-3 py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-slate-700/60 flex items-center justify-center text-xs">
-                        {u.name.split(" ").slice(-1)[0][0]}
-                      </div>
-                      <div className="leading-tight">
-                        <div className="text-slate-100">{u.name}</div>
-                        <div className="text-[11px] text-slate-500">
-                          {u.id}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-
-                  <td className="px-3 py-3">{u.email}</td>
-
-                  <td className="px-3 py-3">
-                    <span
-                      className={`px-2 py-0.5 rounded-md text-xs ${roleColor[u.role]}`}
-                    >
-                      {u.role}
-                    </span>
-                  </td>
-
-                  <td className="px-3 py-3">
-                    {u.status === "active" ? (
-                      <Badge tone="green">Active</Badge>
-                    ) : (
-                      <Badge tone="red">Blocked</Badge>
-                    )}
-                    {!u.verified && (
-                      <Badge tone="gray" className="ml-2">
-                        Unverified
-                      </Badge>
-                    )}
-                  </td>
-
-                  <td className="px-3 py-3">{u.createdAt}</td>
-                  <td className="px-3 py-3">
-                    {u.lastLogin || "-"}
-                  </td>
-
-                  <td className="px-3 py-3 text-right">
-                    <div className="inline-flex gap-2">
-                      <button
-                        className="px-2 py-1 rounded bg-[#101826] border border-[#223]"
-                        onClick={() => openEdit(u)}
-                      >
-                        Sửa
-                      </button>
-                      <button
-                        className="px-2 py-1 rounded bg-[#101826] border border-[#223]"
-                        onClick={() => toggleLock(u.id)}
-                      >
-                        {u.status === "active" ? "Khóa" : "Mở khóa"}
-                      </button>
-                      <button
-                        className="px-2 py-1 rounded bg-[#2a0e12] border border-rose-900 text-rose-300"
-                        onClick={() => removeUser(u.id)}
-                      >
-                        Xóa
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-
-              {filtered.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={7}
-                    className="text-center py-6 text-slate-500"
+            {/* Pagination */}
+            {pagination.totalPages > 1 && (
+              <div className="flex items-center justify-between mt-6 pt-4 border-t border-[#202934]">
+                <div className="text-sm text-gray-400">
+                  Hiển thị {users.length} trong tổng số{" "}
+                  {pagination.totalElements} người dùng
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handlePageChange(pagination.page - 1)}
+                    disabled={pagination.page === 0}
+                    className="px-3 py-1.5 bg-[#0b0f12] border border-[#202934] rounded text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#202934] transition"
                   >
-                    Không có dữ liệu
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                    Trước
+                  </button>
+                  <span className="text-sm text-gray-400">
+                    Trang {pagination.page + 1} / {pagination.totalPages}
+                  </span>
+                  <button
+                    onClick={() => handlePageChange(pagination.page + 1)}
+                    disabled={pagination.page >= pagination.totalPages - 1}
+                    className="px-3 py-1.5 bg-[#0b0f12] border border-[#202934] rounded text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#202934] transition"
+                  >
+                    Sau
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
-      <EditModal
+      <UserEditModal
         open={modal.open}
         onClose={closeModal}
         onSave={saveUser}

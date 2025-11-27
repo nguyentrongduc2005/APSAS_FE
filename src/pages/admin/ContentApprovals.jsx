@@ -1,133 +1,151 @@
 // src/pages/admin/ContentApprovals.jsx
-import { useMemo, useState } from "react";
-import { MOCK_CONTENTS } from "../../data/mockContents";
-
-function StatusPill({ s }) {
-  const map = {
-    pending:
-      "bg-amber-500/15 text-amber-300 border border-amber-500/30",
-    approved:
-      "bg-green-500/15 text-green-300 border border-green-500/30",
-    rejected:
-      "bg-rose-500/15 text-rose-300 border border-rose-500/30",
-  };
-
-  return (
-    <span className={`px-2 py-0.5 rounded-md text-xs ${map[s]}`}>
-      {s}
-    </span>
-  );
-}
-
-function ViewModal({ open, onClose, data, onDecision }) {
-  const [note, setNote] = useState("");
-
-  if (!open) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center">
-      <div className="w-[800px] rounded-xl bg-[#0b0f14] border border-[#1e2630] p-5">
-        <h3 className="text-slate-100 text-lg font-semibold">
-          Xem & xác nhận nội dung
-        </h3>
-
-        <div className="grid grid-cols-2 gap-4 mt-4 text-sm">
-          <div>
-            <div className="text-slate-400">ID</div>
-            <div className="text-slate-200">{data.id}</div>
-          </div>
-
-          <div>
-            <div className="text-slate-400">Loại</div>
-            <div className="text-slate-200">{data.type}</div>
-          </div>
-
-          <div className="col-span-2">
-            <div className="text-slate-400">Tiêu đề</div>
-            <div className="text-slate-200">{data.title}</div>
-          </div>
-
-          <div>
-            <div className="text-slate-400">Tác giả</div>
-            <div className="text-slate-200">{data.author}</div>
-          </div>
-
-          <div>
-            <div className="text-slate-400">Nộp lúc</div>
-            <div className="text-slate-200">
-              {data.submittedAt}
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-4">
-          <label className="text-sm text-slate-400">
-            Ghi chú phản hồi
-          </label>
-          <textarea
-            rows={3}
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            className="w-full mt-1 px-3 py-2 rounded-md bg-[#0d1117] border border-[#223] text-slate-200"
-            placeholder="(Không bắt buộc)"
-          />
-        </div>
-
-        <div className="mt-6 flex justify-end gap-2">
-          <button
-            className="px-3 py-2 rounded-md bg-slate-700/50 text-slate-200"
-            onClick={onClose}
-          >
-            Đóng
-          </button>
-          <button
-            className="px-3 py-2 rounded-md bg-rose-600 text-white"
-            onClick={() => onDecision("rejected", note)}
-          >
-            Từ chối
-          </button>
-          <button
-            className="px-3 py-2 rounded-md bg-emerald-600 text-white"
-            onClick={() => onDecision("approved", note)}
-          >
-            Duyệt
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+import { useState, useEffect } from "react";
+import adminContentService from "../../services/adminContentService";
+import ContentToolbar from "../../components/admin/ContentToolbar";
+import ContentTable from "../../components/admin/ContentTable";
+import ContentViewModal from "../../components/admin/ContentViewModal";
 
 export default function ContentApprovals() {
   const [q, setQ] = useState("");
   const [type, setType] = useState("");
   const [status, setStatus] = useState("pending");
-  const [items, setItems] = useState(MOCK_CONTENTS);
+  const [contents, setContents] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [modal, setModal] = useState({ open: false, data: null });
+  const [error, setError] = useState(null);
+  const [pagination, setPagination] = useState({
+    page: 0,
+    size: 10,
+    totalElements: 0,
+    totalPages: 0,
+  });
 
-  const filtered = useMemo(() => {
-    return items
-      .filter((it) => (type ? it.type === type : true))
-      .filter((it) => (status ? it.status === status : true))
-      .filter((it) => {
-        if (!q.trim()) return true;
-        const s = (it.title + it.id + it.author).toLowerCase();
-        return s.includes(q.toLowerCase());
+  // Fetch contents with pagination
+  const fetchContents = async (page = 0) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const result = await adminContentService.getContents({
+        keyword: q,
+        type,
+        status,
+        page,
+        size: 10,
       });
-  }, [q, type, status, items]);
+      
+      // Handle both array response and paginated response
+      const responseCode = (result.code || "").toUpperCase();
+      if (responseCode === "OK" || responseCode === "200") {
+        let contentList = [];
+        
+        // Check if data is paginated (has content property) or array
+        if (result.data?.content) {
+          contentList = result.data.content;
+          setPagination({
+            page: result.data.pageable?.pageNumber || page,
+            size: result.data.pageable?.pageSize || 10,
+            totalElements: result.data.totalElements || 0,
+            totalPages: result.data.totalPages || 0,
+          });
+        } else if (Array.isArray(result.data)) {
+          contentList = result.data;
+          setPagination({
+            page: 0,
+            size: contentList.length,
+            totalElements: contentList.length,
+            totalPages: 1,
+          });
+        }
+        
+        // Map API response to expected format
+        const mappedContents = contentList.map(tutorial => ({
+          id: tutorial.id,
+          title: tutorial.title || "Untitled",
+          type: tutorial.type || "UNKNOWN",
+          author: tutorial.author?.fullname || tutorial.author?.username || "Unknown",
+          submittedAt: tutorial.createdAt ? new Date(tutorial.createdAt).toLocaleDateString('vi-VN') : "N/A",
+          status: tutorial.status?.toLowerCase() || "pending",
+          note: tutorial.note || "",
+        }));
+        setContents(mappedContents);
+      } else {
+        setContents([]);
+      }
+    } catch (error) {
+      console.error("Error fetching contents:", error);
+      setError(error.message || "Không thể tải danh sách nội dung");
+      setContents([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchContents(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]); // Only refetch when status changes
+
+  // Manual search trigger
+  const handleSearch = () => {
+    fetchContents(0);
+  };
+
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    fetchContents(newPage);
+  };
 
   const openView = (row) => setModal({ open: true, data: row });
   const closeView = () => setModal({ open: false, data: null });
 
-  const decide = (decision, note) => {
-    setItems((prev) =>
-      prev.map((it) =>
-        it.id === modal.data.id
-          ? { ...it, status: decision, note }
-          : it
-      )
-    );
-    closeView();
+  const decide = async (decision, note) => {
+    try {
+      // Validate tutorial status before review
+      if (modal.data && modal.data.status) {
+        const currentStatus = (modal.data.status || "").toUpperCase();
+        if (currentStatus !== "PENDING" && currentStatus !== "pending") {
+          alert(`Không thể review tutorial này. Trạng thái hiện tại: ${modal.data.status}. Chỉ có thể review tutorial ở trạng thái PENDING.`);
+          return;
+        }
+      }
+
+      if (decision === "approved") {
+        const result = await adminContentService.approveContent(modal.data.id, note);
+        // Check response code (handle both "ok" and "OK")
+        const responseCode = (result.code || "").toUpperCase();
+        if (responseCode === "OK" || responseCode === "200") {
+          alert("Nội dung đã được duyệt thành công!");
+          // Refresh the list with current pagination
+          fetchContents(pagination.page);
+          closeView();
+        } else {
+          throw new Error(result.message || "Duyệt nội dung thất bại");
+        }
+      } else if (decision === "rejected") {
+        // Optional: Validate note for rejection (can be made required)
+        // if (!note || !note.trim()) {
+        //   alert("Vui lòng nhập lý do từ chối.");
+        //   return;
+        // }
+
+        const result = await adminContentService.rejectContent(modal.data.id, note);
+        // Check response code (handle both "ok" and "OK")
+        const responseCode = (result.code || "").toUpperCase();
+        if (responseCode === "OK" || responseCode === "200") {
+          alert("Nội dung đã bị từ chối!");
+          // Refresh the list with current pagination
+          fetchContents(pagination.page);
+          closeView();
+        } else {
+          throw new Error(result.message || "Từ chối nội dung thất bại");
+        }
+      }
+    } catch (error) {
+      console.error("Error deciding content:", error);
+      // Show user-friendly error message
+      const errorMessage = error.message || "Thao tác thất bại. Vui lòng thử lại.";
+      alert(errorMessage);
+    }
   };
 
   return (
@@ -137,122 +155,74 @@ export default function ContentApprovals() {
       </h1>
 
       <div className="rounded-xl border border-[#1e2630] bg-[#0b0f14] p-4">
-        <div className="flex items-center gap-2 flex-wrap">
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Tìm theo tiêu đề / tác giả / ID"
-            className="px-3 py-2 rounded-md bg-[#0d1117] border border-[#223] text-slate-200 placeholder:text-slate-500 w-80 outline-none focus:border-sky-600"
+        <div className="flex items-center gap-2">
+          <ContentToolbar
+            q={q}
+            setQ={setQ}
+            type={type}
+            setType={setType}
+            status={status}
+            setStatus={setStatus}
           />
-
-          <select
-            value={type}
-            onChange={(e) => setType(e.target.value)}
-            className="px-3 py-2 rounded-md bg-[#0d1117] border border-[#223] text-slate-200"
+          <button
+            onClick={handleSearch}
+            disabled={loading}
+            className="px-4 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <option value="">Tất cả loại</option>
-            <option value="course">Course</option>
-            <option value="assignment">Assignment</option>
-            <option value="resource">Resource</option>
-          </select>
-
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-            className="px-3 py-2 rounded-md bg-[#0d1117] border border-[#223] text-slate-200"
-          >
-            <option value="">Mọi trạng thái</option>
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Rejected</option>
-          </select>
+            Tìm kiếm
+          </button>
         </div>
 
-        <div className="mt-4 overflow-x-auto">
-          <table className="min-w-full text-sm text-slate-300">
-            <thead className="text-xs uppercase bg-[#0f141a] text-slate-400">
-              <tr>
-                <th className="px-3 py-3 text-left">ID</th>
-                <th className="px-3 py-3 text-left">Tiêu đề</th>
-                <th className="px-3 py-3 text-left">Loại</th>
-                <th className="px-3 py-3 text-left">Tác giả</th>
-                <th className="px-3 py-3 text-left">Thời gian nộp</th>
-                <th className="px-3 py-3 text-left">Trạng thái</th>
-                <th className="px-3 py-3 text-right">Thao tác</th>
-              </tr>
-            </thead>
+        {error && (
+          <div className="mt-4 p-3 rounded-md bg-rose-500/15 border border-rose-500/30 text-rose-300">
+            {error}
+          </div>
+        )}
 
-            <tbody>
-              {filtered.map((r) => (
-                <tr
-                  key={r.id}
-                  className="border-t border-[#1f2937] hover:bg-white/5"
-                >
-                  <td className="px-3 py-3">{r.id}</td>
-                  <td className="px-3 py-3">{r.title}</td>
-                  <td className="px-3 py-3">
-                    <span className="px-2 py-0.5 rounded-md text-xs bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
-                      {r.type}
-                    </span>
-                  </td>
-                  <td className="px-3 py-3">{r.author}</td>
-                  <td className="px-3 py-3">{r.submittedAt}</td>
-                  <td className="px-3 py-3">
-                    <StatusPill s={r.status} />
-                  </td>
-                  <td className="px-3 py-3 text-right">
-                    <div className="inline-flex gap-2">
-                      <button
-                        className="px-2 py-1 rounded bg-[#101826] border border-[#223]"
-                        onClick={() => openView(r)}
-                      >
-                        Xem
-                      </button>
-
-                      {r.status === "pending" && (
-                        <>
-                          <button
-                            className="px-2 py-1 rounded bg-emerald-600 text-white"
-                            onClick={() =>
-                              setModal({ open: true, data: r })
-                            }
-                          >
-                            Duyệt
-                          </button>
-                          <button
-                            className="px-2 py-1 rounded bg-rose-600 text-white"
-                            onClick={() =>
-                              setModal({ open: true, data: r })
-                            }
-                          >
-                            Từ chối
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-
-              {filtered.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={7}
-                    className="text-center py-6 text-slate-500"
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="inline-block w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-slate-400 mt-4">Đang tải...</p>
+          </div>
+        ) : (
+          <>
+            <ContentTable contents={contents} onView={openView} />
+            
+            {/* Pagination */}
+            {pagination.totalPages > 1 && (
+              <div className="flex items-center justify-between mt-6 pt-4 border-t border-[#202934]">
+                <div className="text-sm text-gray-400">
+                  Hiển thị {contents.length} trong tổng số {pagination.totalElements} nội dung
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handlePageChange(pagination.page - 1)}
+                    disabled={pagination.page === 0}
+                    className="px-3 py-1.5 bg-[#0b0f12] border border-[#202934] rounded text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#202934] transition"
                   >
-                    Không có dữ liệu
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                    Trước
+                  </button>
+                  <span className="text-sm text-gray-400">
+                    Trang {pagination.page + 1} / {pagination.totalPages}
+                  </span>
+                  <button
+                    onClick={() => handlePageChange(pagination.page + 1)}
+                    disabled={pagination.page >= pagination.totalPages - 1}
+                    className="px-3 py-1.5 bg-[#0b0f12] border border-[#202934] rounded text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#202934] transition"
+                  >
+                    Sau
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
-      <ViewModal
+      <ContentViewModal
         open={modal.open}
         onClose={closeView}
-        data={modal.data || {}}
+        data={modal.data}
         onDecision={decide}
       />
     </div>

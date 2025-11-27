@@ -1,138 +1,131 @@
+// src/services/progressService.js
 import api from "./api";
 
-// Service để lấy dữ liệu tiến độ học sinh
+// Normalize ProgressDTO (from /progress/{id}/current) to UI-friendly shape
+function mapProgressDtoToUi(data) {
+	const daily = Array.isArray(data?.dailyScoreDTOList) ? data.dailyScoreDTOList : [];
+
+	const activityData = daily.map((d, idx) => ({
+		date: d?.date ?? `D${idx + 1}`,
+		score: Number(d?.score ?? d?.value ?? 0) || 0,
+	}));
+
+	const totalCourses = Number(data?.totalCourses ?? 0) || 0;
+	const completed = Number(data?.completedCourses ?? 0) || 0;
+	const averageScore = Number(data?.averageScore ?? data?.average ?? 0) || 0;
+	const completionRate = averageScore;
+
+	return {
+		rawProgress: daily,
+		stats: { totalCourses, completed, averageScore, completionRate },
+		activityData,
+		currentCourses: Array.isArray(data?.currentCourses) ? data.currentCourses : [],
+		achievements: Array.isArray(data?.achievements) ? data.achievements : [],
+	};
+}
+
+// Map legacy list response (unknown shape) into a safe UI shape
+function mapLegacyListToUi(list) {
+	if (!Array.isArray(list)) {
+		return {
+			rawProgress: [],
+			stats: { totalCourses: 0, completed: 0, averageScore: 0, completionRate: 0 },
+			activityData: [],
+			currentCourses: [],
+			achievements: [],
+		};
+	}
+
+	// Best-effort mapping: count items as courses, assume `completed` boolean if present
+	const totalCourses = list.length;
+	const completed = list.filter((c) => c?.completed).length || 0;
+
+	return {
+		rawProgress: list,
+		stats: { totalCourses, completed, averageScore: 0, completionRate: 0 },
+		activityData: [],
+		currentCourses: list.slice(0, 10),
+		achievements: [],
+	};
+}
+
+const EMPTY_RESULT = {
+	rawProgress: [],
+	stats: { totalCourses: 0, completed: 0, averageScore: 0, completionRate: 0 },
+	activityData: [],
+	currentCourses: [],
+	achievements: [],
+};
+
 const progressService = {
-  // Lấy thống kê tổng quan
-  async getStats(studentId) {
-    try {
-      // TODO: Gọi API thực tế
-      // const response = await api.get(`/api/students/${studentId}/stats`);
-      // return response.data;
+	// Returns the raw API response in exactly the two shapes you showed:
+	// - Direct DTO: { name, email, totalCourses, completedCourses, averageScore, dailyScoreDTOList: [...] }
+	// - Wrapped envelope: { code, message, data: { ...DTO... } }
+	// If the preferred endpoint is missing (404) it will try the legacy endpoint and return its body.
+	async getProgressRaw(studentId) {
+		if (!studentId) return null;
 
-      // Mock data tạm thời
-      return {
-        totalCourses: 109,
-        completed: 87,
-        completionRate: 92.5,
-      };
-    } catch (error) {
-      console.error("Error fetching stats:", error);
-      throw error;
-    }
-  },
+		try {
+			const res = await api.get(`/progress/${studentId}/current`);
+			const body = res?.data ?? null;
+			// If server uses envelope { code, message, data }, unwrap it to return the inner data
+			if (body && typeof body === "object" && Object.prototype.hasOwnProperty.call(body, "data")) {
+				return body.data;
+			}
+			return body;
+		} catch (err) {
+			const status = err?.response?.status;
+			if (status === 404) {
+				try {
+					const r2 = await api.get(`/progress/${studentId}`);
+					const b2 = r2?.data ?? null;
+					if (b2 && typeof b2 === "object" && Object.prototype.hasOwnProperty.call(b2, "data")) return b2.data;
+					return b2;
+				} catch {
+					return null;
+				}
+			}
+			// For other errors, return null so caller can decide how to handle
+			return null;
+		}
+	},
 
-  // Lấy dữ liệu điểm số theo khoảng thời gian
-  async getScoreData(studentId, dateRange = "7days") {
-    try {
-      // TODO: Gọi API thực tế
-      // const response = await api.get(`/api/students/${studentId}/scores`, {
-      //   params: { range: dateRange }
-      // });
-      // return response.data;
+	// Convenience: normalized UI-friendly shape (keeps previous behavior)
+	async getProgress(studentId) {
+		const raw = await this.getProgressRaw(studentId);
+		if (!raw) return EMPTY_RESULT;
 
-      // Mock data tạm thời
-      const mockDataMap = {
-        "7days": [
-          { day: "T2", value: 85 },
-          { day: "T3", value: 78 },
-          { day: "T4", value: 92 },
-          { day: "T5", value: 88 },
-          { day: "T6", value: 95 },
-          { day: "T7", value: 90 },
-          { day: "CN", value: 87 },
-        ],
-        "30days": Array.from({ length: 30 }, (_, i) => ({
-          day: `${i + 1}`,
-          value: Math.floor(Math.random() * 30) + 70,
-        })),
-        "90days": Array.from({ length: 90 }, (_, i) => ({
-          day: i % 10 === 0 ? `${i + 1}` : "",
-          value: Math.floor(Math.random() * 30) + 70,
-        })),
-      };
+		// If wrapped envelope, extract data
+		if (raw && typeof raw === "object" && Object.prototype.hasOwnProperty.call(raw, "code") && raw.data) {
+			return mapProgressDtoToUi(raw.data);
+		}
 
-      return mockDataMap[dateRange] || mockDataMap["7days"];
-    } catch (error) {
-      console.error("Error fetching score data:", error);
-      throw error;
-    }
-  },
+		// If direct DTO
+		if (raw && typeof raw === "object" && (raw.name || Array.isArray(raw))) {
+			// If it's an array (legacy list), map via legacy mapper
+			if (Array.isArray(raw)) return mapLegacyListToUi(raw);
+			return mapProgressDtoToUi(raw);
+		}
 
-  // Lấy danh sách khóa học đang học
-  async getCurrentCourses(studentId) {
-    try {
-      // TODO: Gọi API thực tế
-      // const response = await api.get(`/api/students/${studentId}/current-courses`);
-      // return response.data;
-
-      // Mock data tạm thời
-      return [
-        {
-          id: 1,
-          name: "Thiết kế Web nâng cao",
-          progress: 75,
-        },
-        {
-          id: 2,
-          name: "Lập trình JavaScript",
-          progress: 60,
-        },
-        {
-          id: 3,
-          name: "React Framework",
-          progress: 45,
-        },
-        {
-          id: 4,
-          name: "Node.js Backend",
-          progress: 30,
-        },
-      ];
-    } catch (error) {
-      console.error("Error fetching current courses:", error);
-      throw error;
-    }
-  },
-
-  // Lấy danh sách thành tích
-  async getAchievements(studentId) {
-    try {
-      // TODO: Gọi API thực tế
-      // const response = await api.get(`/api/students/${studentId}/achievements`);
-      // return response.data;
-
-      // Mock data tạm thời
-      return [
-        {
-          id: 1,
-          name: "First Blood",
-          description: "Hoàn thành khóa học đầu tiên",
-          date: "23-04-21",
-          icon: "Award",
-          color: "purple",
-        },
-        {
-          id: 2,
-          name: "Streak Master",
-          description: "Học liên tục 7 ngày",
-          date: "15-05-21",
-          icon: "Zap",
-          color: "blue",
-        },
-        {
-          id: 3,
-          name: "Perfect Score",
-          description: "Đạt 100% trong bài kiểm tra",
-          date: "28-06-21",
-          icon: "Target",
-          color: "pink",
-        },
-      ];
-    } catch (error) {
-      console.error("Error fetching achievements:", error);
-      throw error;
-    }
-  },
+		return EMPTY_RESULT;
+	},
+	// Fetch daily scores for a given range (from and to are ISO dates YYYY-MM-DD)
+	async getDailyScores(studentId, from, to) {
+		if (!studentId || !from || !to) return null;
+		try {
+			const res = await api.get(`/progress/${studentId}/scores`, {
+				params: { from, to },
+			});
+			const body = res?.data ?? null;
+			if (body && typeof body === "object" && Object.prototype.hasOwnProperty.call(body, "data")) {
+				return body.data;
+			}
+			return body;
+		} catch {
+			return null;
+		}
+	},
 };
 
 export default progressService;
+

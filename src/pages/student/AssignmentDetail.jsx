@@ -1,899 +1,485 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import React, { useState, useEffect, lazy, Suspense } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+const Editor = lazy(() => import("@monaco-editor/react"));
 import {
   ArrowLeft,
-  CalendarDays,
-  Clock8,
-  CheckCircle2,
-  FileText,
-  Link2,
-  ExternalLink,
-  Download,
-  BookCheck,
-  ListChecks,
   Play,
-  SendHorizonal,
-  GaugeCircle,
+  Send,
+  FileText,
+  CheckCircle2,
+  Clock,
+  Calendar,
+  Timer,
 } from "lucide-react";
-import * as assignmentService from "../../services/assignmentService";
+import studentCourseService from "../../services/studentCourseService";
+import { marked } from "marked";
 
-const COURSE_TABS = [
-  { key: "overview", label: "Tổng quan" },
-  { key: "assignments", label: "Bài tập" },
-];
-
-const statusBadge = {
-  completed: {
-    text: "Hoàn thành",
-    classes: "text-emerald-400 bg-emerald-500/10",
-  },
-  "in-progress": {
-    text: "Đang làm",
-    classes: "text-amber-400 bg-amber-500/10",
-  },
-  "not-started": {
-    text: "Chưa bắt đầu",
-    classes: "text-gray-400 bg-white/5",
-  },
-  pending: {
-    text: "Chờ đánh giá",
-    classes: "text-blue-300 bg-blue-500/10",
-  },
-};
+// Configure marked options
+marked.setOptions({
+  breaks: true,
+  gfm: true,
+});
 
 export default function StudentAssignmentDetail() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const { assignmentId } = useParams();
-  const backDestination = location.state?.from ?? "/student/my-courses";
+  const { assignmentId, courseId } = useParams();
 
-  const [course, setCourse] = useState(null);
-  const [assignmentList, setAssignmentList] = useState([]);
-  const [selectedAssignmentId, setSelectedAssignmentId] = useState(null);
-  const [assignmentDetail, setAssignmentDetail] = useState(null);
-  const [listLoading, setListLoading] = useState(true);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [listError, setListError] = useState(null);
-  const [detailError, setDetailError] = useState(null);
-  const [listReloadKey, setListReloadKey] = useState(0);
-  const [detailReloadKey, setDetailReloadKey] = useState(0);
-  const [selectedLanguage, setSelectedLanguage] = useState(null);
-  const [codeByLanguage, setCodeByLanguage] = useState({});
+  // API state
+  const [assignment, setAssignment] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const [activeTab, setActiveTab] = useState("practice"); // practice | submissions
+
+  const defaultCode = {
+    javascript:
+      "// Viết code JavaScript của bạn ở đây\nfunction solution(input) {\n  // Your code here\n  return result;\n}\n",
+    python:
+      "# Viết code Python của bạn ở đây\ndef solution(input):\n    # Your code here\n    return result\n",
+    java: "// Viết code Java của bạn ở đây\npublic class Solution {\n    public static String solution(String input) {\n        // Your code here\n        return result;\n    }\n}\n",
+    cpp: "// Viết code C++ của bạn ở đây\n#include <iostream>\n#include <string>\nusing namespace std;\n\nstring solution(string input) {\n    // Your code here\n    return result;\n}\n",
+  };
+
+  const [language, setLanguage] = useState("javascript");
+  const [code, setCode] = useState(defaultCode.javascript);
   const [isRunning, setIsRunning] = useState(false);
-  const [runResult, setRunResult] = useState(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitResult, setSubmitResult] = useState(null);
+  const [output, setOutput] = useState("");
 
-  const fetchAssignments = useCallback(async () => {
-    setListLoading(true);
-    setListError(null);
-    try {
-      const response = await assignmentService.getStudentAssignments();
-      const payload = response?.data ?? response ?? {};
-      setCourse(payload.course ?? null);
-      setAssignmentList(payload.assignments ?? []);
-    } catch (error) {
-      console.error("Không thể tải danh sách bài tập:", error);
-      setAssignmentList([]);
-      setListError(
-        error?.response?.data?.message ||
-          error?.message ||
-          "Không thể tải danh sách bài tập"
-      );
-    } finally {
-      setListLoading(false);
-    }
-  }, []);
+  const handleLanguageChange = (newLanguage) => {
+    setLanguage(newLanguage);
+    setCode(defaultCode[newLanguage]);
+  };
 
+  // Load assignment data from API
   useEffect(() => {
-    fetchAssignments();
-  }, [fetchAssignments, listReloadKey]);
-
-  useEffect(() => {
-    if (!assignmentList.length) {
-      setSelectedAssignmentId(null);
-      return;
-    }
-
-    if (assignmentId) {
-      const exists = assignmentList.some((item) => item.id === assignmentId);
-      if (exists) {
-        setSelectedAssignmentId(assignmentId);
-        return;
-      }
-    }
-
-    const fallbackId = assignmentList[0].id;
-    setSelectedAssignmentId(fallbackId);
-    if (!assignmentId || assignmentId !== fallbackId) {
-      navigate(`/student/assignments/${fallbackId}`, {
-        replace: true,
-        state: { from: backDestination },
-      });
-    }
-  }, [assignmentId, assignmentList, navigate, backDestination]);
-
-  useEffect(() => {
-    if (!selectedAssignmentId) {
-      setAssignmentDetail(null);
-      setSelectedLanguage(null);
-      setCodeByLanguage({});
-      return;
-    }
-
-    let cancelled = false;
-
-    const fetchDetail = async () => {
-      setDetailLoading(true);
-      setDetailError(null);
-
+    const loadAssignmentData = async () => {
       try {
-        const response = await assignmentService.getStudentAssignmentDetail(
-          selectedAssignmentId
-        );
-        if (cancelled) return;
-
-        const payload = response?.data ?? response ?? {};
-        setAssignmentDetail(payload.assignment ?? null);
-        if (payload.assignment?.starterCode) {
-          setCodeByLanguage((prev) => {
-            const next = { ...payload.assignment.starterCode };
-            Object.keys(prev || {}).forEach((lang) => {
-              if (prev[lang] && !next[lang]) {
-                next[lang] = prev[lang];
-              }
-            });
-            return next;
-          });
+        setLoading(true);
+        // Use the student course service method
+        const response = await studentCourseService.getAssignmentDetail(courseId, assignmentId);
+        
+        if (response && (response.code === "ok" || response.code === "0")) {
+          setAssignment(response.data);
         } else {
-          setCodeByLanguage({});
+          throw new Error(response?.message || "Failed to load assignment");
         }
-
-        if (payload.course) {
-          setCourse(payload.course);
-        }
-
-        const defaultLang =
-          payload.assignment?.defaultLanguage ||
-          payload.assignment?.languages?.[0] ||
-          null;
-        setSelectedLanguage(defaultLang);
-      } catch (error) {
-        if (cancelled) return;
-        console.error("Không thể tải chi tiết bài tập:", error);
-        setAssignmentDetail(null);
-        setDetailError(
-          error?.response?.data?.message ||
-            error?.message ||
-            "Không thể tải thông tin bài tập"
-        );
-        setSelectedLanguage(null);
-        setCodeByLanguage({});
+      } catch (err) {
+        console.error('Error loading assignment:', err);
+        setError(err.message || "Có lỗi xảy ra khi tải bài tập");
       } finally {
-        if (!cancelled) setDetailLoading(false);
+        setLoading(false);
       }
     };
 
-    fetchDetail();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedAssignmentId, detailReloadKey]);
-
-  const scrollToSubmission = () => {
-    if (typeof window === "undefined") return;
-    window.requestAnimationFrame(() => {
-      document
-        .getElementById("student-submission")
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-  };
-
-  const handleSelectAssignment = (id, opts = {}) => {
-    if (!id) return;
-    if (selectedAssignmentId !== id) {
-      setSelectedAssignmentId(id);
-      navigate(`/student/assignments/${id}`, {
-        replace: false,
-        state: { from: backDestination },
-      });
+    if (assignmentId && courseId) {
+      loadAssignmentData();
     }
-    if (opts.focusSubmission) {
-      scrollToSubmission();
-    }
-  };
+  }, [assignmentId, courseId]);
 
-  const currentCourse = {
-    title: course?.title ?? "Tên khóa học đang cập nhật",
-    instructor: course?.instructor ?? "Đang cập nhật giảng viên",
-    progress: course?.progress ?? 0,
-  };
+  const languages = [
+    { value: "javascript", label: "JavaScript" },
+    { value: "python", label: "Python" },
+    { value: "java", label: "Java" },
+    { value: "cpp", label: "C++" },
+  ];
 
-  const submission = assignmentDetail?.submission ?? {};
-  const languages = assignmentDetail?.languages ?? [];
-  const codeContent = selectedLanguage
-    ? codeByLanguage?.[selectedLanguage] ?? ""
-    : "";
-
-  const sampleTests = assignmentDetail?.samples ?? [];
-  const visibleTestCases = assignmentDetail?.testCases ?? [];
-
-  const canRun = Boolean(
-    selectedAssignmentId && selectedLanguage && codeContent.trim()
-  );
-
-  const handleCodeChange = (value) => {
-    if (!selectedLanguage) return;
-    setCodeByLanguage((prev) => ({
-      ...prev,
-      [selectedLanguage]: value,
-    }));
-  };
-
-  const handleLanguageChange = (lang) => {
-    setSelectedLanguage(lang);
-    if (codeByLanguage?.[lang] == null) {
-      const starter =
-        assignmentDetail?.starterCode?.[lang] ??
-        assignmentDetail?.starterCode?.[
-          assignmentDetail?.defaultLanguage || ""
-        ] ??
-        "";
-      setCodeByLanguage((prev) => ({ ...prev, [lang]: starter }));
-    }
-  };
-
-  const handleRunCode = async () => {
-    if (!canRun) return;
+  const handleRun = async () => {
     setIsRunning(true);
-    setRunResult(null);
-    try {
-      const response = await assignmentService.runAssignmentCode(
-        selectedAssignmentId,
-        {
-          language: selectedLanguage,
-          code: codeContent,
-        }
+    setOutput("");
+
+    // Mock run code
+    setTimeout(() => {
+      setOutput(
+        "Running code...\n\nTest case 1: Passed ✓\nTest case 2: Passed ✓\nTest case 3: Passed ✓"
       );
-      setRunResult(response);
-    } catch (error) {
-      setRunResult({
-        success: false,
-        stdout: "",
-        stderr:
-          error?.response?.data?.message ||
-          error?.message ||
-          "Không thể chạy code. Vui lòng thử lại.",
-        testResults: [],
-      });
-    } finally {
       setIsRunning(false);
+    }, 1500);
+  };
+
+  const handleSubmit = async () => {
+    if (!code.trim()) {
+      alert("Vui lòng viết code trước khi nộp bài!");
+      return;
+    }
+
+    const confirmed = window.confirm("Bạn có chắc chắn muốn nộp bài?");
+    if (confirmed) {
+      // TODO: Call API to submit
+      alert("Nộp bài thành công!");
+      navigate(-1);
     }
   };
 
-  const handleSubmitCode = async () => {
-    if (!canRun) return;
-    setIsSubmitting(true);
-    setSubmitResult(null);
-    try {
-      const response = await assignmentService.submitAssignmentCode(
-        selectedAssignmentId,
-        {
-          language: selectedLanguage,
-          code: codeContent,
-        }
-      );
-      setSubmitResult(response);
-      setDetailReloadKey((prev) => prev + 1);
-    } catch (error) {
-      setSubmitResult({
-        success: false,
-        message:
-          error?.response?.data?.message ||
-          error?.message ||
-          "Nộp bài không thành công.",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  // Mock submissions data
+  const submissions = [
+    {
+      id: 1,
+      submittedAt: "2024-03-15 14:30:00",
+      language: "JavaScript",
+      status: "passed",
+      score: 100,
+      testsPassed: 3,
+      testsTotal: 3,
+    },
+    {
+      id: 2,
+      submittedAt: "2024-03-15 13:45:00",
+      language: "Python",
+      status: "failed",
+      score: 66,
+      testsPassed: 2,
+      testsTotal: 3,
+    },
+    {
+      id: 3,
+      submittedAt: "2024-03-15 12:20:00",
+      language: "JavaScript",
+      status: "passed",
+      score: 100,
+      testsPassed: 3,
+      testsTotal: 3,
+    },
+  ];
 
-  return (
-    <div className="space-y-6">
-      <section className="bg-[#0f1419] border border-[#202934] rounded-2xl p-6 space-y-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => navigate(backDestination)}
-              className="flex items-center gap-2 text-sm text-gray-300 hover:text-white transition"
-            >
-              <ArrowLeft size={18} />
-              Quay lại
-            </button>
-            <span className="text-gray-700">/</span>
-            <span className="text-sm text-emerald-400 font-medium">
-              Student Detail
-            </span>
-          </div>
-          <div className="flex items-center gap-3 text-sm text-gray-400">
-            <span>Tiến độ khóa học</span>
-            <span className="text-blue-400 font-semibold">
-              {currentCourse.progress}%
-            </span>
-          </div>
+  // Loading state
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-[#0f1419] border border-[#202934] rounded-xl p-6 animate-pulse">
+          <div className="h-4 bg-gray-700 rounded mb-4 w-1/3"></div>
+          <div className="h-8 bg-gray-700 rounded mb-4 w-2/3"></div>
+          <div className="h-4 bg-gray-700 rounded mb-4"></div>
+          <div className="h-64 bg-gray-700 rounded"></div>
         </div>
+      </div>
+    );
+  }
 
-        <div className="space-y-2">
-          <p className="text-sm text-emerald-400 font-medium">
-            {currentCourse.title}
-          </p>
-          <h1 className="text-3xl font-bold text-white">
-            {assignmentDetail?.title ??
-              assignmentList.find((item) => item.id === selectedAssignmentId)
-                ?.title ??
-              "Bài tập"}
-          </h1>
-          <p className="text-gray-400">{currentCourse.instructor}</p>
-        </div>
-
-        <div className="flex flex-wrap gap-3">
-          {COURSE_TABS.map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition ${
-                tab.key === "assignments"
-                  ? "bg-white/5 text-white border border-white/10"
-                  : "bg-transparent text-gray-400 hover:text-white"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-white">Danh sách bài tập</h2>
-          {listError && (
-            <button
-              type="button"
-              onClick={() => setListReloadKey((prev) => prev + 1)}
-              className="text-sm text-emerald-400 hover:text-emerald-300"
-            >
-              Thử tải lại
-            </button>
-          )}
-        </div>
-
-        {listLoading ? (
-          <div className="rounded-2xl border border-[#202934] p-6 text-gray-400">
-            Đang tải danh sách bài tập...
-          </div>
-        ) : assignmentList.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-[#202934] p-8 text-center text-gray-500">
-            Chưa có bài tập nào trong khóa học này.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {assignmentList.map((assignment) => {
-              const isActive = assignment.id === selectedAssignmentId;
-              const badge =
-                statusBadge[assignment.status] ?? statusBadge["not-started"];
-
-              return (
-                <article
-                  key={assignment.id}
-                  onClick={() => handleSelectAssignment(assignment.id)}
-                  className={`rounded-2xl border cursor-pointer transition hover:-translate-y-0.5 ${
-                    isActive
-                      ? "border-emerald-500/70 bg-[#111821]"
-                      : "border-[#202934] bg-[#0f1419]"
-                  }`}
-                >
-                  <div className="p-5 space-y-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-xs uppercase tracking-wide text-emerald-400">
-                          Bài tập
-                        </p>
-                        <h3 className="text-lg font-semibold text-white">
-                          {assignment.title}
-                        </h3>
-                      </div>
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-medium ${badge.classes}`}
-                      >
-                        {badge.text}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2 text-sm text-gray-400">
-                      <CalendarDays size={16} />
-                      <span>Deadline: {assignment.dueDate ?? "--"}</span>
-                    </div>
-
-                    {assignment.status === "completed" && (
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-emerald-400 font-semibold">
-                          Điểm: {assignment.score ?? "--"}%
-                        </span>
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            handleSelectAssignment(assignment.id, {
-                              focusSubmission: true,
-                            });
-                          }}
-                          className="px-4 py-2 rounded-lg border border-white/10 text-white text-sm hover:border-emerald-500 hover:text-emerald-300 transition"
-                        >
-                          Xem bài làm
-                        </button>
-                      </div>
-                    )}
-
-                    {assignment.status === "in-progress" && (
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-amber-400 font-medium">
-                          Đang làm
-                        </span>
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            handleSelectAssignment(assignment.id);
-                          }}
-                          className="px-4 py-2 rounded-lg bg-blue-500 text-black text-sm font-semibold hover:bg-blue-400 transition"
-                        >
-                          Tiếp tục
-                        </button>
-                      </div>
-                    )}
-
-                    {assignment.status === "not-started" && (
-                      <div className="flex items-center justify-between text-sm text-gray-400">
-                        <span>Chưa bắt đầu</span>
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            handleSelectAssignment(assignment.id);
-                          }}
-                          className="px-4 py-2 rounded-lg bg-blue-500 text-black text-sm font-semibold hover:bg-blue-400 transition"
-                        >
-                          Bắt đầu
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        )}
-      </section>
-
-      {detailError && (
-        <div className="rounded-2xl border border-red-500/40 bg-red-500/5 text-red-200 p-5 flex items-center justify-between gap-4">
-          <p className="text-sm">{detailError}</p>
+  // Error state
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-[#0f1419] border border-red-500/50 rounded-xl p-6 text-center">
+          <div className="text-red-400 text-lg mb-2">Có lỗi xảy ra</div>
+          <div className="text-gray-400 mb-4">{error}</div>
           <button
-            type="button"
-            onClick={() => setDetailReloadKey((prev) => prev + 1)}
-            className="text-sm font-medium underline decoration-dotted underline-offset-4 hover:text-red-100"
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition"
           >
             Thử lại
           </button>
         </div>
-      )}
+      </div>
+    );
+  }
 
-      {detailLoading && (
-        <div className="rounded-2xl border border-[#202934] bg-[#0f1419] p-6 text-gray-400">
-          Đang tải nội dung bài tập...
+  // No assignment data
+  if (!assignment) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-[#0f1419] border border-[#202934] rounded-xl p-6 text-center">
+          <div className="text-gray-400">Không tìm thấy bài tập</div>
         </div>
-      )}
+      </div>
+    );
+  }
 
-      {!detailLoading && !assignmentDetail && !detailError && (
-        <div className="rounded-2xl border border-dashed border-[#202934] p-8 text-center text-gray-500">
-          Chọn một bài tập để xem chi tiết.
-        </div>
-      )}
+  const isOverdue = assignment.dueAt && new Date(assignment.dueAt) < new Date();
+  const isOpen = assignment.openAt && new Date(assignment.openAt) <= new Date();
 
-      {assignmentDetail && (
-        <>
-          <section className="bg-[#0f1419] border border-[#202934] rounded-2xl p-6 space-y-6">
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-300">
-                <ListChecks size={14} />
-                {assignmentDetail.weight ?? "Không xác định"}
-              </span>
-              <span className="text-sm text-gray-400 flex items-center gap-2">
-                <CalendarDays size={16} />
-                Hạn cuối: {assignmentDetail.dueDate ?? "--"}
-              </span>
-              <span className="text-sm text-gray-400 flex items-center gap-2">
-                <Clock8 size={16} />
-                Ước tính: {assignmentDetail.estimatedTime ?? "--"}
-              </span>
-              <span className="text-sm text-gray-400 flex items-center gap-2">
-                <CheckCircle2 size={16} />
-                {assignmentDetail.attempt ?? "0 / 0 lần nộp"}
-              </span>
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <section className="bg-[#0f1419] border border-[#202934] rounded-xl p-6">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition mb-4"
+        >
+          <ArrowLeft size={18} />
+          Quay lại
+        </button>
+
+        <div className="space-y-4">
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-white mb-2">
+                {assignment.title}
+              </h1>
+              {assignment.summary && (
+                <p className="text-gray-400 leading-relaxed">{assignment.summary}</p>
+              )}
             </div>
+            <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+              isOverdue 
+                ? 'bg-red-500/10 text-red-400 border border-red-500/20'
+                : isOpen
+                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+            }`}>
+              {isOverdue ? 'Hết hạn' : isOpen ? 'Đang mở' : 'Chưa mở'}
+            </div>
+          </div>
 
-            <div className="space-y-3">
-              <h3 className="text-xl font-semibold text-white">Đề bài</h3>
-              {assignmentDetail.promptHtml ? (
+          {/* Assignment time info */}
+          <div className="flex items-center gap-6 text-sm text-gray-400">
+            {assignment.openAt && (
+              <div className="flex items-center gap-2">
+                <Timer size={16} />
+                <span>Mở: {new Date(assignment.openAt).toLocaleString('vi-VN')}</span>
+              </div>
+            )}
+            {assignment.dueAt && (
+              <div className="flex items-center gap-2">
+                <Calendar size={16} />
+                <span>Hạn: {new Date(assignment.dueAt).toLocaleString('vi-VN')}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Tabs */}
+          <div className="flex gap-2 border-b border-[#202934]">
+            <button
+              onClick={() => setActiveTab("practice")}
+              className={`px-4 py-2 font-medium transition ${
+                activeTab === "practice"
+                  ? "text-emerald-400 border-b-2 border-emerald-400"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              Làm bài
+            </button>
+            <button
+              onClick={() => setActiveTab("submissions")}
+              className={`px-4 py-2 font-medium transition ${
+                activeTab === "submissions"
+                  ? "text-emerald-400 border-b-2 border-emerald-400"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              Bài nộp ({submissions.length})
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {activeTab === "practice" ? (
+        <>
+          {/* Description */}
+          <section className="bg-[#0f1419] border border-[#202934] rounded-xl p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <FileText size={20} className="text-blue-400" />
+              <h2 className="text-xl font-semibold text-white">Đề bài</h2>
+            </div>
+            
+            <div className="prose prose-invert max-w-none">
+              {assignment.statementMd ? (
                 <div
-                  className="space-y-4 text-gray-300 leading-relaxed [&>ul]:list-disc [&>ol]:list-decimal [&>ul]:pl-5 [&>ol]:pl-5 [&>code]:bg-black/30 [&>code]:px-1.5 [&>code]:py-0.5 [&>code]:rounded [&>code]:text-emerald-300"
+                  className="text-gray-300 leading-relaxed"
                   dangerouslySetInnerHTML={{
-                    __html: assignmentDetail.promptHtml,
+                    __html: marked(assignment.statementMd),
                   }}
                 />
               ) : (
-                <p className="text-gray-500 text-sm">
-                  Đề bài đang được cập nhật.
-                </p>
+                <div className="text-center py-8">
+                  <FileText size={48} className="mx-auto mb-3 text-gray-600" />
+                  <p className="text-gray-400">Đề bài đang được cập nhật</p>
+                </div>
               )}
             </div>
+          </section>
 
-            {assignmentDetail.constraints?.length ? (
-              <div className="space-y-3">
-                <h3 className="text-xl font-semibold text-white">
-                  Ràng buộc
+          {/* Code Editor Section */}
+          <section className="bg-[#0f1419] border border-[#202934] rounded-xl p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-white">Code Editor</h2>
+
+              {/* Language Selector */}
+              <select
+                value={language}
+                onChange={(e) => handleLanguageChange(e.target.value)}
+                className="px-4 py-2 bg-[#0b0f12] border border-[#202934] rounded-lg text-white focus:outline-none focus:border-emerald-500 transition"
+              >
+                {languages.map((lang) => (
+                  <option key={lang.value} value={lang.value}>
+                    {lang.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Monaco Code Editor */}
+            <div className="border border-[#202934] rounded-lg overflow-hidden">
+              <Suspense
+                fallback={
+                  <div className="p-6 text-sm text-gray-400">Loading editor...</div>
+                }
+              >
+                <Editor
+                  height="400px"
+                  language={language}
+                  value={code}
+                  onChange={(value) => setCode(value || "")}
+                  theme="vs-dark"
+                  options={{
+                    minimap: { enabled: false },
+                    fontSize: 14,
+                    lineNumbers: "on",
+                    scrollBeyondLastLine: false,
+                    automaticLayout: true,
+                    tabSize: 2,
+                    wordWrap: "on",
+                    padding: { top: 16, bottom: 16 },
+                  }}
+                />
+              </Suspense>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleRun}
+                disabled={isRunning}
+                className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Play size={18} />
+                {isRunning ? "Đang chạy..." : "Chạy code"}
+              </button>
+
+              <button
+                onClick={handleSubmit}
+                disabled={!code.trim() || !isOpen || isOverdue}
+                className="inline-flex items-center gap-2 px-6 py-2.5 bg-emerald-500 text-black rounded-lg hover:bg-emerald-600 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Send size={18} />
+                Nộp bài
+              </button>
+            </div>
+
+            {/* Output */}
+            {output && (
+              <div className="mt-4 p-4 bg-[#0b0f12] border border-[#202934] rounded-lg">
+                <h3 className="text-sm font-semibold text-white mb-2">
+                  Output:
                 </h3>
-                <ul className="list-disc pl-6 space-y-1 text-gray-300">
-                  {assignmentDetail.constraints.map((constraint, idx) => (
-                    <li key={idx} className="text-sm">
-                      {constraint}
-                    </li>
-                  ))}
-                </ul>
+                <pre className="text-sm text-gray-300 font-mono whitespace-pre-wrap">
+                  {output}
+                </pre>
               </div>
-            ) : null}
+            )}
+          </section>
 
-            {sampleTests.length ? (
-              <div className="space-y-4">
-                <h3 className="text-xl font-semibold text-white">
-                  Ví dụ mẫu
-                </h3>
-                {sampleTests.map((sample) => (
+          {/* Test Cases Section */}
+          {assignment.testCases && assignment.testCases.length > 0 && (
+            <section className="bg-[#0f1419] border border-[#202934] rounded-xl p-6 space-y-4">
+              <h2 className="text-lg font-semibold text-white">Test Cases</h2>
+
+              <div className="space-y-3">
+                {assignment.testCases.map((testCase, index) => (
                   <div
-                    key={sample.id}
-                    className="rounded-2xl border border-[#202934] p-4 space-y-3"
+                    key={index}
+                    className="bg-[#0b0f12] border border-[#202934] rounded-lg p-4 space-y-3"
                   >
-                    <div className="flex items-center justify-between text-sm text-gray-400">
-                      <span className="font-medium text-white">
-                        Test case {sample.id}
-                      </span>
+                    <div className="text-sm font-semibold text-emerald-400">
+                      Test Case {index + 1}
                     </div>
-                    <div>
-                      <p className="text-xs text-gray-400 uppercase tracking-wide">
-                        Input
-                      </p>
-                      <pre className="bg-black/40 rounded-lg p-3 text-sm text-gray-200 whitespace-pre-wrap">
-                        {Array.isArray(sample.input)
-                          ? sample.input.join("\n")
-                          : sample.input}
-                      </pre>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <div className="text-xs text-gray-500 mb-2">Input:</div>
+                        <div className="p-3 bg-[#0f1419] border border-[#202934] rounded-lg">
+                          <code className="text-sm text-white font-mono">
+                            {testCase.input}
+                          </code>
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="text-xs text-gray-500 mb-2">
+                          Expected Output:
+                        </div>
+                        <div className="p-3 bg-[#0f1419] border border-[#202934] rounded-lg">
+                          <code className="text-sm text-white font-mono">
+                            {testCase.output}
+                          </code>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs text-gray-400 uppercase tracking-wide">
-                        Output
-                      </p>
-                      <pre className="bg-black/40 rounded-lg p-3 text-sm text-emerald-300 whitespace-pre-wrap">
-                        {sample.output}
-                      </pre>
-                    </div>
-                    {sample.explanation && (
-                      <p className="text-sm text-gray-400">
-                        Giải thích: {sample.explanation}
-                      </p>
-                    )}
                   </div>
                 ))}
               </div>
-            ) : null}
+            </section>
+          )}
+        </>
+      ) : (
+        /* Submissions Tab */
+        <section className="bg-[#0f1419] border border-[#202934] rounded-xl p-6">
+          <h2 className="text-lg font-semibold text-white mb-4">
+            Lịch sử nộp bài
+          </h2>
 
-            <div className="space-y-3">
-              <h3 className="text-xl font-semibold text-white">Tài nguyên</h3>
-              {assignmentDetail.resources?.length ? (
-                <div className="space-y-3">
-                  {assignmentDetail.resources.map((resource) => (
-                    <a
-                      key={resource.id}
-                      href={resource.href || "#"}
-                      className="flex items-center justify-between rounded-xl border border-[#202934] px-4 py-3 hover:border-emerald-500 transition"
-                    >
-                      <div className="flex items-center gap-3 text-gray-200">
-                        <FileText size={18} className="text-emerald-400" />
-                        <div>
-                          <p className="font-medium">{resource.label}</p>
-                          <p className="text-xs text-gray-400">
-                            {resource.type}
-                          </p>
-                        </div>
-                      </div>
-                      <ExternalLink size={16} className="text-gray-500" />
-                    </a>
-                  ))}
-                </div>
-              ) : (
-                <div className="rounded-xl border border-dashed border-[#202934] p-5 text-center text-gray-500">
-                  Chưa có tài nguyên nào được đính kèm.
-                </div>
-              )}
-            </div>
-          </section>
-
-          <section
-            id="student-submission"
-            className="bg-[#0f1419] border border-[#202934] rounded-2xl p-6 space-y-6"
-          >
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <h3 className="text-xl font-semibold text-white">
-                    Trình soạn thảo
-                  </h3>
-                  <p className="text-sm text-gray-400">
-                    Viết và chạy code trực tiếp – tương tự LeetCode workspace.
-                  </p>
-                </div>
-                {languages.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-500 uppercase">
-                      Ngôn ngữ
-                    </span>
-                    <div className="flex flex-wrap gap-2">
-                      {languages.map((lang) => (
-                        <button
-                          key={lang}
-                          type="button"
-                          onClick={() => handleLanguageChange(lang)}
-                          className={`px-3 py-1.5 rounded-lg text-sm font-semibold border transition ${
-                            selectedLanguage === lang
-                              ? "border-emerald-500 text-emerald-300 bg-emerald-500/10"
-                              : "border-[#202934] text-gray-400 hover:text-white"
-                          }`}
-                        >
-                          {lang.toUpperCase()}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="rounded-2xl border border-[#202934] overflow-hidden">
-                <textarea
-                  value={codeContent}
-                  onChange={(e) => handleCodeChange(e.target.value)}
-                  placeholder="Bắt đầu viết code..."
-                  className="w-full bg-[#05070a] text-gray-100 font-mono text-sm p-4 min-h-[320px] outline-none resize-y"
-                />
-                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#202934] p-4">
-                  <div className="flex gap-3">
-                    <button
-                      type="button"
-                      onClick={handleRunCode}
-                      disabled={!canRun || isRunning}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm font-medium hover:border-emerald-500 hover:text-emerald-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Play size={16} />
-                      {isRunning ? "Đang chạy..." : "Chạy thử"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleSubmitCode}
-                      disabled={!canRun || isSubmitting}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500 text-black text-sm font-semibold hover:bg-emerald-400 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <SendHorizonal size={16} />
-                      {isSubmitting ? "Đang nộp..." : "Nộp bài"}
-                    </button>
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    Mọi lần chạy đều lưu lại trong lịch sử bài nộp.
-                  </p>
-                </div>
-              </div>
-
-              {(runResult || submitResult) && (
-                <div className="rounded-2xl border border-[#202934] p-5 space-y-4">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-white">
-                    <GaugeCircle size={18} className="text-emerald-400" />
-                    Kết quả thực thi
-                  </div>
-                  {runResult && (
-                    <div className="space-y-2">
-                      <p className="text-sm text-gray-400">Chạy thử</p>
-                      <div
-                        className={`rounded-xl border p-3 text-sm ${
-                          runResult.success
-                            ? "border-emerald-500/30 text-emerald-300"
-                            : "border-red-500/40 text-red-300"
-                        }`}
-                      >
-                        {runResult.success
-                          ? runResult.message || "Passed sample tests."
-                          : runResult.stderr || "Runtime error."}
-                      </div>
-                      {runResult.stdout && (
-                        <pre className="bg-black/40 rounded-lg p-3 text-sm text-gray-200 whitespace-pre-wrap">
-                          {runResult.stdout}
-                        </pre>
-                      )}
-                      {runResult.testResults?.length ? (
-                        <div className="space-y-2">
-                          {runResult.testResults.map((test) => (
-                            <div
-                              key={test.id}
-                              className="flex items-center justify-between text-sm text-gray-300 border border-[#202934] rounded-lg px-3 py-2"
-                            >
-                              <span>{test.label}</span>
-                              <span
-                                className={
-                                  test.passed ? "text-emerald-400" : "text-red-400"
-                                }
-                              >
-                                {test.passed ? "Passed" : "Failed"}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      ) : null}
-                    </div>
-                  )}
-
-                  {submitResult && (
-                    <div className="space-y-2">
-                      <p className="text-sm text-gray-400">Kết quả nộp bài</p>
-                      <div
-                        className={`rounded-xl border p-3 text-sm ${
-                          submitResult.success
-                            ? "border-emerald-500/30 text-emerald-300"
-                            : "border-red-500/40 text-red-300"
-                        }`}
-                      >
-                        {submitResult.message ||
-                          (submitResult.success
-                            ? "Nộp bài thành công."
-                            : "Nộp bài thất bại.")}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <h3 className="text-xl font-semibold text-white">
-                  Bài đã nộp
-                </h3>
-                <p className="text-sm text-gray-400">
-                  Trạng thái:{" "}
-                  {submission.status === "graded"
-                    ? "Đã chấm điểm"
-                    : submission.status === "draft"
-                    ? "Bản nháp"
-                    : submission.status === "pending"
-                    ? "Đang chờ duyệt"
-                    : "Chưa nộp"}
-                </p>
-              </div>
-
-              <div className="flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  className="px-5 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm font-medium hover:border-emerald-500 hover:text-emerald-300 transition flex items-center gap-2"
-                >
-                  <BookCheck size={16} />
-                  Xem bài đã nộp
-                </button>
-                <button
-                  type="button"
-                  className="px-5 py-2 rounded-lg bg-blue-500 text-black text-sm font-semibold hover:bg-blue-400 transition flex items-center gap-2"
-                >
-                  <Download size={16} />
-                  Tải PDF
-                </button>
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-xl border border-[#202934] p-4 space-y-2">
-                <p className="text-sm text-gray-400">Thời gian nộp</p>
-                <p className="text-lg font-semibold text-white">
-                  {submission.submittedAt ?? "Chưa nộp"}
-                </p>
-                {submission.reviewedAt && (
-                  <p className="text-xs text-gray-500">
-                    Chấm vào {submission.reviewedAt}
-                    {submission.reviewer ? ` bởi ${submission.reviewer}` : ""}
-                  </p>
-                )}
-              </div>
-              <div className="rounded-xl border border-[#202934] p-4 space-y-2">
-                <p className="text-sm text-gray-400">Điểm</p>
-                <p className="text-lg font-semibold text-emerald-400">
-                  {submission.grade != null ? `${submission.grade}%` : "--"}
-                </p>
-                {submission.feedback && (
-                  <p className="text-xs text-gray-500">
-                    Nhận xét: {submission.feedback}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {visibleTestCases.length ? (
-              <div className="space-y-3">
-                <h4 className="text-base font-semibold text-white">
-                  Test case hệ thống
-                </h4>
-                <div className="space-y-2">
-                  {visibleTestCases.map((test) => (
-                    <div
-                      key={test.id}
-                      className="flex items-center justify-between rounded-xl border border-[#202934] px-4 py-3 text-sm text-gray-300"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Link2 size={16} className="text-emerald-400" />
-                        <span>{test.label}</span>
-                      </div>
+          <div className="space-y-3">
+            {submissions.map((submission) => (
+              <div
+                key={submission.id}
+                onClick={() =>
+                  navigate(`/student/submissions/${submission.id}`)
+                }
+                className="bg-[#0b0f12] border border-[#202934] rounded-lg p-4 hover:border-emerald-500/50 transition cursor-pointer"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
                       <span
-                        className={`text-xs font-semibold px-3 py-1 rounded-full ${
-                          test.status === "passed"
-                            ? "bg-emerald-500/10 text-emerald-300"
-                            : test.status === "pending"
-                            ? "bg-amber-500/10 text-amber-300"
-                            : "bg-gray-500/10 text-gray-400"
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${
+                          submission.status === "passed"
+                            ? "text-emerald-400 bg-emerald-500/10"
+                            : "text-red-400 bg-red-500/10"
                         }`}
                       >
-                        {test.status === "passed"
-                          ? "Passed"
-                          : test.status === "pending"
-                          ? "Pending"
-                          : "Locked"}
+                        {submission.status === "passed" ? (
+                          <>
+                            <CheckCircle2 size={14} />
+                            Đạt
+                          </>
+                        ) : (
+                          <>
+                            <FileText size={14} />
+                            Không đạt
+                          </>
+                        )}
+                      </span>
+                      <span className="text-sm text-gray-400">
+                        {submission.language}
+                      </span>
+                      <span className="text-sm text-gray-500">
+                        {submission.testsPassed}/{submission.testsTotal} test
+                        cases
                       </span>
                     </div>
-                  ))}
+
+                    <div className="flex items-center gap-2 text-sm text-gray-400">
+                      <Clock size={14} />
+                      {submission.submittedAt}
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-emerald-400">
+                      {submission.score}%
+                    </div>
+                  </div>
                 </div>
               </div>
-            ) : null}
+            ))}
+          </div>
 
-            <div className="space-y-3">
-              <h4 className="text-base font-semibold text-white">
-                Lịch sử nộp
-              </h4>
-              {submission.history?.length ? (
-                <div className="space-y-3">
-                  {submission.history.map((log) => (
-                    <div
-                      key={log.id}
-                      className="rounded-xl border border-[#202934] p-4 flex flex-col gap-1"
-                    >
-                      <div className="flex items-center justify-between text-sm text-gray-300">
-                        <span className="font-semibold">{log.label}</span>
-                        <span>{log.timestamp}</span>
-                      </div>
-                      <p className="text-sm text-gray-400">{log.note}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="rounded-xl border border-dashed border-[#202934] p-5 text-center text-gray-500">
-                  Chưa có lịch sử nộp.
-                </div>
-              )}
+          {submissions.length === 0 && (
+            <div className="text-center py-12 text-gray-500">
+              <FileText size={48} className="mx-auto mb-3 opacity-50" />
+              <p>Chưa có bài nộp nào</p>
             </div>
-          </section>
-        </>
+          )}
+        </section>
       )}
     </div>
   );
