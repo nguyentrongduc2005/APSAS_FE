@@ -124,22 +124,89 @@ const adminContentService = {
   },
 
   /**
-   * Get detailed information of a specific tutorial for review
+   * Get detailed information of a specific tutorial for review (includes items)
    * GET /api/admin/tutorials/{tutorialId}
    * Required permission: MANAGE_TUTORIALS
+   * Response includes items array (contents + assignments sorted by orderNo)
    * @param {number} tutorialId - The ID of the tutorial
    * @returns {Promise<{code: string, message: string, data: Object}>}
+   * @returns {Object} data - Tutorial detail with items array
    */
   async getTutorialById(tutorialId) {
     try {
       const response = await api.get(`/admin/tutorials/${tutorialId}`);
       const responseCode = (response.data?.code || "").toUpperCase();
-      if (responseCode === "OK" || responseCode === "200") {
+      if (responseCode === "OK" || responseCode === "200" || response.data?.code === "ok") {
         return response.data;
       }
       throw new Error(response.data?.message || "Failed to fetch tutorial detail");
     } catch (error) {
       console.error("Error fetching tutorial detail:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get detailed information of a specific tutorial with items (contents + assignments)
+   * GET /api/admin/tutorials/{tutorialId}/detail
+   * Required permission: MANAGE_TUTORIALS
+   * Alternative endpoint that also returns items
+   * @param {number} tutorialId - The ID of the tutorial
+   * @returns {Promise<{code: string, message: string, data: Object}>}
+   * @returns {Object} data - Tutorial detail with items array (sorted by orderNo)
+   */
+  async getTutorialDetailById(tutorialId) {
+    try {
+      const response = await api.get(`/admin/tutorials/${tutorialId}/detail`);
+      const responseCode = (response.data?.code || "").toUpperCase();
+      if (responseCode === "OK" || responseCode === "200" || response.data?.code === "ok") {
+        return response.data;
+      }
+      throw new Error(response.data?.message || "Failed to fetch tutorial detail");
+    } catch (error) {
+      console.error("Error fetching tutorial detail with items:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get detailed information of a specific content
+   * GET /api/tutorials/contents/{contentId}
+   * Required permission: RESOURCE_READ
+   * @param {number} contentId - The ID of the content
+   * @returns {Promise<{code: string, message: string, data: Object}>}
+   */
+  async getContentById(contentId) {
+    try {
+      const response = await api.get(`/tutorials/contents/${contentId}`);
+      const responseCode = (response.data?.code || "").toUpperCase();
+      if (responseCode === "OK" || responseCode === "200" || response.data?.code === "ok") {
+        return response.data;
+      }
+      throw new Error(response.data?.message || "Failed to fetch content detail");
+    } catch (error) {
+      console.error("Error fetching content detail:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get detailed information of a specific assignment
+   * GET /api/tutorials/assignments/{assignmentId}
+   * Required permission: RESOURCE_READ or VIEW_OWN_TUTORIALS
+   * @param {number} assignmentId - The ID of the assignment
+   * @returns {Promise<{code: string, message: string, data: Object}>}
+   */
+  async getAssignmentById(assignmentId) {
+    try {
+      const response = await api.get(`/tutorials/assignments/${assignmentId}`);
+      const responseCode = (response.data?.code || "").toUpperCase();
+      if (responseCode === "OK" || responseCode === "200" || response.data?.code === "ok") {
+        return response.data;
+      }
+      throw new Error(response.data?.message || "Failed to fetch assignment detail");
+    } catch (error) {
+      console.error("Error fetching assignment detail:", error);
       throw error;
     }
   },
@@ -208,13 +275,19 @@ const adminContentService = {
       }
 
       const payload = {
-        status: upperStatus, // PUBLISHED or REJECTED
+        status: upperStatus, // PUBLISHED or REJECTED (uppercase)
       };
       
       // reviewNote is optional
       if (reviewNote && reviewNote.trim()) {
         payload.reviewNote = reviewNote.trim();
       }
+      
+      console.log("🔵 Review tutorial request:", {
+        tutorialId,
+        payload,
+        endpoint: `/admin/tutorials/${tutorialId}/review`
+      });
       
       const response = await api.put(`/admin/tutorials/${tutorialId}/review`, payload);
       
@@ -241,17 +314,32 @@ const adminContentService = {
         const statusCode = error.response.status;
         const responseData = error.response.data || {};
         const backendMessage = responseData.message || responseData.error || "";
+        const errorCode = responseData.code || "";
         
         console.error("API Error Response:", {
           status: statusCode,
+          code: errorCode,
           data: responseData,
-          message: backendMessage
+          message: backendMessage,
+          payload: { status: upperStatus, reviewNote }
         });
         
         if (statusCode === 400) {
-          if (backendMessage.includes("PENDING") || backendMessage.includes("status") || backendMessage.includes("Status")) {
-            throw new Error("Chỉ có thể review tutorial ở trạng thái PENDING. Tutorial này đã được review trước đó.");
+          // Backend trả về error code E4000 với message chi tiết
+          if (errorCode === "E4000" || backendMessage.includes("E4000")) {
+            // Backend message đã rõ ràng, dùng trực tiếp
+            throw new Error(backendMessage || "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại.");
           }
+          
+          // Check for specific validation errors
+          if (backendMessage.includes("PENDING") || backendMessage.includes("status") || backendMessage.includes("Status")) {
+            throw new Error(backendMessage || "Chỉ có thể review tutorial ở trạng thái PENDING. Tutorial này đã được review trước đó.");
+          }
+          
+          if (backendMessage.includes("PUBLISHED") || backendMessage.includes("REJECTED")) {
+            throw new Error(backendMessage || "Status phải là PUBLISHED hoặc REJECTED.");
+          }
+          
           throw new Error(backendMessage || "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại.");
         }
         
@@ -264,7 +352,6 @@ const adminContentService = {
         }
         
         if (statusCode === 500) {
-          // Backend đã sửa LazyInitializationException, nhưng vẫn handle 500 để user biết
           throw new Error(backendMessage || "Lỗi server. Vui lòng thử lại sau hoặc liên hệ quản trị viên.");
         }
         
@@ -328,22 +415,40 @@ const adminContentService = {
 
   // Legacy methods for backward compatibility with ContentApprovals page
   async getContents(params = {}) {
-    // If status is specified and not "pending", use getTutorials with status filter
-    if (params.status && params.status.toLowerCase() !== "pending") {
+    const statusLower = (params.status || "").toLowerCase();
+    
+    // Map frontend status to backend status
+    let backendStatus = null;
+    if (statusLower === "pending") {
+      // Use pending API
+      return this.getPendingTutorials({
+        page: params.page || 0,
+        size: params.size || 10,
+        keyword: params.keyword,
+        sortBy: params.sortBy || "createdAt",
+        sortDirection: params.sortDirection || "DESC",
+      });
+    } else if (statusLower === "approved" || statusLower === "published") {
+      backendStatus = "PUBLISHED";
+    } else if (statusLower === "rejected") {
+      backendStatus = "REJECTED";
+    }
+    
+    // Use getTutorials with status filter for non-pending statuses
+    if (backendStatus) {
       return this.getTutorials({
         page: params.page || 0,
         size: params.size || 10,
-        status: params.status.toUpperCase(),
+        status: backendStatus,
         search: params.keyword,
       });
     }
-    // Default to pending tutorials with sorting support
-    return this.getPendingTutorials({
+    
+    // Default: get all tutorials (no status filter)
+    return this.getTutorials({
       page: params.page || 0,
       size: params.size || 10,
-      keyword: params.keyword,
-      sortBy: params.sortBy || "createdAt",
-      sortDirection: params.sortDirection || "DESC",
+      search: params.keyword,
     });
   },
 

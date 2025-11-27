@@ -58,15 +58,23 @@ export default function ContentApprovals() {
         }
         
         // Map API response to expected format
-        const mappedContents = contentList.map(tutorial => ({
-          id: tutorial.id,
-          title: tutorial.title || "Untitled",
-          type: tutorial.type || "UNKNOWN",
-          author: tutorial.author?.fullname || tutorial.author?.username || "Unknown",
-          submittedAt: tutorial.createdAt ? new Date(tutorial.createdAt).toLocaleDateString('vi-VN') : "N/A",
-          status: tutorial.status?.toLowerCase() || "pending",
-          note: tutorial.note || "",
-        }));
+        const mappedContents = contentList.map(tutorial => {
+          // Normalize status: PENDING -> pending, PUBLISHED -> approved, REJECTED -> rejected
+          let normalizedStatus = (tutorial.status || "").toLowerCase();
+          if (normalizedStatus === "published") {
+            normalizedStatus = "approved";
+          }
+          
+          return {
+            id: tutorial.id,
+            title: tutorial.title || "Untitled",
+            type: tutorial.type || "UNKNOWN",
+            author: tutorial.author?.fullname || tutorial.author?.username || tutorial.createdBy || "Unknown",
+            submittedAt: tutorial.createdAt ? new Date(tutorial.createdAt).toLocaleDateString('vi-VN') : "N/A",
+            status: normalizedStatus || "pending",
+            note: tutorial.note || tutorial.reviewNote || "",
+          };
+        });
         setContents(mappedContents);
       } else {
         setContents([]);
@@ -102,8 +110,9 @@ export default function ContentApprovals() {
     try {
       // Validate tutorial status before review
       if (modal.data && modal.data.status) {
-        const currentStatus = (modal.data.status || "").toUpperCase();
-        if (currentStatus !== "PENDING" && currentStatus !== "pending") {
+        const currentStatus = (modal.data.status || "").toLowerCase();
+        // Only allow review if status is pending
+        if (currentStatus !== "pending") {
           alert(`Không thể review tutorial này. Trạng thái hiện tại: ${modal.data.status}. Chỉ có thể review tutorial ở trạng thái PENDING.`);
           return;
         }
@@ -142,8 +151,17 @@ export default function ContentApprovals() {
       }
     } catch (error) {
       console.error("Error deciding content:", error);
-      // Show user-friendly error message
-      const errorMessage = error.message || "Thao tác thất bại. Vui lòng thử lại.";
+      console.error("Error details:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      
+      // Show user-friendly error message from backend
+      const errorMessage = error.message || 
+        error.response?.data?.message || 
+        "Thao tác thất bại. Vui lòng thử lại.";
+      
       alert(errorMessage);
     }
   };
