@@ -95,7 +95,18 @@ function ResourceModeration() {
       fetchResources(pagination.page);
     } catch (error) {
       console.error("Error performing action:", error);
-      alert(error.message || "Thao tác thất bại");
+      console.error("Error details:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      
+      // Show user-friendly error message from backend
+      const errorMessage = error.message || 
+        error.response?.data?.message || 
+        "Thao tác thất bại. Vui lòng thử lại.";
+      
+      alert(errorMessage);
     }
   };
 
