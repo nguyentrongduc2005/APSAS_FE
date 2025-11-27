@@ -7,6 +7,7 @@ const AuthContext = createContext(null);
 const TOKEN_KEY = "token";
 const REFRESH_KEY = "refreshToken";
 const USER_KEY = "user";
+const AVATAR_KEY = "user_avatar";
 
 // Chuẩn hóa role từ backend (ADMIN, STUDENT, PROVIDER, LECTURER) -> FE (admin, student,...)
 function normalizeRoleName(roleStr) {
@@ -89,6 +90,8 @@ export default function AuthProvider({ children }) {
     setHasInitialized(false);
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(REFRESH_KEY);
+    // Keep avatar cached across logout/login so user custom avatar persists on this device.
+    // Remove the full user object but keep separate avatar cache.
     localStorage.removeItem(USER_KEY);
   };
 
@@ -179,14 +182,25 @@ export default function AuthProvider({ children }) {
     const res = await authService.login({ email, password });
     const normalizedUser = normalizeUserFromApi(res.user, res.accessToken);
 
+    // If backend login response does not include avatar, try to preserve a locally cached avatar
+    let finalUser = normalizedUser ? { ...normalizedUser } : {};
+    try {
+      const cachedAvatar = localStorage.getItem(AVATAR_KEY);
+      if ((!finalUser.avatar || finalUser.avatar === null) && cachedAvatar) {
+        finalUser.avatar = cachedAvatar;
+      }
+    } catch (e) {
+      console.warn("Failed to read cached avatar:", e);
+    }
+
     setToken(res.accessToken);
-    setUser(normalizedUser);
+    setUser(finalUser);
 
     localStorage.setItem(TOKEN_KEY, res.accessToken);
     if (res.refreshToken) {
       localStorage.setItem(REFRESH_KEY, res.refreshToken);
     }
-    localStorage.setItem(USER_KEY, JSON.stringify(normalizedUser));
+    localStorage.setItem(USER_KEY, JSON.stringify(finalUser));
 
     return normalizedUser;
   };
@@ -231,7 +245,16 @@ export default function AuthProvider({ children }) {
     }
     
     if (newUser) {
-      const normalizedUser = normalizeUserFromApi(newUser, newAccessToken);
+      let normalizedUser = normalizeUserFromApi(newUser, newAccessToken);
+      // Merge cached avatar if backend didn't return one
+      try {
+        const cachedAvatar = localStorage.getItem(AVATAR_KEY);
+        if (cachedAvatar && (!normalizedUser.avatar || normalizedUser.avatar === null)) {
+          normalizedUser = { ...(normalizedUser || {}), avatar: cachedAvatar };
+        }
+      } catch {
+        /* ignore */
+      }
       setUser(normalizedUser);
       localStorage.setItem(USER_KEY, JSON.stringify(normalizedUser));
       console.log("✅ User updated in AuthContext:", normalizedUser);
@@ -268,6 +291,13 @@ export default function AuthProvider({ children }) {
         const next = Object.assign({}, prev || {}, patch || {});
         try {
           localStorage.setItem(USER_KEY, JSON.stringify(next));
+          if (patch && patch.avatar) {
+            try {
+              localStorage.setItem(AVATAR_KEY, patch.avatar);
+            } catch {
+              /* ignore */
+            }
+          }
         } catch (e) {
           console.error("Không thể lưu user vào localStorage:", e);
         }
