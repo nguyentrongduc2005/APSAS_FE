@@ -2,6 +2,8 @@ import { Edit } from "lucide-react";
 import StatsCard from "./StatsCard";
 
 export default function ProfileHeader({ user, stats, onEditClick }) {
+  const avgRaw = stats?.completionRate ?? stats?.averageScore ?? 0;
+  const avgDisplay = `${Math.round(Number(avgRaw) || 0)}%`;
   return (
     <div className="bg-[#0f1419] border border-[#202934] rounded-xl p-6">
       <div className="flex items-start justify-between mb-6">
@@ -51,7 +53,7 @@ export default function ProfileHeader({ user, stats, onEditClick }) {
         />
         <StatsCard value={stats.completed} label="Hoàn thành" color="emerald" />
         <StatsCard
-          value={`${stats.completionRate}%`}
+          value={avgDisplay}
           label="Điểm trung bình"
           color="blue"
         />

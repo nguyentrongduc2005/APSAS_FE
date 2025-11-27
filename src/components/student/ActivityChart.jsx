@@ -10,24 +10,39 @@ export default function ActivityChart({ data, onDateRangeChange }) {
     { value: "90days", label: "90 ngày" },
   ];
 
-  const maxActivity = Math.max(...data.map((d) => d.value), 100); // Đảm bảo scale tối đa là 100
+  // Ensure data is an array of numeric values
+  const safeData = Array.isArray(data) ? data.map((d) => ({
+    day: d?.day ?? d?.date ?? "",
+    value: Number(d?.value ?? d?.score ?? 0) || 0,
+  })) : [];
 
-  // Calculate linear regression for trend line
+  const len = safeData.length;
+  const maxActivity = Math.max(...safeData.map((d) => d.value), 100); // Đảm bảo scale tối đa là 100
+
+  // Calculate linear regression for trend line (guard for n < 2)
   const calculateTrendLine = () => {
-    const n = data.length;
+    const n = len;
+    if (n < 2) {
+      const avg = n === 1 ? safeData[0].value : 0;
+      return { slope: 0, intercept: avg };
+    }
+
     let sumX = 0,
       sumY = 0,
       sumXY = 0,
       sumX2 = 0;
 
-    data.forEach((item, index) => {
+    safeData.forEach((item, index) => {
       sumX += index;
       sumY += item.value;
       sumXY += index * item.value;
       sumX2 += index * index;
     });
 
-    const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+    const denom = n * sumX2 - sumX * sumX;
+    if (denom === 0) return { slope: 0, intercept: sumY / n };
+
+    const slope = (n * sumXY - sumX * sumY) / denom;
     const intercept = (sumY - slope * sumX) / n;
 
     return { slope, intercept };
@@ -125,30 +140,32 @@ export default function ActivityChart({ data, onDateRangeChange }) {
           </defs>
 
           {/* Area Fill */}
+          {/* Area path: handle empty and single-point safely */}
           <path
-            d={`
-              M ${data
-                .map((item, index) => {
-                  const x = (index / (data.length - 1)) * 100;
-                  const y = 100 - (item.value / maxActivity) * 80 - 10;
-                  return `${x},${y}`;
-                })
-                .join(" L ")}
-              L 100,100 L 0,100 Z
-            `}
+            d={(() => {
+              if (len === 0) return "M 0,100 L 100,100 L 100,100 L 0,100 Z";
+              if (len === 1) {
+                const x = 50;
+                const y = 100 - (safeData[0].value / maxActivity) * 80 - 10;
+                return `M ${x},${y} L ${x},${y} L ${x},100 L 0,100 Z`;
+              }
+              const points = safeData.map((item, index) => {
+                const x = (index / (len - 1)) * 100;
+                const y = 100 - (item.value / maxActivity) * 80 - 10;
+                return `${x},${y}`;
+              });
+              return `M ${points.join(" L ")} L 100,100 L 0,100 Z`;
+            })()}
             fill="url(#areaGradient)"
           />
 
           {/* Trend Line (Linear Regression) */}
+          {/* Trend line - safe coords */}
           <line
             x1="0"
             y1={100 - (intercept / maxActivity) * 80 - 10}
             x2="100"
-            y2={
-              100 -
-              ((slope * (data.length - 1) + intercept) / maxActivity) * 80 -
-              10
-            }
+            y2={100 - ((slope * (len - 1) + intercept) / maxActivity) * 80 - 10}
             stroke="url(#trendGradient)"
             strokeWidth="0.5"
             strokeDasharray="2 1"
@@ -158,13 +175,21 @@ export default function ActivityChart({ data, onDateRangeChange }) {
 
           {/* Line */}
           <polyline
-            points={data
-              .map((item, index) => {
-                const x = (index / (data.length - 1)) * 100;
-                const y = 100 - (item.value / maxActivity) * 80 - 10;
+            points={(() => {
+              if (len === 0) return "0,100 100,100";
+              if (len === 1) {
+                const x = 50;
+                const y = 100 - (safeData[0].value / maxActivity) * 80 - 10;
                 return `${x},${y}`;
-              })
-              .join(" ")}
+              }
+              return safeData
+                .map((item, index) => {
+                  const x = (index / (len - 1)) * 100;
+                  const y = 100 - (item.value / maxActivity) * 80 - 10;
+                  return `${x},${y}`;
+                })
+                .join(" ");
+            })()}
             fill="none"
             stroke="url(#lineGradient)"
             strokeWidth="0.8"
@@ -174,38 +199,59 @@ export default function ActivityChart({ data, onDateRangeChange }) {
           />
 
           {/* Data Points */}
-          {data.map((item, index) => {
-            const x = (index / (data.length - 1)) * 100;
-            const y = 100 - (item.value / maxActivity) * 80 - 10;
-            return (
-              <g key={index}>
-                <circle
-                  cx={x}
-                  cy={y}
-                  r="1.2"
-                  fill="#3b82f6"
-                  stroke="#0f1419"
-                  strokeWidth="0.5"
-                  className="cursor-pointer transition-all hover:r-2"
-                  vectorEffect="non-scaling-stroke"
-                />
-                <circle
-                  cx={x}
-                  cy={y}
-                  r="2.5"
-                  fill="transparent"
-                  className="cursor-pointer"
-                >
-                  <title>{`${item.day}: ${item.value} điểm`}</title>
-                </circle>
-              </g>
-            );
-          })}
+          {(() => {
+            if (len === 0) return null;
+            if (len === 1) {
+              const x = 50;
+              const y = 100 - (safeData[0].value / maxActivity) * 80 - 10;
+              return (
+                <g>
+                  <circle
+                    cx={x}
+                    cy={y}
+                    r="2"
+                    fill="#3b82f6"
+                    stroke="#0f1419"
+                    strokeWidth="0.5"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                  <title>{`${safeData[0].day}: ${safeData[0].value} điểm`}</title>
+                </g>
+              );
+            }
+            return safeData.map((item, index) => {
+              const x = (index / (len - 1)) * 100;
+              const y = 100 - (item.value / maxActivity) * 80 - 10;
+              return (
+                <g key={index}>
+                  <circle
+                    cx={x}
+                    cy={y}
+                    r="1.2"
+                    fill="#3b82f6"
+                    stroke="#0f1419"
+                    strokeWidth="0.5"
+                    className="cursor-pointer transition-all hover:r-2"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                  <circle
+                    cx={x}
+                    cy={y}
+                    r="2.5"
+                    fill="transparent"
+                    className="cursor-pointer"
+                  >
+                    <title>{`${item.day}: ${item.value} điểm`}</title>
+                  </circle>
+                </g>
+              );
+            });
+          })()}
         </svg>
 
         {/* X-axis Labels */}
         <div className="flex justify-between mt-4 px-2">
-          {data.map((item, index) => (
+          {safeData.map((item, index) => (
             <div key={index} className="text-gray-400 text-xs text-center">
               {item.day}
             </div>

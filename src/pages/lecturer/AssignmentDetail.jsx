@@ -16,7 +16,8 @@ import {
 } from "lucide-react";
 import { marked } from "marked";
 import  lecturerService  from "../../services/lecturerService";
-  import { useToast } from '../../hooks/useToast';
+import { getStudentsSubmissions, getTeacherSubmissionDetail } from "../../services/submissionService";
+import { useToast } from '../../hooks/useToast';
 
 // Configure marked options for better code highlighting
 marked.setOptions({
@@ -38,6 +39,16 @@ export default function LecturerAssignmentDetail() {
   const [error, setError] = useState(null);
 
   const [viewMode, setViewMode] = useState("detail"); // "detail" or "students"
+  
+  // Students submissions state
+  const [studentsSubmissions, setStudentsSubmissions] = useState([]);
+  const [studentsLoading, setStudentsLoading] = useState(false);
+  const [selectedSubmission, setSelectedSubmission] = useState(null);
+  const [submissionDetailLoading, setSubmissionDetailLoading] = useState(false);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
   
   const [deadlineModal, setDeadlineModal] = useState({
     open: false,
@@ -160,6 +171,56 @@ export default function LecturerAssignmentDetail() {
       showToast(error.message || 'Có lỗi xảy ra khi cập nhật thời gian', 'error');
     } finally {
       setDeadlineModal(prev => ({ ...prev, saving: false }));
+    };
+  };
+
+  // Load students submissions
+  const loadStudentsSubmissions = async () => {
+    try {
+      setStudentsLoading(true);
+      const response = await getStudentsSubmissions(courseId, assignmentId);
+      
+      if (response && (response.code === "ok" || response.code === "0" || response.code === "OK")) {
+        // API trả về pagination format: { content: [...], empty: false, ... }
+        const submissions = response.data?.content || response.content || [];
+        
+        // Add submission ID to each submission (use attemptNo as ID if no id field exists)
+        const processedSubmissions = submissions.map(submission => ({
+          ...submission,
+          submissionId: submission.id || submission.attemptNo // Use id field or fallback to attemptNo
+        }));
+        
+        setStudentsSubmissions(processedSubmissions);
+        console.log('Loaded students submissions:', processedSubmissions);
+      } else {
+        showToast('Không thể tải danh sách sinh viên', 'error');
+        setStudentsSubmissions([]);
+      }
+    } catch (error) {
+      console.error("Error loading students submissions:", error);
+      showToast('Không thể tải danh sách sinh viên', 'error');
+      setStudentsSubmissions([]);
+    } finally {
+      setStudentsLoading(false);
+    }
+  };
+
+  // Load submission detail
+  const loadSubmissionDetail = async (submissionId) => {
+    try {
+      setSubmissionDetailLoading(true);
+      const response = await getTeacherSubmissionDetail(submissionId);
+      
+      if (response && (response.code === "ok" || response.code === "0" || response.code === "OK")) {
+        setSelectedSubmission(response.data);
+      } else {
+        throw new Error(response?.message || "Không thể tải chi tiết submission");
+      }
+    } catch (error) {
+      console.error("Error loading submission detail:", error);
+      showToast(error.message || 'Không thể tải chi tiết bài nộp', 'error');
+    } finally {
+      setSubmissionDetailLoading(false);
     }
   };
 
@@ -250,7 +311,12 @@ export default function LecturerAssignmentDetail() {
           </button>
           
           <button
-            onClick={() => setViewMode("students")}
+            onClick={() => {
+              setViewMode("students");
+              if (studentsSubmissions.length === 0 && !studentsLoading) {
+                loadStudentsSubmissions();
+              }
+            }}
             className={`flex items-center gap-2 px-4 py-3 font-medium transition relative ${
               viewMode === "students"
                 ? "text-emerald-400"
@@ -363,14 +429,240 @@ export default function LecturerAssignmentDetail() {
         )}
         
         {viewMode === "students" && (
-          <section className="bg-[#0f1419] border border-[#202934] rounded-2xl p-6">
-            <div className="text-center py-12">
-              <CheckCircle2 size={48} className="mx-auto mb-4 text-gray-600" />
-              <p className="text-gray-400">
-                Tính năng quản lý sinh viên đang được phát triển
-              </p>
-            </div>
-          </section>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Students List */}
+            <section className="bg-[#0f1419] border border-[#202934] rounded-2xl p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">Danh sách sinh viên đã nộp bài</h3>
+              
+              {studentsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-gray-400">Đang tải...</div>
+                </div>
+              ) : studentsSubmissions.length > 0 ? (
+                <div className="space-y-4">
+                  <div className="space-y-3">
+                    {studentsSubmissions
+                      .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                      .map((student, index) => (
+                    <div
+                      key={student.studentId || index}
+                      className="bg-[#0b0f12] border border-[#202934] rounded-lg p-4 hover:border-emerald-500/50 transition cursor-pointer"
+                      onClick={() => {
+                        // Load submission detail using submission ID
+                        console.log('Loading submission:', student.submissionId, 'for student:', student.studentName);
+                        loadSubmissionDetail(student.submissionId);
+                      }}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h4 className="font-medium text-white">{student.studentName}</h4>
+                            <span
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium min-w-20 justify-center ${
+                                student.passed
+                                  ? "text-emerald-400 bg-emerald-500/10"
+                                  : "text-red-400 bg-red-500/10"
+                              }`}
+                            >
+                              {student.passed ? (
+                                <><CheckCircle2 size={12} /> Đạt</>
+                              ) : (
+                                <><X size={12} /> Không đạt</>
+                              )}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-400 mb-1">{student.studentEmail}</p>
+                          <div className="flex items-center gap-4 text-sm text-gray-400">
+                            <span>Lần nộp {student.attemptNo}</span>
+                            {student.submittedAt && (
+                              <span>
+                                {new Date(student.submittedAt).toLocaleDateString('vi-VN', {
+                                  year: 'numeric',
+                                  month: '2-digit',
+                                  day: '2-digit',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xl font-bold text-emerald-400">
+                            {student.score || 0}
+                          </div>
+                          <div className="text-xs text-gray-400">Score</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  </div>
+                  
+                  {/* Pagination */}
+                  {studentsSubmissions.length > itemsPerPage && (
+                    <div className="flex items-center justify-between pt-4 border-t border-[#202934]">
+                      <div className="text-sm text-gray-400">
+                        Hiển thị {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, studentsSubmissions.length)} trong {studentsSubmissions.length} bài nộp
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                          disabled={currentPage === 1}
+                          className="px-3 py-1 text-sm rounded border border-[#202934] text-gray-300 hover:text-white hover:border-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Trước
+                        </button>
+                        <span className="px-3 py-1 text-sm text-gray-300">
+                          Trang {currentPage} / {Math.ceil(studentsSubmissions.length / itemsPerPage)}
+                        </span>
+                        <button
+                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(studentsSubmissions.length / itemsPerPage)))}
+                          disabled={currentPage === Math.ceil(studentsSubmissions.length / itemsPerPage)}
+                          className="px-3 py-1 text-sm rounded border border-[#202934] text-gray-300 hover:text-white hover:border-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Sau
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-gray-400">
+                  <CheckCircle2 size={48} className="mx-auto mb-3 opacity-50" />
+                  <p>Chưa có sinh viên nào nộp bài</p>
+                </div>
+              )}
+            </section>
+
+            {/* Submission Detail */}
+            <section className="bg-[#0f1419] border border-[#202934] rounded-2xl p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">Chi tiết bài nộp</h3>
+              
+              {submissionDetailLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-gray-400">Đang tải...</div>
+                </div>
+              ) : selectedSubmission ? (
+                <div className="space-y-6">
+                  {/* Submission Header */}
+                  <div className="bg-[#0b0f12] border border-[#202934] rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        {selectedSubmission.passed ? (
+                          <CheckCircle2 size={20} className="text-emerald-400" />
+                        ) : (
+                          <X size={20} className="text-red-400" />
+                        )}
+                        <h4 className="text-lg font-semibold text-white">
+                          {selectedSubmission.passed ? "Đạt" : "Không đạt"}
+                        </h4>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xl font-bold text-emerald-400">
+                          {selectedSubmission.score}/100
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-400">Ngôn ngữ:</span>
+                        <span className="text-white ml-2">{selectedSubmission.language}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-400">Lần nộp:</span>
+                        <span className="text-white ml-2">#{selectedSubmission.attemptNo}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Code */}
+                  {selectedSubmission.code && (
+                    <div>
+                      <h5 className="font-semibold text-white mb-3">Code</h5>
+                      <div className="bg-[#0b0f12] border border-[#202934] rounded-lg p-4">
+                        <pre className="text-sm text-gray-300 font-mono whitespace-pre-wrap overflow-x-auto">
+                          {selectedSubmission.code}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Test Cases */}
+                  {selectedSubmission.testCases && selectedSubmission.testCases.length > 0 && (
+                    <div>
+                      <h5 className="font-semibold text-white mb-3">Test Cases</h5>
+                      <div className="space-y-3 max-h-96 overflow-y-auto">
+                        {selectedSubmission.testCases.map((testCase, index) => (
+                          <div
+                            key={index}
+                            className={`border rounded-lg p-3 ${
+                              testCase.status === "Accepted"
+                                ? "border-emerald-500/30 bg-emerald-500/5"
+                                : "border-red-500/30 bg-red-500/5"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-sm font-medium text-white">
+                                Test Case {index + 1}
+                              </span>
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                testCase.status === "Accepted"
+                                  ? "bg-emerald-500/20 text-emerald-400"
+                                  : "bg-red-500/20 text-red-400"
+                              }`}>
+                                {testCase.status}
+                              </span>
+                              <span className={`px-2 py-1 rounded text-xs ${
+                                testCase.visibility === "PUBLIC" 
+                                  ? "bg-blue-500/20 text-blue-400"
+                                  : "bg-gray-500/20 text-gray-400"
+                              }`}>
+                                {testCase.visibility}
+                              </span>
+                            </div>
+                            
+                            <div className="grid grid-cols-3 gap-2 text-xs">
+                              <div>
+                                <div className="text-gray-400 mb-1">Input:</div>
+                                <code className="block bg-[#0f1419] p-1 rounded text-gray-300">
+                                  {testCase.stdin}
+                                </code>
+                              </div>
+                              <div>
+                                <div className="text-gray-400 mb-1">Output:</div>
+                                <code className="block bg-[#0f1419] p-1 rounded text-gray-300">
+                                  {testCase.stdout}
+                                </code>
+                              </div>
+                              <div>
+                                <div className="text-gray-400 mb-1">Expected:</div>
+                                <code className="block bg-[#0f1419] p-1 rounded text-gray-300">
+                                  {testCase.expectedOutput}
+                                </code>
+                              </div>
+                            </div>
+                            
+                            {testCase.time && testCase.memory && (
+                              <div className="flex gap-3 text-xs text-gray-400 mt-2">
+                                <span>Time: {testCase.time}s</span>
+                                <span>Memory: {(testCase.memory / 1024).toFixed(1)}KB</span>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-gray-400">
+                  <FileText size={48} className="mx-auto mb-3 opacity-50" />
+                  <p>Chọn một sinh viên để xem chi tiết bài nộp</p>
+                </div>
+              )}
+            </section>
+          </div>
         )}
 
 
