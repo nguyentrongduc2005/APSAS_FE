@@ -14,7 +14,7 @@ export default function RoleEditModal({ open, onClose, onSave, role, allPermissi
   const [form, setForm] = useState({
     name: "",
     description: "",
-    permissionIds: [],
+    permissionNames: [],
   });
   const [permSearch, setPermSearch] = useState("");
   const [saving, setSaving] = useState(false);
@@ -25,13 +25,13 @@ export default function RoleEditModal({ open, onClose, onSave, role, allPermissi
       setForm({
         name: role.name || "",
         description: role.description || "",
-        permissionIds: role.permissions?.map((p) => p.id) || [],
+        permissionNames: role.permissions?.map((p) => p.name) || [],
       });
     } else {
       setForm({
         name: "",
         description: "",
-        permissionIds: [],
+        permissionNames: [],
       });
     }
     setPermSearch("");
@@ -55,31 +55,31 @@ export default function RoleEditModal({ open, onClose, onSave, role, allPermissi
   }, {});
 
   // Toggle permission selection
-  const togglePermission = (permId) => {
+  const togglePermission = (permName) => {
     setForm((prev) => ({
       ...prev,
-      permissionIds: prev.permissionIds.includes(permId)
-        ? prev.permissionIds.filter((id) => id !== permId)
-        : [...prev.permissionIds, permId],
+      permissionNames: prev.permissionNames.includes(permName)
+        ? prev.permissionNames.filter((name) => name !== permName)
+        : [...prev.permissionNames, permName],
     }));
   };
 
   // Select all permissions in a category
   const toggleCategory = (category) => {
-    const categoryPermIds = groupedPermissions[category]?.map((p) => p.id) || [];
-    const allSelected = categoryPermIds.every((id) => form.permissionIds.includes(id));
+    const categoryPermNames = groupedPermissions[category]?.map((p) => p.name) || [];
+    const allSelected = categoryPermNames.every((name) => form.permissionNames.includes(name));
 
     if (allSelected) {
       // Deselect all in category
       setForm((prev) => ({
         ...prev,
-        permissionIds: prev.permissionIds.filter((id) => !categoryPermIds.includes(id)),
+        permissionNames: prev.permissionNames.filter((name) => !categoryPermNames.includes(name)),
       }));
     } else {
       // Select all in category
       setForm((prev) => ({
         ...prev,
-        permissionIds: [...new Set([...prev.permissionIds, ...categoryPermIds])],
+        permissionNames: [...new Set([...prev.permissionNames, ...categoryPermNames])],
       }));
     }
   };
@@ -152,7 +152,7 @@ export default function RoleEditModal({ open, onClose, onSave, role, allPermissi
           <div>
             <div className="flex items-center justify-between mb-3">
               <label className="text-sm font-medium text-gray-300">
-                Quyền hạn ({form.permissionIds.length} đã chọn)
+                Quyền hạn ({form.permissionNames.length} đã chọn)
               </label>
               <div className="relative w-64">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
@@ -171,7 +171,7 @@ export default function RoleEditModal({ open, onClose, onSave, role, allPermissi
               {Object.keys(groupedPermissions).sort().map((category) => {
                 const categoryPerms = groupedPermissions[category];
                 const selectedCount = categoryPerms.filter((p) =>
-                  form.permissionIds.includes(p.id)
+                  form.permissionNames.includes(p.name)
                 ).length;
                 const allSelected = selectedCount === categoryPerms.length;
 
@@ -209,11 +209,11 @@ export default function RoleEditModal({ open, onClose, onSave, role, allPermissi
                     {/* Category Permissions */}
                     <div className="px-4 pb-3 grid grid-cols-1 md:grid-cols-2 gap-2">
                       {categoryPerms.map((perm) => {
-                        const isSelected = form.permissionIds.includes(perm.id);
+                        const isSelected = form.permissionNames.includes(perm.name);
                         return (
                           <button
                             key={perm.id}
-                            onClick={() => togglePermission(perm.id)}
+                            onClick={() => togglePermission(perm.name)}
                             className={`flex items-start gap-3 p-2 rounded-lg text-left transition ${
                               isSelected
                                 ? "bg-emerald-500/10 border border-emerald-500/30"

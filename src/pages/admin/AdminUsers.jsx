@@ -95,11 +95,9 @@ export default function AdminUsers() {
       if (modal.data) {
         // Update user roles or status
         if (data.role) {
-          // Convert role name to roleId and send as array
-          const roleId = getRoleIdByName(data.role);
-          if (roleId) {
-            await adminUserService.updateUserRoles(modal.data.id, [roleId]);
-          }
+          // Send role name directly as array
+          const roleName = data.role.toUpperCase();
+          await adminUserService.updateUserRoles(modal.data.id, [roleName]);
         }
         if (data.status) {
           await adminUserService.updateUserStatus(modal.data.id, data.status);
@@ -107,15 +105,15 @@ export default function AdminUsers() {
         await fetchUsers(pagination.page);
       } else {
         // Create new user - build payload expected by backend
-        // API expects: { name, email, password, roleIds, status }
-        const roleId = getRoleIdByName(data.role);
+        // API expects: { name, email, password, roleNames, status }
+        const roleName = data.role ? data.role.toUpperCase() : "STUDENT";
         const payload = {
           name:
             data.name ||
             `${data.firstName || ""} ${data.lastName || ""}`.trim(),
           email: data.email,
           password: data.password,
-          roleIds: roleId ? [roleId] : [2], // Default to STUDENT (id: 2)
+          roleNames: [roleName], // Default to STUDENT
           status: data.status || "ACTIVE",
         };
 
@@ -129,7 +127,10 @@ export default function AdminUsers() {
     } catch (error) {
       console.error("Error saving user:", error);
       const errorMsg =
-        error.response?.data?.message || error.message || "Lưu thất bại";
+        error.response?.data?.message || 
+        error.response?.data?.error || 
+        error.message || 
+        "Lưu thất bại";
       alert(errorMsg);
     }
   };

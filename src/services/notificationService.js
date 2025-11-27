@@ -11,7 +11,7 @@ const notificationService = {
    * @param {Object} notificationData - Notification data
    * @param {string} notificationData.title - Notification title
    * @param {string} notificationData.content - Notification content/message
-   * @param {string} notificationData.target - Target audience (ALL, STUDENTS, LECTURERS, PROVIDERS, or specific userId)
+   * @param {string} notificationData.target - Target audience (ALL, STUDENTS, LECTURERS, CONTENT_PROVIDERS, or specific userId)
    * @returns {Promise<{code: string, message: string, data: Object}>}
    */
   async createNotification(notificationData) {
