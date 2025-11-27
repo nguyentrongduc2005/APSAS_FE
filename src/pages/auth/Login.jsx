@@ -24,22 +24,7 @@ import api from "@/services/api.js";
 //     navigate(back || target, { replace: true });
 //   };
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext"; // 1. Import hook
-
-const TEST_ACCOUNTS = [
-  {
-    label: "Student",
-    email: "student01@apsas.dev",
-    password: "123456",
-    note: "Xem giao diện học viên",
-  },
-  {
-    label: "Giảng viên",
-    email: "gv.tranminh@apsas.dev",
-    password: "123456",
-    note: "Kiểm thử màn hình giáo viên",
-  },
-];
+import { useAuth } from "../../context/AuthContext";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -80,29 +65,7 @@ export default function Login() {
     }
   };
 
-  // 7. Hàm login mock (không gọi API, để test)
-  const submitMock = (e) => {
-    e.preventDefault();
-    setMsg("");
 
-    try {
-      // Gọi hàm loginMock từ context
-      const result = loginMock(email);
-
-      // Chuyển hướng
-      const targetPath =
-        result.user.role === "admin"
-          ? "/admin/users"
-          : result.user.role === "lecturer"
-          ? "/lecturer/my-courses"
-          : "/student/my-courses";
-
-      navigate(targetPath, { replace: true });
-    } catch (error) {
-      console.error("Mock login thất bại:", error);
-      setMsg("Mock login thất bại");
-    }
-  };
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -135,32 +98,7 @@ export default function Login() {
               required
             />
 
-            <div className="space-y-3">
-              <p className="text-sm text-gray-400">
-                Chọn nhanh tài khoản demo:
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {TEST_ACCOUNTS.map((account) => (
-                  <button
-                    key={account.label}
-                    type="button"
-                    onClick={() => {
-                      setEmail(account.email);
-                      setPassword(account.password);
-                      setMsg(`Đã điền tài khoản ${account.label}`);
-                    }}
-                    className="px-3 py-1.5 rounded-full border border-[#202934] text-xs bg-[#0f1419] text-gray-300 hover:bg-emerald-500 hover:text-white transition-colors"
-                  >
-                    {account.label}
-                  </button>
-                ))}
-              </div>
-              <p className="text-xs text-gray-400">
-                Email chứa &ldquo;gv&rdquo; sẽ tự nhận role giảng viên (ví dụ
-                {` ${TEST_ACCOUNTS[1].email}`}). Các tài khoản demo dùng chung
-                mật khẩu 123456.
-              </p>
-            </div>
+
 
             <div className="text-right">
               <a href="#" className="text-sm text-emerald-400 hover:underline">
@@ -173,16 +111,7 @@ export default function Login() {
                 {isLoading ? "Đang đăng nhập..." : "Đăng Nhập"}
               </Button>
 
-              {/* Tạm thời ẩn Mock Login - chưa implement
-              <Button
-                type="button"
-                variant="outline"
-                onClick={submitMock}
-                className="text-white hover:text-emerald-400"
-              >
-                Mock Login (Test)
-              </Button>
-              */}
+
 
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
