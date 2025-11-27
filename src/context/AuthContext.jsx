@@ -9,14 +9,16 @@ const REFRESH_KEY = "refreshToken";
 const USER_KEY = "user";
 const AVATAR_KEY = "user_avatar";
 
-// Chuẩn hóa role từ backend (ADMIN, STUDENT, PROVIDER, LECTURER) -> FE (admin, student,...)
+// Chuẩn hóa role từ backend (ADMIN, STUDENT, CONTENT_PROVIDER, LECTURER) -> FE (admin, student, provider, lecturer)
+// Backend role names: ADMIN, STUDENT, LECTURER, CONTENT_PROVIDER, GUEST
+// Frontend role names: admin, student, lecturer, provider, guest
 function normalizeRoleName(roleStr) {
   if (!roleStr) return undefined;
   const normalized = String(roleStr).toLowerCase();
   if (normalized.includes("admin")) return "admin";
   if (normalized.includes("student")) return "student";
   if (normalized.includes("lecturer")) return "lecturer";
-  if (normalized.includes("provider")) return "provider";
+  if (normalized.includes("provider") || normalized.includes("content_provider")) return "provider"; // CONTENT_PROVIDER -> provider
   if (normalized.includes("teacher")) return "teacher";
   return normalized;
 }

@@ -103,19 +103,28 @@ const rolePermissionService = {
    * @param {Object} roleData - Role data
    * @param {string} roleData.name - Role name
    * @param {string} roleData.description - Role description
-   * @param {number[]} roleData.permissionIds - Array of permission IDs
+   * @param {string[]} roleData.permissionNames - Array of permission names (e.g., ["VIEW_USERS", "CREATE_USERS"])
    */
   createRole: async (roleData) => {
     try {
+      // Normalize role name and permission names to uppercase
+      const normalizedPermissionNames = (roleData.permissionNames || []).map(p => 
+        typeof p === 'string' ? p.toUpperCase().trim() : p
+      ).filter(Boolean);
+      
       const payload = {
-        name: roleData.name,
+        name: roleData.name ? roleData.name.toUpperCase().trim() : "",
         description: roleData.description || "",
-        permissionIds: roleData.permissionIds || [],
+        permissionNames: normalizedPermissionNames,
       };
+      
       const response = await api.post('/admin/roles', payload);
       return response.data;
     } catch (error) {
       console.error("Error creating role:", error);
+      if (error.response?.data?.message) {
+        error.message = error.response.data.message;
+      }
       throw error;
     }
   },
@@ -128,19 +137,28 @@ const rolePermissionService = {
    * @param {Object} roleData - Role data
    * @param {string} roleData.name - Role name
    * @param {string} roleData.description - Role description
-   * @param {number[]} roleData.permissionIds - Array of permission IDs
+   * @param {string[]} roleData.permissionNames - Array of permission names (e.g., ["VIEW_USERS", "CREATE_USERS"])
    */
   updateRole: async (roleId, roleData) => {
     try {
+      // Normalize role name and permission names to uppercase
+      const normalizedPermissionNames = (roleData.permissionNames || []).map(p => 
+        typeof p === 'string' ? p.toUpperCase().trim() : p
+      ).filter(Boolean);
+      
       const payload = {
-        name: roleData.name,
+        name: roleData.name ? roleData.name.toUpperCase().trim() : "",
         description: roleData.description || "",
-        permissionIds: roleData.permissionIds || [],
+        permissionNames: normalizedPermissionNames,
       };
+      
       const response = await api.put(`/admin/roles/${roleId}`, payload);
       return response.data;
     } catch (error) {
       console.error("Error updating role:", error);
+      if (error.response?.data?.message) {
+        error.message = error.response.data.message;
+      }
       throw error;
     }
   },

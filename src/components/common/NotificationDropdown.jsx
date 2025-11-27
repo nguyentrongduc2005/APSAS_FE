@@ -38,21 +38,9 @@ export default function NotificationDropdown() {
         notificationList = notificationList.filter(n => n.isRead);
       }
       
-      // Parse payload if it's a JSON string
-      notificationList = notificationList.map(notif => {
-        let parsedPayload = notif.payload;
-        if (typeof notif.payload === 'string') {
-          try {
-            parsedPayload = JSON.parse(notif.payload);
-          } catch (e) {
-            parsedPayload = notif.payload;
-          }
-        }
-        return {
-          ...notif,
-          payload: parsedPayload,
-        };
-      });
+      // Backend đã parse payload và trả về field `message`
+      // Giữ payload (JSON string) nếu cần thông tin chi tiết
+      // Ưu tiên sử dụng field `message` từ backend
       
       setNotifications(notificationList);
     } catch (error) {
@@ -162,15 +150,33 @@ export default function NotificationDropdown() {
   };
 
   const getNotificationMessage = (notification) => {
-    if (notification.payload?.message) {
-      return notification.payload.message;
+    // Ưu tiên sử dụng field `message` từ backend (đã được parse sẵn)
+    if (notification.message) {
+      return notification.message;
     }
-    if (typeof notification.payload === "string") {
-      return notification.payload;
+    
+    // Fallback: Parse payload nếu không có message (tương thích ngược)
+    if (notification.payload) {
+      if (typeof notification.payload === 'string') {
+        try {
+          const parsed = JSON.parse(notification.payload);
+          if (parsed.message) {
+            return parsed.message;
+          }
+        } catch (e) {
+          // Nếu không phải JSON, dùng payload như string
+          return notification.payload;
+        }
+      } else if (notification.payload.message) {
+        return notification.payload.message;
+      }
     }
+    
+    // Fallback cuối cùng: dùng type
     if (notification.type) {
       return `Bạn có thông báo mới: ${notification.type}`;
     }
+    
     return "Bạn có thông báo mới";
   };
 
