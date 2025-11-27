@@ -1,79 +1,87 @@
 // src/services/progressService.js
 import api from "./api";
 
-/**
- * progressService
- * Gọi API thật từ backend APSAS:
- *
- *   GET /progress/{studentId}
- *
- * Trả về ApiResponse<List<StudentCourseProgressResponse>>
- */
+// Normalize ProgressDTO (from /progress/{id}/current) to UI-friendly shape
+function mapProgressDtoToUi(data) {
+	const daily = Array.isArray(data?.dailyScoreDTOList) ? data.dailyScoreDTOList : [];
+
+	const activityData = daily.map((d, idx) => ({
+		date: d?.date ?? `D${idx + 1}`,
+		score: Number(d?.score ?? d?.value ?? 0) || 0,
+	}));
+
+	const totalCourses = Number(data?.totalCourses ?? 0) || 0;
+	const completed = Number(data?.completedCourses ?? 0) || 0;
+	const averageScore = Number(data?.averageScore ?? 0) || 0;
+
+	return {
+		rawProgress: daily,
+		stats: { totalCourses, completed, averageScore },
+		activityData,
+		currentCourses: Array.isArray(data?.currentCourses) ? data.currentCourses : [],
+		achievements: Array.isArray(data?.achievements) ? data.achievements : [],
+	};
+}
+
+// Map legacy list response (unknown shape) into a safe UI shape
+function mapLegacyListToUi(list) {
+	if (!Array.isArray(list)) {
+		return {
+			rawProgress: [],
+			stats: { totalCourses: 0, completed: 0, averageScore: 0 },
+			activityData: [],
+			currentCourses: [],
+			achievements: [],
+		};
+	}
+
+	// Best-effort mapping: count items as courses, assume `completed` boolean if present
+	const totalCourses = list.length;
+	const completed = list.filter((c) => c?.completed).length || 0;
+
+	return {
+		rawProgress: list,
+		stats: { totalCourses, completed, averageScore: 0 },
+		activityData: [],
+		currentCourses: list.slice(0, 10),
+		achievements: [],
+	};
+}
+
+const EMPTY_RESULT = {
+	rawProgress: [],
+	stats: { totalCourses: 0, completed: 0, averageScore: 0 },
+	activityData: [],
+	currentCourses: [],
+	achievements: [],
+};
+
 const progressService = {
-  // Lấy danh sách tiến độ học tập
-  async getProgress(studentId) {
-    try {
-      const res = await api.get(`/progress/${studentId}`);
-      return res.data?.data || [];
-    } catch (error) {
-      console.error("🔥 Error fetching progress:", error);
-      throw error;
-    }
-  },
+	async getProgress(studentId) {
+		if (!studentId) return EMPTY_RESULT;
 
-  // Tính thống kê tổng quan cho dashboard
-  computeStats(progressList) {
-    const totalCourses = progressList.length;
-
-    const completed = progressList.filter((item) => {
-      const p = Number(item.progressPercent || 0);
-      return p >= 100;
-    }).length;
-
-    const avgProgress = totalCourses
-      ? progressList.reduce(
-          (sum, item) => sum + Number(item.progressPercent || 0),
-          0
-        ) / totalCourses
-      : 0;
-
-    return {
-      totalCourses,
-      completed,
-      completionRate: Number(avgProgress.toFixed(1)),
-    };
-  },
-
-  // Data dùng cho biểu đồ
-  buildChartData(progressList) {
-    return progressList.map((item, idx) => ({
-      day: item.courseName?.slice(0, 10) || `C${idx + 1}`,
-      value: Number(item.progressPercent || 0),
-    }));
-  },
-
-  // Danh sách khóa học đang học
-  buildCurrentCourses(progressList) {
-    return progressList.map((item) => ({
-      id: item.courseId ?? item.id,
-      name: item.courseName,
-      progress: Number(item.progressPercent || 0),
-    }));
-  },
-
-  // Thành tích (tạm thời = các khóa đã hoàn thành)
-  buildAchievements(progressList) {
-    return progressList
-      .filter((item) => Number(item.progressPercent || 0) >= 100)
-      .map((item, idx) => ({
-        id: item.courseId ?? idx,
-        name: item.courseName || "Hoàn thành khóa học",
-        description: "Bạn đã hoàn thành khóa học này.",
-        date: item.completedAt || "—",
-        icon: "Award",
-        color: "purple",
-      }));
-  },
+		// prefer /progress/{id}/current
+		try {
+			const res = await api.get(`/progress/${studentId}/current`);
+			const dto = res?.data?.data ?? res?.data ?? null;
+			if (dto) return mapProgressDtoToUi(dto);
+			return EMPTY_RESULT;
+		} catch (err) {
+			const status = err?.response?.status;
+			// If not found, try legacy endpoint; on other errors return safe empty
+			if (status === 404) {
+				try {
+					const r2 = await api.get(`/progress/${studentId}`);
+					const list = r2?.data?.data ?? r2?.data ?? [];
+					return mapLegacyListToUi(list);
+				} catch {
+					return EMPTY_RESULT;
+				}
+			}
+			return EMPTY_RESULT;
+		}
+	},
 };
 
 export default progressService;
+
