@@ -344,90 +344,152 @@ const courseService = {
   },
 
   /**
-   * Submit help request for a course
-   * @param {string} courseId - The course ID
-   * @param {object} requestData - Help request data
+   * Submit help request for a course (Student)
+   * API: POST /api/help-requests/course/{courseId}
+   * Request body: { title: string, body: string }
+   * Response: ApiResponse { code, message, data }
+   * 
+   * @param {string|number} courseId - The course ID
+   * @param {object} requestData - Help request data { title, body }
    * @returns {Promise} Request result
    */
   submitHelpRequest: async (courseId, requestData) => {
     try {
-      // TODO: Replace with actual API call
-      // const response = await api.post(`/courses/${courseId}/help-requests`, requestData);
-      // return response.data;
-
-      // Mock data
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve({
-            success: true,
-            message: "Yêu cầu hỗ trợ đã được gửi thành công!",
-            requestId: Math.floor(Math.random() * 1000),
-          });
-        }, 1000);
+      const response = await api.post(`/help-requests/course/${courseId}`, {
+        title: requestData.title || requestData.subject || "Yêu cầu hỗ trợ",
+        body: requestData.body || requestData.content || requestData.message
       });
+      
+      const apiRes = response.data; // ApiResponse format: { code, message, data }
+      
+      // Unwrap ApiResponse
+      if (apiRes.code === "ok" || apiRes.code === "0" || apiRes.code === "OK") {
+        return {
+          success: true,
+          message: apiRes.message || "Yêu cầu hỗ trợ đã được gửi thành công!",
+          data: apiRes.data
+        };
+      }
+      
+      throw new Error(apiRes.message || "Không thể tạo help request");
     } catch (error) {
       console.error("Error submitting help request:", error);
-      throw error;
+      
+      // Handle specific error codes
+      if (error.response?.data) {
+        const errorData = error.response.data;
+        const errorCode = errorData.code;
+        const errorMessage = errorData.message;
+        
+        switch (errorCode) {
+          case "E4000":
+            throw new Error("Request không hợp lệ. Vui lòng kiểm tra lại title và body.");
+          case "E4010":
+            throw new Error("Chưa đăng nhập. Vui lòng đăng nhập lại.");
+          case "E5001":
+            throw new Error("Bạn không có quyền REQUEST_HELP để tạo help request.");
+          case "E5002":
+            throw new Error("Không tìm thấy course hoặc bạn chưa đăng ký khóa học này.");
+          default:
+            throw new Error(errorMessage || "Có lỗi xảy ra khi tạo help request");
+        }
+      }
+      
+      if (error.response?.status === 403) {
+        throw new Error("Bạn chưa đăng ký khóa học này hoặc không có quyền tạo help request.");
+      }
+      
+      if (error.response?.status === 404) {
+        throw new Error("Không tìm thấy course.");
+      }
+      
+      const errorMessage = error.message || "Có lỗi xảy ra khi tạo help request. Vui lòng thử lại.";
+      throw new Error(errorMessage);
     }
   },
 
   /**
-   * Get help requests for a course (lecturer)
-   * @param {string} courseId - The course ID
-   * @returns {Promise} List of help requests
+   * Get help requests for a course (Lecturer)
+   * API: GET /api/help-requests/teacher/course/{courseId}?page=1&limit=20
+   * Response: { data: [...], pagination: {...} }
+   * 
+   * @param {string|number} courseId - The course ID
+   * @param {object} options - Pagination options { page, limit }
+   * @returns {Promise} List of help requests with pagination
    */
-  getHelpRequests: async (courseId) => {
+  getHelpRequests: async (courseId, options = {}) => {
     try {
-      // TODO: Replace with actual API call
-      // const response = await api.get(`/lecturer/courses/${courseId}/help-requests`);
-      // return response.data;
-
-      // Mock data
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve([
-            {
-              id: 1,
-              studentName: "Nguyễn Văn A",
-              studentAvatar: "https://i.pravatar.cc/150?img=1",
-              content:
-                "Em không hiểu rõ về cách sử dụng Collections trong Java. Thầy có thể giải thích thêm không ạ?",
-              createdAt: "2024-11-15 14:30",
-              status: "pending",
-            },
-            {
-              id: 2,
-              studentName: "Trần Thị B",
-              studentAvatar: "https://i.pravatar.cc/150?img=5",
-              content:
-                "Bài tập số 3 em chạy bị lỗi NullPointerException nhưng không biết sửa thế nào. Có thể hướng dẫn em không ạ?",
-              createdAt: "2024-11-15 10:15",
-              status: "resolved",
-            },
-            {
-              id: 3,
-              studentName: "Lê Văn C",
-              studentAvatar: "https://i.pravatar.cc/150?img=3",
-              content:
-                "Thầy ơi, em muốn hỏi về sự khác biệt giữa ArrayList và LinkedList. Khi nào thì nên dùng cái nào ạ?",
-              createdAt: "2024-11-14 16:45",
-              status: "pending",
-            },
-            {
-              id: 4,
-              studentName: "Phạm Thị D",
-              studentAvatar: "https://i.pravatar.cc/150?img=9",
-              content:
-                "Em không hiểu phần Exception Handling, đặc biệt là try-catch-finally. Thầy có thể cho ví dụ thực tế không ạ?",
-              createdAt: "2024-11-14 09:20",
-              status: "resolved",
-            },
-          ]);
-        }, 400);
+      const { page = 1, limit = 20 } = options;
+      const response = await api.get(`/help-requests/teacher/course/${courseId}`, {
+        params: { page, limit }
       });
+      
+      // API trả về format: { data: [...], pagination: {...} }
+      // Không có ApiResponse wrapper
+      const result = response.data;
+      
+      console.log('getHelpRequests API response:', result);
+      
+      // Map API response to component format
+      // API trả về: { id, studentId, studentName, studentEmail, courseId, title, body, createdAt }
+      // Component cần: { id, studentName, studentAvatar, content, createdAt, status }
+      if (result && result.data && Array.isArray(result.data)) {
+        const mappedRequests = result.data.map(request => ({
+          id: request.id,
+          studentId: request.studentId,
+          studentName: request.studentName || 'N/A',
+          studentEmail: request.studentEmail || '',
+          studentAvatar: `https://i.pravatar.cc/150?img=${request.studentId || 1}`, // Generate avatar from studentId
+          content: request.body || request.content || '',
+          title: request.title || '',
+          createdAt: request.createdAt,
+          status: request.status || "pending" // API có thể không trả về status
+        }));
+        
+        return {
+          data: mappedRequests,
+          pagination: result.pagination || {}
+        };
+      }
+      
+      // Fallback: return empty if unexpected format
+      return {
+        data: [],
+        pagination: {}
+      };
     } catch (error) {
       console.error("Error fetching help requests:", error);
-      throw error;
+      
+      // Handle specific error codes
+      if (error.response?.data) {
+        const errorData = error.response.data;
+        const errorCode = errorData.code;
+        const errorMessage = errorData.message;
+        
+        switch (errorCode) {
+          case "E4000":
+            throw new Error("Request không hợp lệ. Vui lòng kiểm tra lại courseId.");
+          case "E4010":
+            throw new Error("Chưa đăng nhập. Vui lòng đăng nhập lại.");
+          case "E5001":
+            throw new Error("Bạn không có quyền VIEW_HELP_REQUESTS để xem help requests.");
+          case "E5002":
+            throw new Error("Không tìm thấy course.");
+          default:
+            throw new Error(errorMessage || "Có lỗi xảy ra khi tải help requests");
+        }
+      }
+      
+      if (error.response?.status === 403) {
+        throw new Error("Bạn không có quyền xem help requests của course này.");
+      }
+      
+      if (error.response?.status === 404) {
+        throw new Error("Không tìm thấy course.");
+      }
+      
+      const errorMessage = error.message || "Có lỗi xảy ra khi tải help requests. Vui lòng thử lại.";
+      throw new Error(errorMessage);
     }
   },
 };
