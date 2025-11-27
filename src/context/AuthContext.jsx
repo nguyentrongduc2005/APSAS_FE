@@ -7,7 +7,11 @@ const AuthContext = createContext(null);
 const TOKEN_KEY = "token";
 const REFRESH_KEY = "refreshToken";
 const USER_KEY = "user";
-const AVATAR_KEY = "user_avatar";
+
+// Helper function to get avatar key for a specific user
+const getAvatarKey = (userId) => {
+  return userId ? `user_avatar_${userId}` : "user_avatar";
+};
 
 // Chuẩn hóa role từ backend (ADMIN, STUDENT, CONTENT_PROVIDER, LECTURER) -> FE (admin, student, provider, lecturer)
 // Backend role names: ADMIN, STUDENT, LECTURER, CONTENT_PROVIDER, GUEST
@@ -293,9 +297,10 @@ export default function AuthProvider({ children }) {
         const next = Object.assign({}, prev || {}, patch || {});
         try {
           localStorage.setItem(USER_KEY, JSON.stringify(next));
-          if (patch && patch.avatar) {
+          // Save avatar with user-specific key to avoid conflicts between users
+          if (patch && patch.avatar && next.id) {
             try {
-              localStorage.setItem(AVATAR_KEY, patch.avatar);
+              localStorage.setItem(getAvatarKey(next.id), patch.avatar);
             } catch {
               /* ignore */
             }
