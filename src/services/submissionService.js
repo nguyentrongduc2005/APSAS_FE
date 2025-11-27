@@ -97,6 +97,37 @@ export const getSubmissionHistory = async (courseId, assignmentId) => {
 };
 
 /**
+ * Get students' submissions for an assignment (Teacher)
+ * @param {number} courseId - The ID of the course
+ * @param {number} assignmentId - The ID of the assignment
+ * @returns {Promise<Array>} List of students with their submission info
+ */
+export const getStudentsSubmissions = async (courseId, assignmentId) => {
+  try {
+    const response = await api.get(`/submissions/course/${courseId}/assignment/${assignmentId}/students`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching students submissions:", error);
+    throw error;
+  }
+};
+
+/**
+ * Get submission details for teacher view (Teacher)
+ * @param {number} submissionId - The ID of the submission
+ * @returns {Promise<Object>} Detailed submission info for teacher
+ */
+export const getTeacherSubmissionDetail = async (submissionId) => {
+  try {
+    const response = await api.get(`/submissions/teacher/submissions/${submissionId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching teacher submission detail:", error);
+    throw error;
+  }
+};
+
+/**
  * Get detailed information about a specific submission for lecturer view
  * @param {string} submissionId - The ID of the submission
  * @returns {Promise<Object>} Submission details including code, test cases, and feedback
