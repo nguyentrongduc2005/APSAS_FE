@@ -239,7 +239,11 @@ api.interceptors.response.use(
     // Không phải 401 hoặc đã retry rồi
     console.log("🔴 RESPONSE ERROR (not handling):", {
       status: error.response?.status,
-      message: error.response?.data?.message || error.message
+      message: error.response?.data?.message || error.message,
+      data: error.response?.data,
+      url: error.config?.url,
+      method: error.config?.method,
+      payload: error.config?.data
     });
 
     return Promise.reject(error);
