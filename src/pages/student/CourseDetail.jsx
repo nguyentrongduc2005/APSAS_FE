@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -17,7 +17,7 @@ import {
   HelpCircle,
   X,
 } from "lucide-react";
-import { lecturerAssignments } from "../../constants/lecturerAssignments";
+import studentCourseService from "../../services/studentCourseService";
 
 export default function StudentCourseDetail() {
   const { courseId } = useParams();
@@ -29,89 +29,146 @@ export default function StudentCourseDetail() {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [helpContent, setHelpContent] = useState("");
   const [isSubmittingHelp, setIsSubmittingHelp] = useState(false);
+  
+  // API state
+  const [course, setCourse] = useState(null);
+  const [modules, setModules] = useState([]);
+  const [assignments, setAssignments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const course = {
-    id: courseId,
-    title: "Cấu trúc dữ liệu nâng cao",
-    instructor: "TS. Nguyễn Văn A",
-    thumbnail:
-      "https://images.unsplash.com/photo-1515879218367-8466d910aaa4?w=800&h=450&fit=crop",
-    totalLessons: 13,
-    totalAssignments: 8,
-    progress: 65,
-    avgProgress: 58,
-    totalStudents: 120,
-    lastUpdated: "12/10/2024",
-  };
+  // Reset state when courseId changes
+  useEffect(() => {
+    setCourse(null);
+    setModules([]);
+    setAssignments([]);
+    setError(null);
+  }, [courseId]);
 
-  const modules = [
-    {
-      id: "lesson-1",
-      title: "Giới thiệu Linked List",
-      duration: "15 phút",
-      imageCount: 8,
-      type: "content",
-      status: "completed",
-    },
-    {
-      id: "assignment-1",
-      title: "Bài tập: Implement Singly Linked List",
-      deadline: "2024-10-15",
-      type: "assignment",
-      status: "review",
-    },
-    {
-      id: "lesson-2",
-      title: "Stack và Queue",
-      duration: "20 phút",
-      imageCount: 12,
-      type: "content",
-      status: "in-progress",
-    },
-    {
-      id: "lesson-3",
-      title: "Cấu trúc dữ liệu Tree",
-      duration: "25 phút",
-      imageCount: 15,
-      type: "content",
-      status: "locked",
-    },
-    {
-      id: "assignment-2",
-      title: "Stack và Queue",
-      deadline: "2024-10-20",
-      type: "assignment",
-      status: "not-started",
-    },
-  ];
+  // Load course data from API
+  useEffect(() => {
+    const loadCourseData = async () => {
+      try {
+        setLoading(true);
+        const response = await studentCourseService.getCourseDetail(courseId);
+        
+        console.log('Course detail response:', response); // Debug log
+        
+        if (response && response.code === "ok") {
+          const data = response.data;
+          
+          // Set course info
+          setCourse({
+            id: courseId,
+            title: data.name,
+            description: data.description || "Chưa có mô tả",
+            totalLessons: data.totalLession || 0,
+            totalAssignments: data.totalAssignment || 0, 
+            totalStudents: data.currentMember || 0,
+            avgProgress: data.progressAverage || 0,
+            lecturer: data.lecture,
+            avatarUrl: data.avatarUrl,
+            type: data.type,
+          });
 
-  const recentActivities = [
-    {
-      id: "activity-1",
-      message: "Bạn đã hoàn thành bài tập Implement Linked List với điểm 92%",
-      time: "2 giờ trước",
-      avatar: "https://i.pravatar.cc/100?img=12",
-    },
-    {
-      id: "activity-2",
-      message: "Giảng viên đã cập nhật deadline bài tập Stack & Queue",
-      time: "Hôm qua",
-      avatar: "https://i.pravatar.cc/100?img=15",
-    },
-    {
-      id: "activity-3",
-      message: "Bạn đã xem bài giảng Stack và Queue",
-      time: "2 ngày trước",
-      avatar: "https://i.pravatar.cc/100?img=18",
-    },
-  ];
+          // Transform and combine content and assignments into modules
+          const contentModules = data.contentItems?.map(item => ({
+            id: item.id,
+            title: item.title,
+            orderNo: item.orderNo || 0,
+            totalMedia: item.totalMedia || 0,
+            duration: "45 phút", // Default duration
+            imageCount: item.totalMedia || 0,
+            type: "content",
+            status: "available", // TODO: Get from progress API
+          })) || [];
 
-  const assignments = useMemo(() => lecturerAssignments, []);
+          const assignmentModules = data.assignments?.map(item => ({
+            id: item.id, 
+            title: item.title,
+            orderNo: item.orderNo || 99,
+            openAt: item.openAt,
+            dueAt: item.dueAt,
+            deadline: item.dueAt ? new Date(item.dueAt).toLocaleDateString('vi-VN') : "Chưa có hạn",
+            type: "assignment",
+            status: "available", // TODO: Get from submission API
+          })) || [];
+
+          // Set assignments for assignments tab (with proper fallback)
+          setAssignments(data.assignments || []);
+
+          // Combine and sort by orderNo
+          const allModules = [...contentModules, ...assignmentModules]
+            .sort((a, b) => a.orderNo - b.orderNo);
+          
+          setModules(allModules);
+        } else {
+          throw new Error(response.message || "Failed to load course data");
+        }
+      } catch (err) {
+        console.error('Error loading course data:', err);
+        setError(err.message || "Có lỗi xảy ra khi tải dữ liệu khóa học");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (courseId) {
+      loadCourseData();
+    }
+  }, [courseId]);
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setSearchParams(tab === "assignments" ? { tab } : {});
   };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-[#0f1419] border border-[#202934] rounded-2xl p-6 animate-pulse">
+          <div className="h-4 bg-gray-700 rounded mb-4 w-1/3"></div>
+          <div className="h-8 bg-gray-700 rounded mb-4 w-2/3"></div>
+          <div className="h-4 bg-gray-700 rounded mb-4"></div>
+          <div className="grid grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-20 bg-gray-700 rounded"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state  
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-[#0f1419] border border-red-500/50 rounded-2xl p-6 text-center">
+          <div className="text-red-400 text-lg mb-2">Có lỗi xảy ra</div>
+          <div className="text-gray-400 mb-4">{error}</div>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition"
+          >
+            Thử lại
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // No course data
+  if (!course) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-[#0f1419] border border-[#202934] rounded-2xl p-6 text-center">
+          <div className="text-gray-400">Không tìm thấy dữ liệu khóa học</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -133,7 +190,7 @@ export default function StudentCourseDetail() {
           </div>
           <div className="flex items-center gap-3">
             <span className="text-sm text-blue-400 font-semibold">
-              Tiến độ hiện tại: {course.progress}%
+              Tiến độ trung bình: {course.avgProgress}%
             </span>
             <button
               onClick={() => setShowHelpModal(true)}
@@ -149,17 +206,40 @@ export default function StudentCourseDetail() {
           <div className="space-y-4">
             <p className="text-sm text-emerald-400 font-medium">Khóa học</p>
             <h1 className="text-3xl font-bold text-white">{course.title}</h1>
-            <p className="text-gray-400">
-              Khóa học bao gồm các cấu trúc dữ liệu nâng cao, bài giảng minh họa
-              và hệ thống bài tập thực hành theo phong cách phỏng vấn.
-            </p>
-            <p className="text-gray-400">Giảng viên: {course.instructor}</p>
+            {course.description && (
+              <p className="text-gray-400 leading-relaxed">
+                {course.description}
+              </p>
+            )}
+            <div className="flex items-center gap-3">
+              {course.lecturer?.avatarUrl && (
+                <img 
+                  key={`lecturer-avatar-${courseId}-${course.lecturer.avatarUrl}`}
+                  src={course.lecturer.avatarUrl} 
+                  alt={course.lecturer.name}
+                  className="w-8 h-8 rounded-full object-cover"
+                  referrerPolicy="no-referrer"
+                  crossOrigin="anonymous"
+                />
+              )}
+              <p className="text-gray-400">
+                Giảng viên: {course.lecturer?.name || "Chưa có thông tin"}
+              </p>
+            </div>
+            {course.type && (
+              <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400">
+                {course.type}
+              </span>
+            )}
           </div>
           <div className="relative aspect-video lg:aspect-square rounded-xl overflow-hidden bg-[#0b0f12]">
             <img
-              src={course.thumbnail}
+              key={`course-avatar-${courseId}-${course.avatarUrl}`}
+              src={course.avatarUrl || "https://images.unsplash.com/photo-1515879218367-8466d910aaa4?w=800&h=450&fit=crop"}
               alt={course.title}
               className="w-full h-full object-cover"
+              referrerPolicy="no-referrer"
+              crossOrigin="anonymous"
             />
           </div>
         </div>
@@ -249,9 +329,9 @@ export default function StudentCourseDetail() {
                 key={item.id}
                 onClick={() => {
                   if (item.type === "assignment") {
-                    navigate(`/student/assignments/${item.id}`);
+                    navigate(`/student/courses/${courseId}/assignments/${item.id}`);
                   } else if (item.type === "content") {
-                    navigate(`/contents/${item.id}`);
+                    navigate(`/student/courses/${courseId}/content/${item.id}`);
                   }
                 }}
                 className={`rounded-xl border border-[#202934] bg-[#0b0f12] p-4 hover:border-emerald-500/40 transition cursor-pointer`}
@@ -355,36 +435,46 @@ export default function StudentCourseDetail() {
                     </h3>
                     <div className="flex items-center gap-2 text-sm text-gray-400">
                       <CalendarDays size={16} />
-                      Deadline: {assignment.deadline}
+                      Deadline: {assignment.dueAt ? new Date(assignment.dueAt).toLocaleDateString('vi-VN') : "Chưa có hạn"}
                     </div>
+                    {assignment.openAt && (
+                      <div className="flex items-center gap-2 text-sm text-gray-400">
+                        <Clock size={16} />
+                        Mở: {new Date(assignment.openAt).toLocaleDateString('vi-VN')}
+                      </div>
+                    )}
                   </div>
                   <span
                     className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                      assignment.status === "completed"
+                      assignment.dueAt && new Date(assignment.dueAt) < new Date()
+                        ? "text-red-400 bg-red-500/10"
+                        : assignment.openAt && new Date(assignment.openAt) <= new Date()
                         ? "text-emerald-400 bg-emerald-500/10"
-                        : assignment.status === "in-progress"
-                        ? "text-amber-400 bg-amber-500/10"
-                        : "text-gray-400 bg-white/5"
+                        : "text-yellow-400 bg-yellow-500/10"
                     }`}
                   >
-                    {assignment.status === "completed"
-                      ? "Đã hoàn thành"
-                      : assignment.status === "in-progress"
-                      ? "Đang làm"
-                      : "Chưa bắt đầu"}
+                    {assignment.dueAt && new Date(assignment.dueAt) < new Date()
+                      ? "Hết hạn"
+                      : assignment.openAt && new Date(assignment.openAt) <= new Date()
+                      ? "Đang mở"
+                      : "Chưa mở"}
                   </span>
                 </div>
-                <div className="h-2 bg-[#10151c] rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-cyan-400 rounded-full"
-                    style={{ width: `${assignment.progress}%` }}
-                  />
-                </div>
+                
+                {assignment.maxScore && (
+                  <div className="flex items-center gap-4 text-sm text-gray-400">
+                    <span>Điểm tối đa: {assignment.maxScore}</span>
+                    {assignment.attemptsLimit && (
+                      <span>Số lần làm: {assignment.attemptsLimit}</span>
+                    )}
+                  </div>
+                )}
+                
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
                   <div className="flex flex-wrap gap-2">
                     <button
                       onClick={() =>
-                        navigate(`/student/assignments/${assignment.id}`, {
+                        navigate(`/student/courses/${courseId}/assignments/${assignment.id}`, {
                           state: {
                             from: `/student/my-courses/${courseId}?tab=assignments`,
                           },
@@ -475,7 +565,8 @@ export default function StudentCourseDetail() {
                     alert("Yêu cầu hỗ trợ đã được gửi thành công!");
                     setShowHelpModal(false);
                     setHelpContent("");
-                  } catch (error) {
+                  } catch (err) {
+                    console.error('Help request error:', err);
                     alert("Có lỗi xảy ra. Vui lòng thử lại!");
                   } finally {
                     setIsSubmittingHelp(false);

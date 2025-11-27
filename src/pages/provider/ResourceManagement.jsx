@@ -27,17 +27,7 @@ function ResourceManagement() {
     totalPages: 0,
   });
 
-  // Fetch insights
-  const fetchInsights = async () => {
-    try {
-      const data = await resourceService.getInsights();
-      setInsights(data);
-    } catch (error) {
-      console.error("Error fetching insights:", error);
-    }
-  };
-
-  // Fetch resources
+  // Fetch resources và tính insights từ data
   const fetchResources = async (
     page = 1,
     searchKeyword = keyword,
@@ -45,6 +35,14 @@ function ResourceManagement() {
   ) => {
     try {
       setLoading(true);
+
+      console.log("🔍 Fetching resources with params:", {
+        page,
+        searchKeyword,
+        status,
+      });
+
+      // Fetch resources cho trang hiện tại
       const result = await resourceService.getResources({
         page,
         limit: pagination.limit,
@@ -54,11 +52,46 @@ function ResourceManagement() {
 
       setResources(result.data);
       setPagination(result.pagination);
+
+      console.log("✅ Resources fetched:", {
+        dataLength: result.data.length,
+        pagination: result.pagination,
+      });
+
+      // Tính insights riêng (chỉ khi cần, không ảnh hưởng pagination)
+      if (status === "all" && !searchKeyword) {
+        // Fetch tất cả để tính insights nhưng không cập nhật pagination
+        fetchInsightsData();
+      }
     } catch (error) {
       console.error("Error fetching resources:", error);
       setResources([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch insights riêng không ảnh hưởng pagination
+  const fetchInsightsData = async () => {
+    try {
+      const allResult = await resourceService.getResources({
+        page: 1,
+        limit: 1000,
+        keyword: "",
+        status: "all",
+      });
+
+      const allResources = allResult.data;
+      const calculatedInsights = {
+        total: allResources.length,
+        pending: allResources.filter((r) => r.status === "pending").length,
+        approved: allResources.filter((r) => r.status === "approved").length,
+      };
+
+      setInsights(calculatedInsights);
+      console.log("📊 Insights calculated:", calculatedInsights);
+    } catch (error) {
+      console.error("Error calculating insights:", error);
     }
   };
 
@@ -84,7 +117,6 @@ function ResourceManagement() {
   };
 
   useEffect(() => {
-    fetchInsights();
     fetchResources();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -94,6 +126,7 @@ function ResourceManagement() {
   };
 
   const handlePageChange = (page) => {
+    console.log("🔄 Page change requested:", { page, type: typeof page });
     fetchResources(page, keyword, activeTab);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -247,6 +280,12 @@ function ResourceManagement() {
               onPageChange={handlePageChange}
             />
           )}
+
+          {/* Debug Info */}
+          <div className="text-center text-xs text-gray-500 font-mono">
+            Debug: Page {pagination.page} / {pagination.totalPages} (Total:{" "}
+            {pagination.total})
+          </div>
 
           {/* Summary */}
           <div className="text-center text-sm text-gray-400">

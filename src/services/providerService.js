@@ -7,20 +7,22 @@ const providerService = {
     try {
       const { page = 1, limit = 10, keyword = "" } = params;
 
-      // Gọi đúng API 32: POST /api/tutorials/my
-      const res = await api.post(
-        "/tutorials/my",
-        null,
-        {
-          params: {
-            page: page - 1,
-            size: limit,
-            keyword: keyword || undefined,
-          },
-        }
-      );
+      // Gọi API GET /tutorials với search query
+      const res = await api.get("/tutorials", {
+        params: {
+          search: keyword || "",
+          page: page - 1,
+          size: limit,
+        },
+      });
 
-      const list = res.data?.data || [];
+      console.log("📦 Provider resources response:", res.data);
+
+      const responseData = res.data?.data;
+      const list = responseData?.content || [];
+      const totalElements = responseData?.totalElements || 0;
+      const totalPages = responseData?.totalPages || 1;
+      const currentPage = (responseData?.number || 0) + 1;
 
       // Map dữ liệu từ BE -> FE resource card
       const mapped = list.map((t) => ({
@@ -30,18 +32,22 @@ const providerService = {
         status: t.status,
         contentCount: t.lessonCount ?? 0,
         exerciseCount: t.assignmentCount ?? 0,
-        imageCount: 0,
-        createdAt: "",
+        imageCount: t.mediaCount ?? 0,
+        createdBy: t.creatorName || "Unknown",
+        createdAt: t.createdDate
+          ? new Date(t.createdDate).toLocaleDateString("vi-VN")
+          : "",
+        creatorAvatar: t.creatorAvatar || "",
         type: "VIDEO",
       }));
 
       return {
         data: mapped,
         pagination: {
-          page,
+          page: currentPage,
           limit,
-          total: mapped.length,
-          totalPages: 1,
+          total: totalElements,
+          totalPages: totalPages,
         },
       };
     } catch (error) {

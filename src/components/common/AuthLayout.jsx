@@ -12,7 +12,7 @@ export default function AuthLayout() {
 
   // Nếu đã đăng nhập, không cho vào trang Login/Register nữa
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/courses" replace />;
   }
 
   // Render form Login/Register

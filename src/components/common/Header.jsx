@@ -85,6 +85,8 @@ export default function Header() {
                 src={user.avatar}
                 alt={user?.name || "Avatar"}
                 className="h-9 w-9 rounded-full object-cover"
+                referrerPolicy="no-referrer"
+                crossOrigin="anonymous"
               />
             ) : (
               <div className="h-9 w-9 rounded-full bg-linear-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-semibold">
