@@ -419,9 +419,12 @@ const courseService = {
    */
   getHelpRequests: async (courseId, options = {}) => {
     try {
+      // API expects page starting from 1, limit max 100
       const { page = 1, limit = 20 } = options;
+      const actualLimit = Math.min(limit, 100); // Max 100 per API spec
+      
       const response = await api.get(`/help-requests/teacher/course/${courseId}`, {
-        params: { page, limit }
+        params: { page, limit: actualLimit }
       });
       
       // API trả về format: { data: [...], pagination: {...} }
@@ -432,19 +435,38 @@ const courseService = {
       
       // Map API response to component format
       // API trả về: { id, studentId, studentName, studentEmail, courseId, title, body, createdAt }
-      // Component cần: { id, studentName, studentAvatar, content, createdAt, status }
+      // Component cần: { id, studentName, studentAvatar, content, title, createdAt, status }
       if (result && result.data && Array.isArray(result.data)) {
-        const mappedRequests = result.data.map(request => ({
-          id: request.id,
-          studentId: request.studentId,
-          studentName: request.studentName || 'N/A',
-          studentEmail: request.studentEmail || '',
-          studentAvatar: `https://i.pravatar.cc/150?img=${request.studentId || 1}`, // Generate avatar from studentId
-          content: request.body || request.content || '',
-          title: request.title || '',
-          createdAt: request.createdAt,
-          status: request.status || "pending" // API có thể không trả về status
-        }));
+        const mappedRequests = result.data.map(request => {
+          // Format createdAt date
+          let formattedDate = request.createdAt;
+          if (request.createdAt) {
+            try {
+              const date = new Date(request.createdAt);
+              formattedDate = date.toLocaleString('vi-VN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+              });
+            } catch (e) {
+              // Keep original if parsing fails
+            }
+          }
+          
+          return {
+            id: request.id,
+            studentId: request.studentId,
+            studentName: request.studentName || 'N/A',
+            studentEmail: request.studentEmail || '',
+            studentAvatar: `https://i.pravatar.cc/150?img=${request.studentId || 1}`, // Generate avatar from studentId
+            content: request.body || request.content || '',
+            title: request.title || '',
+            createdAt: formattedDate,
+            status: request.status || "pending" // API có thể không trả về status
+          };
+        });
         
         return {
           data: mappedRequests,
