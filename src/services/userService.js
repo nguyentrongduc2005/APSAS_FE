@@ -152,6 +152,12 @@ export const uploadAvatar = async (file) => {
     const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
     currentUser.avatar = avatarUrl;
     localStorage.setItem("user", JSON.stringify(currentUser));
+    // Also cache avatar separately so FE can preserve it across logout/login
+    try {
+      localStorage.setItem("user_avatar", avatarUrl);
+    } catch (e) {
+      // ignore
+    }
 
     // Giữ format cũ để Profile.jsx dùng result.avatarUrl
     return { avatarUrl };

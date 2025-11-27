@@ -240,12 +240,12 @@ export default function AssignmentDetailView() {
                     </h3>
                     <span
                       className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium ${
-                        testCase.visibility === "public"
+                        testCase.visibility === "PUBLIC"
                           ? "bg-emerald-500/10 text-emerald-400"
                           : "bg-gray-500/10 text-gray-400"
                       }`}
                     >
-                      {testCase.visibility === "public" ? (
+                      {testCase.visibility === "PUBLIC" ? (
                         <>
                           <Eye size={14} />
                           Public
@@ -266,7 +266,7 @@ export default function AssignmentDetailView() {
                       </label>
                       <div className="bg-[#0b0f12] border border-[#202934] rounded-lg p-3">
                         <pre className="text-sm text-gray-300 font-mono whitespace-pre-wrap break-all">
-                          {testCase.input}
+                          {testCase.in}
                         </pre>
                       </div>
                     </div>
@@ -277,7 +277,7 @@ export default function AssignmentDetailView() {
                       </label>
                       <div className="bg-[#0b0f12] border border-[#202934] rounded-lg p-3">
                         <pre className="text-sm text-gray-300 font-mono whitespace-pre-wrap break-all">
-                          {testCase.output}
+                          {testCase.out}
                         </pre>
                       </div>
                     </div>

@@ -195,11 +195,11 @@ const resourceService = {
   // Tạo tutorial mới (API 21)
   async createResource(payload) {
     try {
-      const res = await api.post("/tutorials", payload);
+      const res = await api.post("/tutorials/create", payload);
       // BE trả { code, message, data }
       return res.data?.data;
     } catch (error) {
-      console.error("Error creating tutorial:", error);
+      console.error("❌ Error creating tutorial:", error);
       throw error;
     }
   },
@@ -218,9 +218,19 @@ const resourceService = {
   // Tạo content mới cho tutorial (API 23)
   async createContent(tutorialId, contentData) {
     try {
+      const config = {};
+
+      // Nếu là FormData, set Content-Type để axios tự động handle
+      if (contentData instanceof FormData) {
+        config.headers = {
+          'Content-Type': 'multipart/form-data',
+        };
+      }
+
       const res = await api.post(
         `/tutorials/${tutorialId}/contents`,
-        contentData
+        contentData,
+        config
       );
       return res.data?.data;
     } catch (error) {
@@ -232,13 +242,34 @@ const resourceService = {
   // Cập nhật content (API 28)
   async updateContent(tutorialId, contentId, contentData) {
     try {
+      const config = {};
+
+      // Nếu là FormData, set Content-Type để axios tự động handle
+      if (contentData instanceof FormData) {
+        config.headers = {
+          'Content-Type': 'multipart/form-data',
+        };
+      }
+
       const res = await api.put(
         `/tutorials/contents/${contentId}`,
-        contentData
+        contentData,
+        config
       );
       return res.data?.data;
     } catch (error) {
       console.error("Error updating content:", error);
+      throw error;
+    }
+  },
+
+  // Xóa content
+  async deleteContent(tutorialId, contentId) {
+    try {
+      const res = await api.delete(`/tutorials/contents/${contentId}`);
+      return res.data?.data;
+    } catch (error) {
+      console.error("Error deleting content:", error);
       throw error;
     }
   },
@@ -282,6 +313,17 @@ const resourceService = {
     }
   },
 
+  // Xóa assignment
+  async deleteAssignment(tutorialId, assignmentId) {
+    try {
+      const res = await api.delete(`/tutorials/assignments/${assignmentId}`);
+      return res.data?.data;
+    } catch (error) {
+      console.error("Error deleting assignment:", error);
+      throw error;
+    }
+  },
+
   // Lấy assignment theo ID (API 27)
   async getAssignmentById(tutorialId, assignmentId) {
     try {
@@ -303,23 +345,9 @@ const resourceService = {
   // Lấy danh sách skills
   async getSkills() {
     try {
-      // TODO: Gọi API thực tế
-      // const response = await api.get("/api/skills");
-      // return response.data;
-
-      // Mock data
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve([
-            { id: "skill-1", name: "Data Structures" },
-            { id: "skill-2", name: "Algorithms" },
-            { id: "skill-3", name: "Object Oriented Programming" },
-            { id: "skill-4", name: "Problem Solving" },
-            { id: "skill-5", name: "Database Design" },
-            { id: "skill-6", name: "Web Development" },
-          ]);
-        }, 300);
-      });
+      const response = await api.get("/skills");
+      // API trả về { code, message, data: [...] }
+      return response.data?.data || [];
     } catch (error) {
       console.error("Error fetching skills:", error);
       throw error;
@@ -334,9 +362,11 @@ export const createResource = resourceService.createResource;
 export const getResourceDetail = resourceService.getResourceDetail;
 export const createContent = resourceService.createContent;
 export const updateContent = resourceService.updateContent;
+export const deleteContent = resourceService.deleteContent;
 export const getContentById = resourceService.getContentById;
 export const createAssignment = resourceService.createAssignment;
 export const updateAssignment = resourceService.updateAssignment;
+export const deleteAssignment = resourceService.deleteAssignment;
 export const getAssignmentById = resourceService.getAssignmentById;
 export const getSkills = resourceService.getSkills;
 

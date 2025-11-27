@@ -22,7 +22,6 @@ export default function ResourceDetail() {
       try {
         setLoading(true);
         const data = await getResourceDetail(resourceId);
-        console.log("📦 Resource detail:", data);
         setResource(data);
       } catch (error) {
         console.error("Error fetching resource:", error);

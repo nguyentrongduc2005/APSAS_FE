@@ -16,7 +16,7 @@ export default function StudentProgress() {
   const [activeTab, setActiveTab] = useState("hoat-dong");
   const [loading, setLoading] = useState(true);
 
-  const [rawProgress, setRawProgress] = useState([]);
+  
 
   const [stats, setStats] = useState({
     totalCourses: 0,
@@ -39,24 +39,49 @@ export default function StudentProgress() {
           return;
         }
 
-        // 1. Gọi API thật: GET /progress/{studentId}
-        const progressList = await progressService.getProgress(user.id);
-        setRawProgress(progressList);
+        // 1. Gọi API thật: GET /progress/{studentId} hoặc /progress/{studentId}/current
+        const resp = await progressService.getProgress(user.id);
 
-        // 2. Tính stats tổng quan
-        const newStats = progressService.computeStats(progressList);
+        // `progressService.getProgress` may return either:
+        // - an object with { rawProgress, stats, activityData, currentCourses, achievements }
+        // - or a plain list of progress items (legacy)
+        let raw = [];
+        let newStats = { totalCourses: 0, completed: 0, completionRate: 0 };
+        let chartData = [];
+        let courses = [];
+        let achs = [];
+
+        if (resp && typeof resp === "object" && !Array.isArray(resp) && resp.stats) {
+          raw = Array.isArray(resp.rawProgress) ? resp.rawProgress : [];
+          newStats = resp.stats || newStats;
+          chartData = Array.isArray(resp.activityData) ? resp.activityData : progressService.buildChartData(raw);
+          courses = Array.isArray(resp.currentCourses) ? resp.currentCourses : [];
+          achs = Array.isArray(resp.achievements) ? resp.achievements : [];
+        } else if (Array.isArray(resp)) {
+          raw = resp;
+          newStats = progressService.computeStats(raw);
+          chartData = progressService.buildChartData(raw);
+          courses = progressService.buildCurrentCourses(raw);
+          achs = progressService.buildAchievements(raw);
+        } else {
+          // unknown response (server error returned non-array/non-object) -> keep defaults
+          raw = [];
+          newStats = { totalCourses: 0, completed: 0, completionRate: 0 };
+          chartData = [];
+          courses = [];
+          achs = [];
+        }
+
+        // Ensure chart data values are numeric and filter invalid points
+        const safeChart = (chartData || []).map((d, idx) => ({
+          day: d.day ?? d.date ?? `D${idx + 1}`,
+          value: Number(d.value ?? d.score ?? 0) || 0,
+        }));
+
+        // rawProgress state removed; keep only UI states
         setStats(newStats);
-
-        // 3. Data cho biểu đồ
-        const chartData = progressService.buildChartData(progressList);
-        setActivityData(chartData);
-
-        // 4. Danh sách khóa học đang học
-        const courses = progressService.buildCurrentCourses(progressList);
+        setActivityData(safeChart);
         setCurrentCourses(courses);
-
-        // 5. Thành tích
-        const achs = progressService.buildAchievements(progressList);
         setAchievements(achs);
       } catch (error) {
         console.error("Error fetching progress data:", error);
@@ -68,12 +93,46 @@ export default function StudentProgress() {
     fetchData();
   }, [user?.id]);
 
-  // Đổi range biểu đồ (tạm thời chỉ remap từ rawProgress)
-  const handleDateRangeChange = async (range) => {
-    if (!rawProgress.length) return;
+  // Đổi range biểu đồ: gọi API /progress/{id}/scores?from=YYYY-MM-DD&to=YYYY-MM-DD
+  const handleDateRangeChange = async (rangeValue) => {
+    // Determine days to include (inclusive of today)
+    const daysCount = rangeValue === "7days" ? 7 : rangeValue === "30days" ? 30 : 90;
 
-    const chartData = progressService.buildChartData(rawProgress);
-    setActivityData(chartData);
+    // to = today, from = today - (daysCount - 1)
+    const toDate = new Date();
+    const fromDate = new Date(toDate);
+    fromDate.setDate(toDate.getDate() - (daysCount - 1));
+
+    const fmt = (d) => d.toISOString().slice(0, 10); // YYYY-MM-DD
+
+    // Fetch daily scores for the selected range
+    try {
+      const resp = await progressService.getDailyScores(user.id, fmt(fromDate), fmt(toDate));
+
+      let daily = [];
+      if (!resp) {
+        daily = [];
+      } else if (resp && typeof resp === "object" && Object.prototype.hasOwnProperty.call(resp, "code") && resp.data) {
+        // envelope shape { code, message, data }
+        daily = Array.isArray(resp.data.dailyScoreDTOList) ? resp.data.dailyScoreDTOList : [];
+      } else if (resp && typeof resp === "object" && Array.isArray(resp.dailyScoreDTOList)) {
+        daily = resp.dailyScoreDTOList;
+      } else if (Array.isArray(resp)) {
+        daily = resp;
+      } else {
+        daily = [];
+      }
+
+      // Build chart data ensuring numeric values. Fill missing dates with 0 if needed.
+      const chartData = daily.map((d, idx) => ({
+        day: d.date ?? d.day ?? fmt(new Date(new Date(fromDate).getTime() + idx * 24 * 60 * 60 * 1000)),
+        value: Number(d.score ?? d.value ?? 0) || 0,
+      }));
+
+      setActivityData(chartData);
+    } catch (error) {
+      console.error("Error fetching daily scores:", error);
+    }
   };
 
   // Map icon cho achievements
