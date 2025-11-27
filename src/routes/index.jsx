@@ -48,7 +48,6 @@ import TeacherTutorialLibrary from "../pages/lecturer/ResourceLibrary";
 import ResourceModeration from "../pages/admin/ResourceModeration";
 import ApplyResourceToCourse from "../pages/lecturer/ApplyResourceToCourse";
 import CreateCourse from "../pages/lecturer/CreateCourse";
-import ResourceDetailReadOnly from "../pages/provider/ResourceDetailReadOnly.jsx";
 
 const Dashboard = () => <div>Dashboardssss</div>;
 
