@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FileText, Clock, CheckCircle, Plus, X } from "lucide-react";
+import { toast } from "sonner";
 import resourceService from "../../services/resourceService";
 import SearchBar from "../../components/provider/SearchBar";
 import ResourceManagementCard from "../../components/provider/ResourceManagementCard";
@@ -97,20 +98,31 @@ function ResourceManagement() {
 
   const handleCreateResource = async () => {
     if (!newResource.title.trim() || !newResource.summary.trim()) {
-      alert("Vui lòng điền đầy đủ thông tin");
+      toast.error("Vui lòng điền đầy đủ thông tin");
       return;
     }
 
     try {
       setIsCreating(true);
       const result = await resourceService.createResource(newResource);
-      alert("Tạo tài nguyên thành công!");
+      
+      toast.success("Tạo tài nguyên thành công!", {
+        description: `Tài nguyên "${newResource.title}" đã được tạo với trạng thái DRAFT`,
+      });
+      
       setShowCreateModal(false);
       setNewResource({ title: "", summary: "" });
       navigate(`/provider/resources/${result.id}`);
     } catch (error) {
       console.error("Error creating resource:", error);
-      alert("Có lỗi xảy ra khi tạo tài nguyên!");
+      
+      const errorMessage = error.response?.data?.message || 
+                          error.message || 
+                          "Có lỗi xảy ra khi tạo tài nguyên!";
+      
+      toast.error("Tạo tài nguyên thất bại", {
+        description: errorMessage,
+      });
     } finally {
       setIsCreating(false);
     }

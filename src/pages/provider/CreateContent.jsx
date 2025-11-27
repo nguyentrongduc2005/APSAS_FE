@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Save, Image as ImageIcon, Eye, X } from "lucide-react";
+import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
@@ -8,6 +9,7 @@ import rehypeSanitize from "rehype-sanitize";
 import {
   createContent,
   updateContent,
+  deleteContent,
   getContentById,
 } from "../../services/resourceService";
 
@@ -25,6 +27,33 @@ export default function CreateContent() {
   const [images, setImages] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa bài học "${content.title}"?`)) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await deleteContent(resourceId, contentId);
+      toast.success("Xóa bài học thành công!", {
+        description: `Bài học "${content.title}" đã bị xóa`
+      });
+      navigate(`/provider/resources/${resourceId}`);
+    } catch (error) {
+      console.error("Error deleting content:", error);
+      const errorMessage = error.response?.data?.message || 
+                          error.message || 
+                          "Có lỗi xảy ra khi xóa bài học";
+      
+      toast.error("Xóa bài học thất bại", {
+        description: errorMessage
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   useEffect(() => {
     if (isEdit) {
@@ -80,31 +109,51 @@ export default function CreateContent() {
 
   const handleSave = async () => {
     if (!content.title.trim() || !content.markdown.trim()) {
-      alert("Vui lòng điền đầy đủ thông tin");
+      toast.error("Vui lòng điền đầy đủ thông tin");
       return;
     }
 
     setIsSaving(true);
     try {
-      const data = {
-        ...content,
-        images: images.map((img) => ({
-          url: img.url,
-          caption: img.caption,
-        })),
-      };
+      // Tạo FormData để gửi cả text và images
+      const formData = new FormData();
+      formData.append('title', content.title);
+      formData.append('bodyMd', content.markdown);
+      formData.append('orderNo', parseInt(content.orderNo));
+
+      // Thêm images vào FormData
+      images.forEach((image, index) => {
+        if (image.file) {
+          // Nếu là file mới được upload
+          formData.append('images', image.file);
+        }
+        // Thêm caption cho image
+        if (image.caption) {
+          formData.append(`imageCaptions[${index}]`, image.caption);
+        }
+      });
 
       if (isEdit) {
-        await updateContent(resourceId, contentId, data);
-        alert("Cập nhật bài học thành công!");
+        await updateContent(resourceId, contentId, formData);
+        toast.success("Cập nhật bài học thành công!", {
+          description: `Bài học "${content.title}" đã được cập nhật`
+        });
       } else {
-        await createContent(resourceId, data);
-        alert("Tạo bài học thành công!");
+        await createContent(resourceId, formData);
+        toast.success("Tạo bài học thành công!", {
+          description: `Bài học "${content.title}" đã được tạo với ${images.length} hình ảnh`
+        });
       }
       navigate(`/provider/resources/${resourceId}`);
     } catch (error) {
       console.error("Error saving content:", error);
-      alert("Có lỗi xảy ra. Vui lòng thử lại!");
+      const errorMessage = error.response?.data?.message || 
+                          error.message || 
+                          "Có lỗi xảy ra khi lưu bài học";
+      
+      toast.error(isEdit ? "Cập nhật bài học thất bại" : "Tạo bài học thất bại", {
+        description: errorMessage
+      });
     } finally {
       setIsSaving(false);
     }
@@ -139,14 +188,26 @@ export default function CreateContent() {
             </h1>
           </div>
 
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-black font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Save size={20} />
-            {isSaving ? "Đang lưu..." : "Lưu"}
-          </button>
+          <div className="flex items-center gap-3">
+            {isEdit && (
+              <button
+                onClick={handleDelete}
+                disabled={isDeleting || isSaving}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-red-500 hover:bg-red-600 text-white font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <X size={18} />
+                {isDeleting ? "Đang xóa..." : "Xóa"}
+              </button>
+            )}
+            <button
+              onClick={handleSave}
+              disabled={isSaving || isDeleting}
+              className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-black font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Save size={20} />
+              {isSaving ? "Đang lưu..." : "Lưu"}
+            </button>
+          </div>
         </div>
 
         {/* Form Fields */}
@@ -282,7 +343,7 @@ export default function CreateContent() {
                     remarkPlugins={[remarkGfm]}
                     rehypePlugins={[rehypeRaw, rehypeSanitize]}
                     components={{
-                      code({ node, inline, className, children, ...props }) {
+                      code({ inline, className, children, ...props }) {
                         return inline ? (
                           <code className={className} {...props}>
                             {children}

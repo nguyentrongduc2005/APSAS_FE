@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Save, Plus, X, Eye, EyeOff } from "lucide-react";
+import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
@@ -8,6 +9,7 @@ import rehypeSanitize from "rehype-sanitize";
 import {
   createAssignment,
   updateAssignment,
+  deleteAssignment,
   getAssignmentById,
   getSkills,
 } from "../../services/resourceService";
@@ -28,25 +30,57 @@ export default function CreateAssignment() {
   });
 
   const [testCases, setTestCases] = useState([
-    { input: "", output: "", visibility: "public" },
+    { input: "", output: "", visibility: "PUBLIC" },
   ]);
 
   const [skills, setSkills] = useState([]);
+  const [skillsLoading, setSkillsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    const fetchSkills = async () => {
-      try {
-        const data = await getSkills();
-        setSkills(data);
-      } catch (error) {
-        console.error("Error fetching skills:", error);
-      }
-    };
+  const handleDelete = async () => {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa bài tập "${assignment.title}"?`)) {
+      return;
+    }
 
-    fetchSkills();
-  }, []);
+    setIsDeleting(true);
+    try {
+      await deleteAssignment(resourceId, assignmentId);
+      toast.success("Xóa bài tập thành công!", {
+        description: `Bài tập "${assignment.title}" đã bị xóa`
+      });
+      navigate(`/provider/resources/${resourceId}`);
+    } catch (error) {
+      console.error("Error deleting assignment:", error);
+      const errorMessage = error.response?.data?.message || 
+                          error.message || 
+                          "Có lỗi xảy ra khi xóa bài tập";
+      
+      toast.error("Xóa bài tập thất bại", {
+        description: errorMessage
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const loadSkills = async () => {
+    if (skills.length > 0) return; // Đã load rồi thì không load lại
+    
+    setSkillsLoading(true);
+    try {
+      const data = await getSkills();
+      setSkills(data);
+    } catch (error) {
+      console.error("Error fetching skills:", error);
+      toast.error("Không thể tải danh sách skills", {
+        description: "Vui lòng thử lại sau"
+      });
+    } finally {
+      setSkillsLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (isEdit) {
@@ -64,7 +98,7 @@ export default function CreateAssignment() {
             statement: data.statement || "",
           });
           setTestCases(
-            data.testCases || [{ input: "", output: "", visibility: "public" }]
+            data.testCases || [{ input: "", output: "", visibility: "PUBLIC" }]
           );
         } catch (error) {
           console.error("Error fetching assignment:", error);
@@ -79,7 +113,7 @@ export default function CreateAssignment() {
   const addTestCase = () => {
     setTestCases([
       ...testCases,
-      { input: "", output: "", visibility: "public" },
+      { input: "", output: "", visibility: "PUBLIC" },
     ]);
   };
 
@@ -97,7 +131,7 @@ export default function CreateAssignment() {
 
   const handleSave = async () => {
     if (!assignment.title.trim() || !assignment.skillId) {
-      alert("Vui lòng điền đầy đủ thông tin");
+      toast.error("Vui lòng điền đầy đủ thông tin");
       return;
     }
 
@@ -106,28 +140,57 @@ export default function CreateAssignment() {
     );
 
     if (validTestCases.length === 0) {
-      alert("Vui lòng thêm ít nhất 1 test case hợp lệ");
+      toast.error("Vui lòng thêm ít nhất 1 test case hợp lệ");
       return;
     }
 
     setIsSaving(true);
     try {
+      // Tạo payload theo đúng format API
+      const evaluations = [{
+        name: "Chấm code tự động",
+        type: "RCE_JUDGE",
+        configJson: JSON.stringify({
+          testCase: validTestCases.map(tc => ({
+            in: tc.input,
+            out: tc.output,
+            visibility: tc.visibility || "PUBLIC"
+          }))
+        })
+      }];
+
       const data = {
-        ...assignment,
-        testCases: validTestCases,
+        skillId: parseInt(assignment.skillId),
+        title: assignment.title,
+        statementMd: assignment.statement,
+        maxScore: parseFloat(assignment.maxScore),
+        proficiency: parseInt(assignment.proficiency),
+        orderNo: parseInt(assignment.orderNo),
+        attemptsLimit: parseInt(assignment.attemptLimit),
+        evaluations
       };
 
       if (isEdit) {
         await updateAssignment(resourceId, assignmentId, data);
-        alert("Cập nhật bài tập thành công!");
+        toast.success("Cập nhật bài tập thành công!", {
+          description: `Bài tập "${assignment.title}" đã được cập nhật`
+        });
       } else {
         await createAssignment(resourceId, data);
-        alert("Tạo bài tập thành công!");
+        toast.success("Tạo bài tập thành công!", {
+          description: `Bài tập "${assignment.title}" đã được tạo với ${validTestCases.length} test case`
+        });
       }
       navigate(`/provider/resources/${resourceId}`);
     } catch (error) {
       console.error("Error saving assignment:", error);
-      alert("Có lỗi xảy ra. Vui lòng thử lại!");
+      const errorMessage = error.response?.data?.message || 
+                          error.message || 
+                          "Có lỗi xảy ra khi lưu bài tập";
+      
+      toast.error(isEdit ? "Cập nhật bài tập thất bại" : "Tạo bài tập thất bại", {
+        description: errorMessage
+      });
     } finally {
       setIsSaving(false);
     }
@@ -159,14 +222,26 @@ export default function CreateAssignment() {
             </h1>
           </div>
 
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-black font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Save size={20} />
-            {isSaving ? "Đang lưu..." : "Lưu"}
-          </button>
+          <div className="flex items-center gap-3">
+            {isEdit && (
+              <button
+                onClick={handleDelete}
+                disabled={isDeleting || isSaving}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-red-500 hover:bg-red-600 text-white font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <X size={18} />
+                {isDeleting ? "Đang xóa..." : "Xóa"}
+              </button>
+            )}
+            <button
+              onClick={handleSave}
+              disabled={isSaving || isDeleting}
+              className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-black font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Save size={20} />
+              {isSaving ? "Đang lưu..." : "Lưu"}
+            </button>
+          </div>
         </div>
 
         {/* Basic Info */}
@@ -271,12 +346,16 @@ export default function CreateAssignment() {
                 onChange={(e) =>
                   setAssignment({ ...assignment, skillId: e.target.value })
                 }
+                onFocus={loadSkills} // Load skills khi user click vào dropdown
                 className="w-full bg-[#0f1419] border border-[#202934] rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-emerald-500/50"
+                disabled={skillsLoading}
               >
-                <option value="">-- Chọn skill --</option>
+                <option value="">
+                  {skillsLoading ? "Đang tải skills..." : "-- Chọn skill --"}
+                </option>
                 {skills.map((skill) => (
                   <option key={skill.id} value={skill.id}>
-                    {skill.name}
+                    {skill.name} - {skill.category}
                   </option>
                 ))}
               </select>
@@ -423,8 +502,8 @@ export default function CreateAssignment() {
                       <input
                         type="radio"
                         name={`visibility-${index}`}
-                        value="public"
-                        checked={testCase.visibility === "public"}
+                        value="PUBLIC"
+                        checked={testCase.visibility === "PUBLIC"}
                         onChange={(e) =>
                           updateTestCase(index, "visibility", e.target.value)
                         }
@@ -439,8 +518,8 @@ export default function CreateAssignment() {
                       <input
                         type="radio"
                         name={`visibility-${index}`}
-                        value="private"
-                        checked={testCase.visibility === "private"}
+                        value="PRIVATE"
+                        checked={testCase.visibility === "PRIVATE"}
                         onChange={(e) =>
                           updateTestCase(index, "visibility", e.target.value)
                         }
