@@ -123,8 +123,19 @@ export default function AppRoutes() {
             element={<CourseAssignments />}
           />
                    {" "}
-          <Route path="resources" element={<TeacherTutorialLibrary />} />       
-           {" "}
+          <Route path="resources" element={<TeacherTutorialLibrary />} />{" "}
+          <Route
+            path="resources/:resourceId/view"
+            element={<ResourceDetailReadOnly />}
+          />
+          <Route
+            path="resources/:resourceId/view/content/:contentId"
+            element={<ContentDetailView />}
+          />
+          <Route
+            path="resources/:resourceId/view/assignment/:assignmentId"
+            element={<AssignmentDetailView />}
+          />
           <Route
             path="resources/:id/apply"
             element={<ApplyResourceToCourse />}

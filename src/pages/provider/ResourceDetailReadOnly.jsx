@@ -131,7 +131,7 @@ export default function ResourceDetailReadOnly() {
                     onClick={() => {
                       const basePath = isProviderContext
                         ? `/provider/resources/${resourceId}/view`
-                        : `/resources/${resourceId}`;
+                        : `/resources/${resourceId}/view`;
 
                       if (isContent) {
                         navigate(`${basePath}/content/${item.id}`);

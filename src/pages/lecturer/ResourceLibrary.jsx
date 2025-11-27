@@ -57,7 +57,7 @@ function TeacherTutorialLibrary() {
 
   const handleViewDetail = (resource) => {
     // Navigate to resource detail page (read-only view)
-    navigate(`/resources/${resource.id}`);
+    navigate(`/resources/${resource.id}/view`);
   };
 
   return (
