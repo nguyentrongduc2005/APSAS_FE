@@ -19,6 +19,8 @@ import {
   X,
 } from "lucide-react";
 import lecturerService from "../../services/lecturerService";
+import courseService from "../../services/courseService";
+import { toast } from "sonner";
 
 export default function CourseOverview() {
   const { courseId } = useParams();
@@ -31,6 +33,8 @@ export default function CourseOverview() {
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [helpRequests, setHelpRequests] = useState([]);
+  const [helpRequestsLoading, setHelpRequestsLoading] = useState(false);
 
   // Load course data from API
   useEffect(() => {
@@ -135,45 +139,32 @@ export default function CourseOverview() {
     })) || [])
   ].sort((a, b) => a.orderNo - b.orderNo);
 
-  // Mock help requests from students
-  const helpRequests = [
-    {
-      id: 1,
-      studentName: "Nguyễn Văn A",
-      studentAvatar: "https://i.pravatar.cc/150?img=1",
-      content:
-        "Em không hiểu rõ về cách sử dụng Collections trong Java. Thầy có thể giải thích thêm không ạ?",
-      createdAt: "2024-11-15 14:30",
-      status: "pending",
-    },
-    {
-      id: 2,
-      studentName: "Trần Thị B",
-      studentAvatar: "https://i.pravatar.cc/150?img=5",
-      content:
-        "Bài tập số 3 em chạy bị lỗi NullPointerException nhưng không biết sửa thế nào. Có thể hướng dẫn em không ạ?",
-      createdAt: "2024-11-15 10:15",
-      status: "resolved",
-    },
-    {
-      id: 3,
-      studentName: "Lê Văn C",
-      studentAvatar: "https://i.pravatar.cc/150?img=3",
-      content:
-        "Thầy ơi, em muốn hỏi về sự khác biệt giữa ArrayList và LinkedList. Khi nào thì nên dùng cái nào ạ?",
-      createdAt: "2024-11-14 16:45",
-      status: "pending",
-    },
-    {
-      id: 4,
-      studentName: "Phạm Thị D",
-      studentAvatar: "https://i.pravatar.cc/150?img=9",
-      content:
-        "Em không hiểu phần Exception Handling, đặc biệt là try-catch-finally. Thầy có thể cho ví dụ thực tế không ạ?",
-      createdAt: "2024-11-14 09:20",
-      status: "resolved",
-    },
-  ];
+  // Load help requests from API
+  useEffect(() => {
+    const loadHelpRequests = async () => {
+      if (!courseId || activeTab !== "help-requests") return;
+      
+      try {
+        setHelpRequestsLoading(true);
+        // API: GET /api/help-requests/teacher/course/{courseId}?page=1&limit=20
+        const response = await courseService.getHelpRequests(courseId, { page: 1, limit: 20 });
+        
+        if (response && response.data) {
+          setHelpRequests(response.data);
+        } else {
+          setHelpRequests([]);
+        }
+      } catch (err) {
+        console.error('Error loading help requests:', err);
+        toast.error(err.message || "Không thể tải danh sách yêu cầu hỗ trợ");
+        setHelpRequests([]);
+      } finally {
+        setHelpRequestsLoading(false);
+      }
+    };
+
+    loadHelpRequests();
+  }, [courseId, activeTab]);
 
   // Loading state
   if (loading) {
