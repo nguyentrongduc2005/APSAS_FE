@@ -148,41 +148,41 @@ export default function AppRoutes() {
           />
                  {" "}
         </Route>
-               {" "}
-        <Route element={<AuthGuard allow={["provider"]} />}>
-                   {" "}
-          <Route path="provider/resources" element={<ProviderResources />} />   
-               {" "}
+               {" "}
+        <Route element={<AuthGuard allow={["provider", "admin"]} />}>
+                   {" "}
+          <Route path="provider/resources" element={<ProviderResources />} />   
+               {" "}
           <Route
             path="provider/resources/:resourceId"
             element={<ResourceDetail />}
           />
-                   {" "}
+                   {" "}
           <Route
             path="provider/resources/:resourceId/view"
             element={<ResourceDetailReadOnly />}
           />
-                      {/* Content & Assignment management routes */}           {" "}
+                      {/* Content & Assignment management routes */}           {" "}
           <Route
             path="provider/resources/:resourceId/create-content"
             element={<CreateContent />}
           />
-                     {" "}
+                     {" "}
           <Route
             path="provider/resources/:resourceId/create-assignment"
             element={<CreateAssignment />}
           />
-                     {" "}
+                     {" "}
           <Route
             path="provider/resources/:resourceId/content/:contentId"
             element={<ContentDetailView />}
           />
-                     {" "}
+                     {" "}
           <Route
             path="provider/resources/:resourceId/content/:contentId/edit"
             element={<CreateContent />}
           />
-                     {" "}
+                     {" "}
           <Route
             path="provider/resources/:resourceId/assignment/:assignmentId"
             element={<AssignmentDetailView />}
@@ -195,33 +195,34 @@ export default function AppRoutes() {
             path="provider/resources/:resourceId/view/assignment/:assignmentId"
             element={<AssignmentDetailView />}
           />
-                     {" "}
+                     {" "}
           <Route
             path="provider/resources/:resourceId/assignment/:assignmentId/edit"
             element={<CreateAssignment />}
           />
-                     {" "}
+                     {" "}
           {/* Resource edit placeholder (no dedicated edit page yet) - show detail for now */}
-                     {" "}
+                     {" "}
           <Route
             path="provider/resources/:resourceId/edit"
             element={<ResourceDetail />}
           />
-                   {" "}
+                 {" "}
+        </Route>
+        
+        {/* Provider-only route: Resource Management */}
+        <Route element={<AuthGuard allow={["provider"]} />}>
           <Route
             path="provider/resource-management"
             element={<ResourceManagement />}
           />
-                 {" "}
         </Route>
                 {/* === Các trang Admin (Bọc trong "Gác cổng" + role) === */}   
-           {" "}
+           {" "}
         <Route element={<AuthGuard allow={["admin"]} />}>
            <Route path="admin/users" element={<AdminUsers />} />       
            <Route path="admin/content" element={<ContentApprovals />} />       
            <Route path="admin/permissions" element={<RolePermissions />} />
-           <Route path="admin/resources" element={<ResourceModeration />} />
-           <Route path="admin/resources/:tutorialId" element={<AdminTutorialDetail />} />
            {" "}
         </Route>
              {" "}
