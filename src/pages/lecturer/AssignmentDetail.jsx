@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -43,6 +43,13 @@ export default function LecturerAssignmentDetail() {
   // Students submissions state
   const [studentsSubmissions, setStudentsSubmissions] = useState([]);
   const [studentsLoading, setStudentsLoading] = useState(false);
+  
+  // Submission history state
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [submissionHistory, setSubmissionHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  
+  // Submission detail state
   const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [submissionDetailLoading, setSubmissionDetailLoading] = useState(false);
   
@@ -184,14 +191,18 @@ export default function LecturerAssignmentDetail() {
         // API trả về pagination format: { content: [...], empty: false, ... }
         const submissions = response.data?.content || response.content || [];
         
-        // Use studentId as submissionId for API call
-        const processedSubmissions = submissions.map(submission => ({
-          ...submission,
-          submissionId: submission.studentId // API expects studentId
-        }));
+        // Group submissions by student (show only unique students)
+        const studentMap = new Map();
+        submissions.forEach(submission => {
+          const existingStudent = studentMap.get(submission.studentId);
+          if (!existingStudent || new Date(submission.submittedAt) > new Date(existingStudent.submittedAt)) {
+            studentMap.set(submission.studentId, submission);
+          }
+        });
         
-        setStudentsSubmissions(processedSubmissions);
-        console.log('Loaded students submissions:', processedSubmissions);
+        const uniqueStudents = Array.from(studentMap.values());
+        setStudentsSubmissions(uniqueStudents);
+        console.log('Loaded unique students:', uniqueStudents);
       } else {
         showToast('Không thể tải danh sách sinh viên', 'error');
         setStudentsSubmissions([]);
@@ -205,19 +216,63 @@ export default function LecturerAssignmentDetail() {
     }
   };
 
-  // Load submission detail
+  // Load submission history for selected student
+  const loadSubmissionHistory = async (student) => {
+    try {
+      setHistoryLoading(true);
+      setSelectedStudent(student);
+      setSubmissionHistory([]);
+      setSelectedSubmission(null);
+      
+      console.log('Loading submission history for student:', student.studentId);
+      const response = await fetch(
+        `http://localhost:8080/api/submissions/history?courseId=${courseId}&assignmentId=${assignmentId}&studentId=${student.studentId}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error('Không thể lấy lịch sử submission');
+      }
+      
+      const historyData = await response.json();
+      console.log('Submission history:', historyData);
+      
+      if (historyData.code !== 'ok' || !historyData.data?.items) {
+        throw new Error('Không tìm thấy submission nào của sinh viên này');
+      }
+      
+      setSubmissionHistory(historyData.data.items);
+    } catch (error) {
+      console.error('Error loading submission history:', error);
+      showToast(error.message || 'Không thể tải lịch sử bài nộp', 'error');
+      setSubmissionHistory([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  // Load submission detail using submission ID
   const loadSubmissionDetail = async (submissionId) => {
     try {
       setSubmissionDetailLoading(true);
+      
+      console.log('Loading submission detail for ID:', submissionId);
       const response = await getTeacherSubmissionDetail(submissionId);
       
       if (response && (response.code === "ok" || response.code === "0" || response.code === "OK")) {
+        console.log('Submission detail:', response.data);
         setSelectedSubmission(response.data);
       } else {
         throw new Error(response?.message || "Không thể tải chi tiết submission");
       }
     } catch (error) {
-      console.error("Error loading submission detail:", error);
+      console.error('Error loading submission detail:', error);
       showToast(error.message || 'Không thể tải chi tiết bài nộp', 'error');
     } finally {
       setSubmissionDetailLoading(false);
@@ -448,9 +503,9 @@ export default function LecturerAssignmentDetail() {
                       key={student.studentId || index}
                       className="bg-[#0b0f12] border border-[#202934] rounded-lg p-4 hover:border-emerald-500/50 transition cursor-pointer"
                       onClick={() => {
-                        // Load submission detail using studentId
-                        console.log('Loading submission for studentId:', student.submissionId, 'student:', student.studentName);
-                        loadSubmissionDetail(student.submissionId);
+                        // Load submission history for selected student
+                        console.log('Loading submission history for student:', student.studentName);
+                        loadSubmissionHistory(student);
                       }}
                     >
                       <div className="flex items-start justify-between">
@@ -534,15 +589,110 @@ export default function LecturerAssignmentDetail() {
               )}
             </section>
 
-            {/* Submission Detail */}
+            {/* Submission History & Detail */}
             <section className="bg-[#0f1419] border border-[#202934] rounded-2xl p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">Chi tiết bài nộp</h3>
-              
-              {submissionDetailLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="text-gray-400">Đang tải...</div>
+              {!selectedStudent ? (
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-4">Lịch sử bài nộp</h3>
+                  <div className="text-center py-12 text-gray-400">
+                    <FileText size={48} className="mx-auto mb-3 opacity-50" />
+                    <p>Chọn một sinh viên để xem lịch sử bài nộp</p>
+                  </div>
                 </div>
-              ) : selectedSubmission ? (
+              ) : (
+                <div className="space-y-6">
+                  {/* Header with back button */}
+                  <div className="flex items-center gap-3 mb-4">
+                    <button
+                      onClick={() => {
+                        setSelectedStudent(null);
+                        setSubmissionHistory([]);
+                        setSelectedSubmission(null);
+                      }}
+                      className="text-gray-400 hover:text-white transition"
+                    >
+                      <ArrowLeft size={20} />
+                    </button>
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">
+                        Lịch sử bài nộp - {selectedStudent.studentName}
+                      </h3>
+                      <p className="text-sm text-gray-400">{selectedStudent.studentEmail}</p>
+                    </div>
+                  </div>
+
+                  {/* Submission History List */}
+                  {historyLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="text-gray-400">Đang tải lịch sử...</div>
+                    </div>
+                  ) : submissionHistory.length > 0 ? (
+                    <div className="space-y-3">
+                      {submissionHistory.map((submission) => (
+                        <div
+                          key={submission.id}
+                          className="bg-[#0b0f12] border border-[#202934] rounded-lg p-4 hover:border-emerald-500/50 transition cursor-pointer"
+                          onClick={() => loadSubmissionDetail(submission.id)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <span className="text-sm font-medium text-emerald-400">
+                                #{submission.attemptNo}
+                              </span>
+                              <span
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium min-w-20 justify-center ${
+                                  submission.passed
+                                    ? "text-emerald-400 bg-emerald-500/10"
+                                    : "text-red-400 bg-red-500/10"
+                                }`}
+                              >
+                                {submission.passed ? (
+                                  <><CheckCircle2 size={12} /> Đạt</>
+                                ) : (
+                                  <><X size={12} /> Không đạt</>
+                                )}
+                              </span>
+                              <span className="text-xs text-gray-400">
+                                {submission.language === "113" ? "Python" : 
+                                 submission.language === "91" ? "Java" : 
+                                 submission.language === "102" ? "JavaScript" : 
+                                 submission.language}
+                              </span>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-lg font-bold text-emerald-400">
+                                {submission.score}
+                              </div>
+                              <div className="text-xs text-gray-400">
+                                {new Date(submission.submittedAt).toLocaleDateString('vi-VN', {
+                                  month: '2-digit',
+                                  day: '2-digit',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 text-gray-400">
+                      <FileText size={48} className="mx-auto mb-3 opacity-50" />
+                      <p>Không có lịch sử bài nộp</p>
+                    </div>
+                  )}
+
+                  {/* Submission Detail */}
+                  {selectedSubmission && (
+                    <div className="border-t border-[#202934] pt-6">
+                      <h4 className="text-lg font-semibold text-white mb-4">Chi tiết bài nộp</h4>
+                      
+                      {submissionDetailLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                          <div className="text-gray-400">Đang tải chi tiết...</div>
+                        </div>
+                      ) : (
                 <div className="space-y-6">
                   {/* Submission Header */}
                   <div className="bg-[#0b0f12] border border-[#202934] rounded-lg p-4">
@@ -655,17 +805,14 @@ export default function LecturerAssignmentDetail() {
                     </div>
                   )}
                 </div>
-              ) : (
-                <div className="text-center py-12 text-gray-400">
-                  <FileText size={48} className="mx-auto mb-3 opacity-50" />
-                  <p>Chọn một sinh viên để xem chi tiết bài nộp</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </section>
           </div>
         )}
-
-
       </div>
 
       {/* Deadline Modal */}
