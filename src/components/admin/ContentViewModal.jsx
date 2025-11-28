@@ -83,12 +83,12 @@ export default function ContentViewModal({ open, onClose, data, onDecision }) {
             <div className="text-slate-400">Trạng thái</div>
             <div className="text-slate-200">
               <span className={`px-2 py-0.5 rounded-md text-xs ${
-                data.status === "pending" ? "bg-amber-500/15 text-amber-300 border border-amber-500/30" :
+                data.status === "draft" || data.status === "pending" ? "bg-amber-500/15 text-amber-300 border border-amber-500/30" :
                 data.status === "approved" || data.status === "published" ? "bg-green-500/15 text-green-300 border border-green-500/30" :
                 data.status === "rejected" ? "bg-rose-500/15 text-rose-300 border border-rose-500/30" :
                 "bg-slate-500/15 text-slate-300 border border-slate-500/30"
               }`}>
-                {data.status === "pending" ? "Chờ duyệt" :
+                {data.status === "draft" || data.status === "pending" ? "Chờ duyệt" :
                  data.status === "approved" || data.status === "published" ? "Đã duyệt" :
                  data.status === "rejected" ? "Đã từ chối" :
                  data.status}
@@ -171,8 +171,8 @@ export default function ContentViewModal({ open, onClose, data, onDecision }) {
           >
             Đóng
           </button>
-          {/* Only show action buttons if status is PENDING */}
-          {(data.status === "pending" || data.status === "PENDING") && (
+          {/* Only show action buttons if status is DRAFT */}
+          {(data.status === "draft" || data.status === "DRAFT" || data.status === "pending" || data.status === "PENDING") && (
             <>
               <button
                 className="px-3 py-2 rounded-md bg-rose-600 text-white hover:bg-rose-700"

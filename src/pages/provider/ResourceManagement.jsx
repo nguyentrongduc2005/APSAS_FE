@@ -85,7 +85,7 @@ function ResourceManagement() {
       const allResources = allResult.data;
       const calculatedInsights = {
         total: allResources.length,
-        pending: allResources.filter((r) => r.status === "pending").length,
+        pending: allResources.filter((r) => r.status === "pending" || r.status === "draft" || r.status === "DRAFT").length,
         approved: allResources.filter((r) => r.status === "approved").length,
       };
 

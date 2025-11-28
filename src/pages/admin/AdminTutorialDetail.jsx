@@ -168,7 +168,7 @@ export default function AdminTutorialDetail() {
                 <p className="text-sm font-bold text-white">
                   {tutorial.status === "PUBLISHED" 
                     ? "Đã duyệt" 
-                    : tutorial.status === "PENDING"
+                    : tutorial.status === "DRAFT" || tutorial.status === "PENDING"
                     ? "Chờ duyệt"
                     : tutorial.status === "REJECTED"
                     ? "Đã từ chối"

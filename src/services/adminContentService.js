@@ -56,10 +56,11 @@ const adminContentService = {
     }
   },
   /**
-   * Get list of tutorials waiting for approval
+   * Get draft tutorials (chờ duyệt - DRAFT status)
    * GET /api/admin/tutorials/pending
    * Query params: keyword, page, size, sortBy, sortDirection
    * Required permission: MANAGE_TUTORIALS
+   * Note: Endpoint vẫn là /pending nhưng trả về tutorials có status DRAFT
    * @param {Object} params - Query parameters
    * @param {number} params.page - Page number (0-based)
    * @param {number} params.size - Page size
@@ -97,7 +98,7 @@ const adminContentService = {
    * @param {Object} params - Query parameters
    * @param {number} params.page - Page number (0-based)
    * @param {number} params.size - Page size
-   * @param {string} params.status - Filter by status (PENDING, PUBLISHED, REJECTED)
+   * @param {string} params.status - Filter by status (DRAFT, PUBLISHED, REJECTED)
    * @param {string} params.search - Search keyword
    * @returns {Promise<{code: string, message: string, data: Object}>}
    */
@@ -259,7 +260,7 @@ const adminContentService = {
    * 
    * Validation:
    * - status bắt buộc, phải là PUBLISHED hoặc REJECTED
-   * - Tutorial phải ở trạng thái PENDING mới có thể review
+   * - Tutorial phải ở trạng thái DRAFT mới có thể review
    * 
    * @param {number} tutorialId - The ID of the tutorial to review
    * @param {string} status - Status: "PUBLISHED" or "REJECTED"
@@ -301,8 +302,8 @@ const adminContentService = {
       const errorMessage = response.data?.message || "Failed to review tutorial";
       
       // Check for common validation errors
-      if (errorMessage.includes("PENDING") || errorMessage.includes("status")) {
-        throw new Error("Chỉ có thể review tutorial ở trạng thái PENDING. Tutorial này đã được review trước đó.");
+      if (errorMessage.includes("DRAFT") || errorMessage.includes("status")) {
+        throw new Error("Chỉ có thể review tutorial ở trạng thái DRAFT. Tutorial này đã được review trước đó.");
       }
       
       throw new Error(errorMessage);
@@ -332,8 +333,8 @@ const adminContentService = {
           }
           
           // Check for specific validation errors
-          if (backendMessage.includes("PENDING") || backendMessage.includes("status") || backendMessage.includes("Status")) {
-            throw new Error(backendMessage || "Chỉ có thể review tutorial ở trạng thái PENDING. Tutorial này đã được review trước đó.");
+          if (backendMessage.includes("DRAFT") || backendMessage.includes("status") || backendMessage.includes("Status")) {
+            throw new Error(backendMessage || "Chỉ có thể review tutorial ở trạng thái DRAFT. Tutorial này đã được review trước đó.");
           }
           
           if (backendMessage.includes("PUBLISHED") || backendMessage.includes("REJECTED")) {
@@ -419,8 +420,8 @@ const adminContentService = {
     
     // Map frontend status to backend status
     let backendStatus = null;
-    if (statusLower === "pending") {
-      // Use pending API
+    if (statusLower === "draft") {
+      // Use pending API (endpoint vẫn là /pending nhưng trả về DRAFT status)
       return this.getPendingTutorials({
         page: params.page || 0,
         size: params.size || 10,

@@ -201,7 +201,7 @@ function ResourceModeration() {
                           ? "bg-emerald-500/10 text-emerald-300"
                           : r.status === "REJECTED"
                           ? "bg-rose-500/10 text-rose-300"
-                          : r.status === "PENDING"
+                          : r.status === "DRAFT" || r.status === "PENDING"
                           ? "bg-amber-500/10 text-amber-300"
                           : "bg-slate-500/10 text-slate-300"
                       }`}

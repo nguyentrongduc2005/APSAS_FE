@@ -8,7 +8,7 @@ import ContentViewModal from "../../components/admin/ContentViewModal";
 export default function ContentApprovals() {
   const [q, setQ] = useState("");
   const [type, setType] = useState("");
-  const [status, setStatus] = useState("pending");
+  const [status, setStatus] = useState("draft");
   const [contents, setContents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modal, setModal] = useState({ open: false, data: null });
@@ -59,7 +59,7 @@ export default function ContentApprovals() {
         
         // Map API response to expected format
         const mappedContents = contentList.map(tutorial => {
-          // Normalize status: PENDING -> pending, PUBLISHED -> approved, REJECTED -> rejected
+          // Normalize status: DRAFT -> draft, PUBLISHED -> approved, REJECTED -> rejected
           let normalizedStatus = (tutorial.status || "").toLowerCase();
           if (normalizedStatus === "published") {
             normalizedStatus = "approved";
@@ -71,7 +71,7 @@ export default function ContentApprovals() {
             type: tutorial.type || "UNKNOWN",
             author: tutorial.author?.fullname || tutorial.author?.username || tutorial.createdBy || "Unknown",
             submittedAt: tutorial.createdAt ? new Date(tutorial.createdAt).toLocaleDateString('vi-VN') : "N/A",
-            status: normalizedStatus || "pending",
+            status: normalizedStatus || "draft",
             note: tutorial.note || tutorial.reviewNote || "",
           };
         });
@@ -111,9 +111,9 @@ export default function ContentApprovals() {
       // Validate tutorial status before review
       if (modal.data && modal.data.status) {
         const currentStatus = (modal.data.status || "").toLowerCase();
-        // Only allow review if status is pending
-        if (currentStatus !== "pending") {
-          alert(`Không thể review tutorial này. Trạng thái hiện tại: ${modal.data.status}. Chỉ có thể review tutorial ở trạng thái PENDING.`);
+        // Only allow review if status is draft
+        if (currentStatus !== "draft") {
+          alert(`Không thể review tutorial này. Trạng thái hiện tại: ${modal.data.status}. Chỉ có thể review tutorial ở trạng thái DRAFT.`);
           return;
         }
       }

@@ -19,7 +19,9 @@ const resourceService = {
       let backendStatus;
       switch (status) {
         case "pending":
-          backendStatus = "PENDING";
+        case "draft":
+          // pending và draft đều map sang DRAFT (chờ duyệt)
+          backendStatus = "DRAFT";
           break;
         case "approved":
           backendStatus = "PUBLISHED";
