@@ -18,6 +18,7 @@ import { marked } from "marked";
 import  lecturerService  from "../../services/lecturerService";
 import { getStudentsSubmissions, getTeacherSubmissionDetail, submitLecturerFeedback } from "../../services/submissionService";
 import { useToast } from '../../hooks/useToast';
+import notificationService from '../../services/notificationService';
 
 // Configure marked options for better code highlighting
 marked.setOptions({
@@ -342,6 +343,40 @@ export default function LecturerAssignmentDetail() {
         
         showToast('Feedback đã được gửi thành công', 'success');
         setShowFeedbackForm(false);
+        
+        // Create notification for student
+        try {
+          // Get student ID from submission or selected student
+          // Try multiple possible fields
+          const studentId = selectedSubmission?.studentId 
+            || selectedSubmission?.student?.id 
+            || selectedSubmission?.studentId
+            || selectedStudent?.studentId
+            || selectedStudent?.id;
+          
+          if (studentId) {
+            // Get assignment title for notification
+            const assignmentTitle = selectedSubmission?.title 
+              || selectedSubmission?.assignmentTitle 
+              || assignment?.title 
+              || 'bài tập';
+            
+            await notificationService.createNotification({
+              title: "Giảng viên đã gửi feedback cho bài nộp của bạn",
+              content: `Giảng viên đã gửi feedback cho bài nộp của bạn trong ${assignmentTitle}. Vui lòng kiểm tra để xem chi tiết.`,
+              target: studentId.toString(), // Target specific student
+            });
+            console.log('Notification created for student:', studentId);
+          } else {
+            console.warn('Cannot create notification: studentId not found', {
+              selectedSubmission: selectedSubmission ? Object.keys(selectedSubmission) : null,
+              selectedStudent: selectedStudent ? Object.keys(selectedStudent) : null,
+            });
+          }
+        } catch (notifError) {
+          console.error('Error creating notification:', notifError);
+          // Don't show error to user, notification is not critical
+        }
         
         // Reload submission detail to sync with backend (preserve feedback state)
         try {
