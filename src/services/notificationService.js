@@ -32,18 +32,27 @@ const notificationService = {
 
   /**
    * Get notifications for current user
-   * GET /notifications?page=0&size=10
+   * GET /api/notifications?page=1&limit=20&isRead=false
    * @param {Object} params - Query parameters
-   * @param {number} params.page - Page number (0-based)
-   * @param {number} params.size - Page size
-   * @returns {Promise<{code: string, message: string, data: Object}>}
+   * @param {number} params.page - Page number (1-based, default: 1)
+   * @param {number} params.limit - Page size (max 100, default: 20)
+   * @param {boolean} params.isRead - Filter: true = đã đọc, false = chưa đọc, null/undefined = tất cả
+   * @returns {Promise<{code: string, message: string, data: {data: Array, pagination: Object}}>}
    */
   async getNotifications(params = {}) {
     try {
+      const { page = 1, limit = 20, isRead } = params;
+      const actualLimit = Math.min(limit, 100); // Max 100 per API spec
+      
       const queryParams = {
-        page: params.page !== undefined ? params.page : 0,
-        size: params.size || 10,
+        page,
+        limit: actualLimit,
       };
+      
+      // Add isRead filter if specified
+      if (isRead !== undefined && isRead !== null) {
+        queryParams.isRead = isRead;
+      }
       
       const response = await api.get("/notifications", { params: queryParams });
       return response.data;

@@ -33,7 +33,7 @@ export default function ContentToolbar({
         className="px-3 py-2 rounded-md bg-[#0d1117] border border-[#223] text-slate-200"
       >
         <option value="">Tất cả</option>
-        <option value="pending">Chờ duyệt</option>
+        <option value="draft">Chờ duyệt</option>
         <option value="approved">Đã duyệt</option>
         <option value="rejected">Từ chối</option>
       </select>

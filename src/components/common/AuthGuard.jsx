@@ -27,16 +27,9 @@ export default function AuthGuard({ allow }) {
           return;
         }
 
-        // Kiểm tra token còn valid không
-        const result = await fetchMe(token);
-        if (!cancelled && !result?.valid) {
-          logout();
-          nav("/auth/login", {
-            replace: true,
-            state: { from: location },
-          });
-          return;
-        }
+        // ✅ KHÔNG kiểm tra token với server nữa!
+        // 🔄 API interceptor sẽ tự động handle 401 và refresh token
+        console.log("✅ AuthGuard: Token exists, trusting API interceptor");
 
         // Nếu có danh sách role allow, check luôn
         if (!cancelled && allow && allow.length > 0 && user) {

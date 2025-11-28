@@ -19,7 +19,9 @@ const resourceService = {
       let backendStatus;
       switch (status) {
         case "pending":
-          backendStatus = "PENDING";
+        case "draft":
+          // pending và draft đều map sang DRAFT (chờ duyệt)
+          backendStatus = "DRAFT";
           break;
         case "approved":
           backendStatus = "PUBLISHED";
@@ -93,22 +95,24 @@ const resourceService = {
       // Map dữ liệu BE -> shape resource mà ResourceManagementCard đang dùng
       const allResources = list.map((item) => {
         // Map status BE -> status FE
-        let feStatus = "pending";
+        // DRAFT là trạng thái chờ duyệt mới (thay thế PENDING)
+        let feStatus = "draft";
         switch (item.status) {
           case "PUBLISHED":
             feStatus = "approved";
             break;
+          case "DRAFT":
+            feStatus = "draft";
+            break;
           case "PENDING":
-            feStatus = "pending";
+            // Backward compatible: PENDING cũ vẫn map sang draft
+            feStatus = "draft";
             break;
           case "REJECTED":
             feStatus = "rejected";
             break;
-          case "DRAFT":
-            feStatus = "draft";
-            break;
           default:
-            feStatus = "pending";
+            feStatus = "draft";
         }
 
         return {
@@ -160,8 +164,8 @@ const resourceService = {
       const list = responseData?.content || [];
       const totalElements = responseData?.totalElements || 0;
 
-      // Đếm theo status
-      const pending = list.filter((item) => item.status === "PENDING").length;
+      // Đếm theo status (DRAFT thay thế PENDING)
+      const pending = list.filter((item) => item.status === "DRAFT" || item.status === "PENDING").length;
       const approved = list.filter(
         (item) => item.status === "PUBLISHED"
       ).length;

@@ -677,15 +677,47 @@ export default function StudentAssignmentDetail() {
                     {/* Teacher Feedback */}
                     <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4">
                       <h5 className="font-semibold text-emerald-400 mb-3">Teacher Feedback</h5>
-                      {submissionResult.feedbackTeachers && submissionResult.feedbackTeachers.length > 0 ? (
-                        <div className="space-y-2">
-                          {submissionResult.feedbackTeachers.map((feedback, index) => (
-                            <p key={index} className="text-emerald-200 text-sm leading-relaxed">{feedback}</p>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-emerald-300 text-sm italic">Chưa có phản hồi từ giáo viên</p>
-                      )}
+                      {(() => {
+                        // Support both feedbackTeachers array and lecturerFeedback object
+                        const feedbackTeachers = submissionResult.feedbackTeachers || [];
+                        const lecturerFeedback = submissionResult.lecturerFeedback;
+                        
+                        if (feedbackTeachers.length > 0) {
+                          return (
+                            <div className="space-y-4">
+                              {feedbackTeachers.map((feedback, index) => (
+                                <div key={feedback.id || index} className="border-b border-emerald-500/20 pb-3 last:border-0 last:pb-0">
+                                  <p className="text-emerald-200 text-sm leading-relaxed whitespace-pre-wrap">
+                                    {feedback.body || feedback.comment || feedback}
+                                  </p>
+                                  {feedback.createdAt && (
+                                    <p className="text-xs text-emerald-400/70 mt-2">
+                                      Đánh giá lúc: {new Date(feedback.createdAt).toLocaleString('vi-VN')}
+                                    </p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        } else if (lecturerFeedback) {
+                          return (
+                            <div>
+                              <p className="text-emerald-200 text-sm leading-relaxed whitespace-pre-wrap">
+                                {lecturerFeedback.body || lecturerFeedback.comment}
+                              </p>
+                              {lecturerFeedback.createdAt && (
+                                <p className="text-xs text-emerald-400/70 mt-2">
+                                  Đánh giá lúc: {new Date(lecturerFeedback.createdAt).toLocaleString('vi-VN')}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        } else {
+                          return (
+                            <p className="text-emerald-300 text-sm italic">Chưa có phản hồi từ giáo viên</p>
+                          );
+                        }
+                      })()}
                     </div>
 
                     {/* Test Cases */}

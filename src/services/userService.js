@@ -148,16 +148,9 @@ export const uploadAvatar = async (file) => {
     const data = response.data?.data || {};
     const avatarUrl = data.avatar;
 
-    // Cập nhật avatar trong localStorage
-    const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
-    currentUser.avatar = avatarUrl;
-    localStorage.setItem("user", JSON.stringify(currentUser));
-    // Also cache avatar separately so FE can preserve it across logout/login
-    try {
-      localStorage.setItem("user_avatar", avatarUrl);
-    } catch (e) {
-      // ignore
-    }
+    // Note: Không lưu avatar vào localStorage ở đây
+    // Profile.jsx sẽ gọi updateUser() sau khi upload thành công
+    // AuthContext.updateUser() sẽ tự động lưu với key theo user ID để tránh conflict
 
     // Giữ format cũ để Profile.jsx dùng result.avatarUrl
     return { avatarUrl };
