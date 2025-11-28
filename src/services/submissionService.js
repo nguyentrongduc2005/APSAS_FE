@@ -428,31 +428,44 @@ export const getStudentSubmissionDetail = async (submissionId) => {
 
 /**
  * Submit feedback for a student's submission (Lecturer only)
- * @param {string} submissionId - The ID of the submission
- * @param {Object} feedbackData - Feedback data containing comment
+ * API: POST /api/submissions/{submissionId}/feedbacks
+ * @param {string|number} submissionId - The ID of the submission
+ * @param {Object} feedbackData - Feedback data containing body (comment)
+ * @param {string} feedbackData.body - Feedback content (required)
  * @returns {Promise<Object>} Response indicating success
  */
 export const submitLecturerFeedback = async (submissionId, feedbackData) => {
   try {
-    // TODO: Replace with actual API call
-    // const response = await api.post(`/lecturer/submissions/${submissionId}/feedback`, feedbackData);
-    // return response.data;
+    // API expects { "body": "..." }
+    const requestBody = {
+      body: feedbackData.body || feedbackData.comment || "",
+    };
 
-    // Mock response with delay
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          success: true,
-          message: "Feedback submitted successfully",
-          feedback: {
-            ...feedbackData,
-            createdAt: new Date().toISOString(),
-          },
-        });
-      }, 1000);
-    });
+    if (!requestBody.body.trim()) {
+      throw new Error("Feedback body is required");
+    }
+
+    const response = await api.post(`/submissions/${submissionId}/feedbacks`, requestBody);
+    
+    // Response format: { code: "ok", message: "FEEDBACK_CREATED", data: { id, body, createdAt } }
+    if (response.data?.code === "ok" || response.data?.code === "0" || response.data?.code === "OK") {
+      return {
+        success: true,
+        message: response.data.message || "Feedback submitted successfully",
+        feedback: response.data.data || {
+          body: requestBody.body,
+          createdAt: new Date().toISOString(),
+        },
+      };
+    }
+    
+    throw new Error(response.data?.message || "Failed to submit feedback");
   } catch (error) {
     console.error("Error submitting lecturer feedback:", error);
+    if (error.response) {
+      const errorMessage = error.response.data?.message || error.message;
+      throw new Error(errorMessage);
+    }
     throw error;
   }
 };

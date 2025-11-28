@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { marked } from "marked";
 import  lecturerService  from "../../services/lecturerService";
-import { getStudentsSubmissions, getTeacherSubmissionDetail } from "../../services/submissionService";
+import { getStudentsSubmissions, getTeacherSubmissionDetail, submitLecturerFeedback } from "../../services/submissionService";
 import { useToast } from '../../hooks/useToast';
 
 // Configure marked options for better code highlighting
@@ -52,6 +52,11 @@ export default function LecturerAssignmentDetail() {
   // Submission detail state
   const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [submissionDetailLoading, setSubmissionDetailLoading] = useState(false);
+  
+  // Feedback state
+  const [feedbackComment, setFeedbackComment] = useState("");
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [showFeedbackForm, setShowFeedbackForm] = useState(false);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -258,9 +263,13 @@ export default function LecturerAssignmentDetail() {
   };
 
   // Load submission detail using submission ID
-  const loadSubmissionDetail = async (submissionId) => {
+  const loadSubmissionDetail = async (submissionId, preserveFeedback = false) => {
     try {
       setSubmissionDetailLoading(true);
+      if (!preserveFeedback) {
+        setShowFeedbackForm(false);
+        setFeedbackComment("");
+      }
       
       console.log('Loading submission detail for ID:', submissionId);
       const response = await getTeacherSubmissionDetail(submissionId);
@@ -268,6 +277,19 @@ export default function LecturerAssignmentDetail() {
       if (response && (response.code === "ok" || response.code === "0" || response.code === "OK")) {
         console.log('Submission detail:', response.data);
         setSelectedSubmission(response.data);
+        // Set feedback comment if exists (only if not preserving)
+        // Backend returns feedbackTeachers as array, get the latest one
+        if (!preserveFeedback) {
+          const feedbackTeachers = response.data?.feedbackTeachers || [];
+          if (feedbackTeachers.length > 0) {
+            // Get the latest feedback (first in array if sorted by createdAt desc)
+            const latestFeedback = feedbackTeachers[0];
+            setFeedbackComment(latestFeedback.body || latestFeedback.comment || "");
+          } else if (response.data?.lecturerFeedback?.comment) {
+            // Fallback to old format
+            setFeedbackComment(response.data.lecturerFeedback.comment);
+          }
+        }
       } else {
         throw new Error(response?.message || "Không thể tải chi tiết submission");
       }
@@ -276,6 +298,77 @@ export default function LecturerAssignmentDetail() {
       showToast(error.message || 'Không thể tải chi tiết bài nộp', 'error');
     } finally {
       setSubmissionDetailLoading(false);
+    }
+  };
+
+  // Handle submit feedback
+  const handleSubmitFeedback = async () => {
+    if (!selectedSubmission?.id) {
+      showToast('Không tìm thấy submission', 'error');
+      return;
+    }
+
+    if (!feedbackComment.trim()) {
+      showToast('Vui lòng nhập feedback', 'error');
+      return;
+    }
+
+    try {
+      setFeedbackLoading(true);
+      const response = await submitLecturerFeedback(selectedSubmission.id, {
+        body: feedbackComment.trim(),
+      });
+
+      if (response?.success) {
+        // Update state immediately with new feedback
+        // Backend returns feedback in format: { id, body, createdAt }
+        const newFeedback = {
+          id: response.feedback?.id,
+          body: response.feedback?.body || feedbackComment.trim(),
+          comment: response.feedback?.body || feedbackComment.trim(), // Support both formats
+          createdAt: response.feedback?.createdAt || new Date().toISOString(),
+        };
+        
+        // Update feedbackTeachers array (add new feedback to the beginning)
+        setSelectedSubmission(prev => {
+          const existingFeedbacks = prev?.feedbackTeachers || [];
+          return {
+            ...prev,
+            feedbackTeachers: [newFeedback, ...existingFeedbacks],
+            // Keep backward compatibility
+            lecturerFeedback: newFeedback,
+          };
+        });
+        
+        showToast('Feedback đã được gửi thành công', 'success');
+        setShowFeedbackForm(false);
+        
+        // Reload submission detail to sync with backend (preserve feedback state)
+        try {
+          await loadSubmissionDetail(selectedSubmission.id, true);
+          // After reload, update feedback comment from response
+          const reloadResponse = await getTeacherSubmissionDetail(selectedSubmission.id);
+          if (reloadResponse?.data) {
+            const feedbackTeachers = reloadResponse.data.feedbackTeachers || [];
+            if (feedbackTeachers.length > 0) {
+              const latestFeedback = feedbackTeachers[0];
+              setFeedbackComment(latestFeedback.body || latestFeedback.comment || "");
+            } else if (reloadResponse.data.lecturerFeedback?.comment) {
+              setFeedbackComment(reloadResponse.data.lecturerFeedback.comment);
+            }
+          }
+        } catch (reloadError) {
+          console.error('Error reloading submission detail:', reloadError);
+          // Don't show error to user, we already updated state
+        }
+      } else {
+        throw new Error(response?.message || 'Không thể gửi feedback');
+      }
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+      showToast(error.message || 'Không thể gửi feedback', 'error');
+    } finally {
+      setFeedbackLoading(false);
     }
   };
 
@@ -804,6 +897,123 @@ export default function LecturerAssignmentDetail() {
                       </div>
                     </div>
                   )}
+
+                  {/* Feedback Section */}
+                  <div className="border-t border-[#202934] pt-6 mt-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h5 className="font-semibold text-white">Feedback của giảng viên</h5>
+                      {(() => {
+                        // Get latest feedback from feedbackTeachers array or lecturerFeedback object
+                        const feedbackTeachers = selectedSubmission?.feedbackTeachers || [];
+                        const latestFeedback = feedbackTeachers.length > 0 
+                          ? feedbackTeachers[0] 
+                          : selectedSubmission?.lecturerFeedback;
+                        
+                        if (!showFeedbackForm && latestFeedback) {
+                          return (
+                            <button
+                              onClick={() => {
+                                setShowFeedbackForm(true);
+                                setFeedbackComment(latestFeedback.body || latestFeedback.comment || "");
+                              }}
+                              className="text-sm text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
+                            >
+                              <PenSquare size={16} />
+                              Chỉnh sửa
+                            </button>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
+
+                    {showFeedbackForm ? (
+                      <div className="space-y-3">
+                        <textarea
+                          value={feedbackComment}
+                          onChange={(e) => setFeedbackComment(e.target.value)}
+                          placeholder="Nhập feedback cho sinh viên..."
+                          rows={4}
+                          className="w-full px-4 py-3 bg-[#0b0f12] border border-[#202934] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 resize-none"
+                        />
+                        <div className="flex gap-2 justify-end">
+                          <button
+                            onClick={() => {
+                              setShowFeedbackForm(false);
+                              // Get latest feedback
+                              const feedbackTeachers = selectedSubmission?.feedbackTeachers || [];
+                              const latestFeedback = feedbackTeachers.length > 0 
+                                ? feedbackTeachers[0] 
+                                : selectedSubmission?.lecturerFeedback;
+                              setFeedbackComment(latestFeedback?.body || latestFeedback?.comment || "");
+                            }}
+                            className="px-4 py-2 bg-[#202934] text-gray-300 rounded-lg hover:bg-[#2a3441] transition"
+                            disabled={feedbackLoading}
+                          >
+                            Hủy
+                          </button>
+                          <button
+                            onClick={handleSubmitFeedback}
+                            disabled={feedbackLoading || !feedbackComment.trim()}
+                            className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                          >
+                            {feedbackLoading ? (
+                              <>
+                                <Clock size={16} className="animate-spin" />
+                                Đang gửi...
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle2 size={16} />
+                                Gửi feedback
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (() => {
+                      // Get latest feedback from feedbackTeachers array or lecturerFeedback object
+                      const feedbackTeachers = selectedSubmission?.feedbackTeachers || [];
+                      const latestFeedback = feedbackTeachers.length > 0 
+                        ? feedbackTeachers[0] 
+                        : selectedSubmission?.lecturerFeedback;
+                      
+                      if (latestFeedback) {
+                        const feedbackText = latestFeedback.body || latestFeedback.comment || "";
+                        const feedbackDate = latestFeedback.createdAt;
+                        
+                        return (
+                          <div className="bg-[#0b0f12] border border-[#202934] rounded-lg p-4">
+                            <p className="text-gray-300 whitespace-pre-wrap">
+                              {feedbackText}
+                            </p>
+                            {feedbackDate && (
+                              <p className="text-xs text-gray-500 mt-2">
+                                Đánh giá lúc: {new Date(feedbackDate).toLocaleString('vi-VN')}
+                              </p>
+                            )}
+                            {feedbackTeachers.length > 1 && (
+                              <p className="text-xs text-gray-500 mt-2">
+                                (Có {feedbackTeachers.length} feedback)
+                              </p>
+                            )}
+                          </div>
+                        );
+                      }
+                      return null;
+                    })() || (
+                      <div className="bg-[#0b0f12] border border-[#202934] rounded-lg p-4">
+                        <p className="text-gray-400 text-sm mb-3">Chưa có feedback</p>
+                        <button
+                          onClick={() => setShowFeedbackForm(true)}
+                          className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition flex items-center gap-2"
+                        >
+                          <PenSquare size={16} />
+                          Thêm feedback
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
                       )}
                     </div>

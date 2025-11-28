@@ -6,6 +6,12 @@ export default function ResourceManagementCard({ resource }) {
 
   const getStatusBadge = (status) => {
     const statusConfig = {
+      draft: {
+        text: "Chờ duyệt",
+        bgColor: "bg-yellow-500/10",
+        textColor: "text-yellow-400",
+        borderColor: "border-yellow-500/20",
+      },
       pending: {
         text: "Chờ duyệt",
         bgColor: "bg-yellow-500/10",
@@ -26,7 +32,7 @@ export default function ResourceManagementCard({ resource }) {
       },
     };
 
-    const config = statusConfig[resource.status] || statusConfig.pending;
+    const config = statusConfig[status] || statusConfig.draft || statusConfig.pending;
 
     return (
       <span
